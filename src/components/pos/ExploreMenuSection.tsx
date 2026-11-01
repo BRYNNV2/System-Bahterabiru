@@ -9,6 +9,7 @@ import {
   Minus,
   Check,
   X,
+  ReceiptText,
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import {
@@ -22,12 +23,14 @@ interface ExploreMenuSectionProps {
   promoOnly: boolean;
   setPromoOnly: (val: boolean) => void;
   isOrderPanelOpen: boolean;
+  onOpenRecentOrders: () => void;
 }
 
 export function ExploreMenuSection({
   promoOnly,
   setPromoOnly,
   isOrderPanelOpen,
+  onOpenRecentOrders,
 }: ExploreMenuSectionProps) {
   const {
     menuItems,
@@ -42,6 +45,7 @@ export function ExploreMenuSection({
     addToCart,
     decrementFromCart,
     getItemQuantity,
+    recentOrders,
   } = usePosStore();
 
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -122,22 +126,35 @@ export function ExploreMenuSection({
           </h1>
         </div>
 
-        {/* Clean Minimalist Promo Countdown Pill */}
-        <button
-          onClick={() => setPromoOnly(!promoOnly)}
-          className={`self-start md:self-auto inline-flex items-center gap-3 px-4 py-2 rounded-full border text-[11px] font-extrabold tracking-widest uppercase transition cursor-pointer ${
-            promoOnly
-              ? "bg-zinc-950 text-white border-zinc-950"
-              : "bg-zinc-50 text-zinc-800 border-zinc-200 hover:border-zinc-950"
-          }`}
-        >
-          <span className="w-2 h-2 rounded-full bg-[#A3E635] animate-pulse" />
-          <span>PROMO DISKON 15%</span>
-          <span className="text-zinc-400">|</span>
-          <span className="tabular-nums font-black">
-            {hours}:{minutes}:{seconds}
-          </span>
-        </button>
+        {/* Right Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2.5 self-start md:self-auto">
+          {recentOrders.length > 0 && (
+            <button
+              onClick={onOpenRecentOrders}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full border border-zinc-200 hover:border-zinc-950 text-[11px] font-extrabold tracking-wider uppercase text-zinc-700 hover:text-zinc-950 transition cursor-pointer"
+            >
+              <ReceiptText className="w-3.5 h-3.5" />
+              <span>Struk ({recentOrders.length})</span>
+            </button>
+          )}
+
+          {/* Clean Minimalist Promo Countdown Pill */}
+          <button
+            onClick={() => setPromoOnly(!promoOnly)}
+            className={`inline-flex items-center gap-3 px-4 py-2 rounded-full border text-[11px] font-extrabold tracking-widest uppercase transition cursor-pointer ${
+              promoOnly
+                ? "bg-zinc-950 text-white border-zinc-950"
+                : "bg-zinc-50 text-zinc-800 border-zinc-200 hover:border-zinc-950"
+            }`}
+          >
+            <span className="w-2 h-2 rounded-full bg-[#A3E635] animate-pulse" />
+            <span>PROMO DISKON 15%</span>
+            <span className="text-zinc-400">|</span>
+            <span className="tabular-nums font-black">
+              {hours}:{minutes}:{seconds}
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Full-Width Pill Toolbar (Category Selector | Centered Search | Item Count & Sort) */}

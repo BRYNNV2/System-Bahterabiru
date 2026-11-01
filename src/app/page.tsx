@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { HeaderBar } from "@/components/pos/HeaderBar";
 import { ExploreMenuSection } from "@/components/pos/ExploreMenuSection";
 import { OrderSidebar } from "@/components/pos/OrderSidebar";
 import { CheckoutModal } from "@/components/pos/CheckoutModal";
@@ -28,19 +27,8 @@ export default function BuyerPosPage() {
 
   return (
     <div className="min-h-screen w-full bg-white flex flex-col">
-      {/* Sticky Minimalist Editorial Header Bar */}
-      <HeaderBar
-        onOpenRecentOrders={() => setIsRecentOrdersOpen(true)}
-        onToggleOrderPanel={() => setIsOrderPanelOpen((prev) => !prev)}
-        isOrderPanelOpen={isOrderPanelOpen}
-        promoOnly={promoOnly}
-        setPromoOnly={setPromoOnly}
-        orderMode={orderMode}
-        setOrderMode={setOrderMode}
-      />
-
-      {/* Main Content Container (Full-width, edge-to-edge aligned) */}
-      <main className="flex-1 w-full max-w-[1720px] mx-auto px-5 sm:px-8 lg:px-12 pt-8 pb-24">
+      {/* Main Content Container (Full-width, edge-to-edge aligned, no top header) */}
+      <main className="flex-1 w-full max-w-[1720px] mx-auto px-5 sm:px-8 lg:px-12 pt-8 sm:pt-10 pb-24">
         <div className="flex flex-col xl:flex-row gap-10 items-start justify-between w-full">
           {/* Left / Main Product Showcase (Berakit Series style) */}
           <div className="flex-1 w-full min-w-0">
@@ -48,10 +36,11 @@ export default function BuyerPosPage() {
               promoOnly={promoOnly}
               setPromoOnly={setPromoOnly}
               isOrderPanelOpen={isOrderPanelOpen}
+              onOpenRecentOrders={() => setIsRecentOrdersOpen(true)}
             />
           </div>
 
-          {/* Right POS Terminal Dock (Toggles open/closed cleanly) */}
+          {/* Right POS Terminal Dock */}
           {isOrderPanelOpen && (
             <div className="w-full xl:w-[390px] shrink-0">
               <OrderSidebar
@@ -64,7 +53,7 @@ export default function BuyerPosPage() {
         </div>
       </main>
 
-      {/* Bottom Floating Kiosk Bar (McDonald's / Blitz Self-Order style when panel is hidden or on tablet/mobile) */}
+      {/* Bottom Floating Kiosk Bar (When panel is hidden or on small screens) */}
       {totalItems > 0 && !isOrderPanelOpen && (
         <div className="fixed bottom-6 inset-x-0 z-40 px-5 flex justify-center pointer-events-none">
           <div className="pointer-events-auto w-full max-w-2xl bg-zinc-950 text-white rounded-full p-2.5 pl-6 pr-3 shadow-2xl flex items-center justify-between gap-4 border border-zinc-800">
