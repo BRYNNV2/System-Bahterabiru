@@ -59,10 +59,11 @@ export function DetailItemsSidebar({
   ];
 
   return (
-    <aside className="w-full xl:w-[360px] 2xl:w-[380px] bg-white border-l border-gray-100 p-6 flex flex-col justify-between shrink-0">
-      <div>
+    <aside className="w-full xl:w-[360px] 2xl:w-[380px] bg-white border-l border-gray-100 p-6 flex flex-col justify-between shrink-0 h-full overflow-hidden">
+      {/* Top Section: Header & Scrollable Items */}
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+        <div className="flex items-center justify-between pb-3.5 border-b border-gray-100 shrink-0">
           <h2 className="text-[17px] font-bold text-zinc-900 tracking-tight">
             Detail Items
           </h2>
@@ -74,9 +75,9 @@ export function DetailItemsSidebar({
         </div>
 
         {/* List of Ordered Items */}
-        <div className="mt-4 max-h-[340px] overflow-y-auto space-y-3.5 pr-1 custom-scrollbar">
+        <div className="mt-3.5 flex-1 overflow-y-auto space-y-3 pr-1.5 custom-scrollbar">
           {populatedCart.length === 0 ? (
-            <div className="py-14 text-center">
+            <div className="h-full flex flex-col items-center justify-center text-center py-12">
               <p className="text-xs font-bold text-zinc-700">Keranjang masih kosong</p>
               <p className="text-[11px] text-gray-400 mt-0.5">
                 Pilih menu di samping untuk menambahkan item
@@ -89,29 +90,31 @@ export function DetailItemsSidebar({
               return (
                 <div
                   key={product.id}
-                  className="flex items-center justify-between gap-3 group"
+                  className="flex items-center justify-between gap-3 p-1.5 rounded-2xl hover:bg-gray-50/70 transition"
                 >
-                  {/* Left: Thumbnail */}
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-13 h-13 rounded-2xl object-cover shrink-0 bg-gray-100 shadow-2xs"
-                  />
+                  {/* Left: Fixed Thumbnail */}
+                  <div className="w-12 h-12 min-w-[48px] max-w-[48px] rounded-2xl overflow-hidden bg-gray-100 shadow-2xs shrink-0">
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
 
                   {/* Middle: Name, Category, Stepper */}
                   <div className="flex-1 min-w-0">
                     <h4
-                      className="font-bold text-zinc-900 text-[13px] truncate"
+                      className="font-bold text-zinc-900 text-[12.5px] truncate"
                       title={product.name}
                     >
                       {product.name}
                     </h4>
-                    <p className="text-[11px] text-gray-400 font-medium">
+                    <p className="text-[10.5px] text-gray-400 font-medium">
                       {product.category}
                     </p>
 
                     {/* Stepper with Coral Plus */}
-                    <div className="flex items-center gap-2 mt-1.5">
+                    <div className="flex items-center gap-2 mt-1">
                       <button
                         onClick={() => decrementFromCart(product.id)}
                         className="w-5 h-5 rounded-md bg-gray-100 hover:bg-gray-200 text-zinc-700 flex items-center justify-center transition cursor-pointer"
@@ -135,9 +138,9 @@ export function DetailItemsSidebar({
 
                   {/* Right: Line Price & Trash */}
                   <div className="text-right shrink-0">
-                    <span className="block font-bold text-[#FF5B35] text-[13px] tabular-nums">
+                    <span className="block font-bold text-[#FF5B35] text-[12.5px] tabular-nums">
                       {quantity > 1 && (
-                        <span className="text-[11px] text-gray-400 font-medium mr-1">
+                        <span className="text-[10px] text-gray-400 font-medium mr-1">
                           {quantity} &times;
                         </span>
                       )}
@@ -145,7 +148,7 @@ export function DetailItemsSidebar({
                     </span>
                     <button
                       onClick={() => removeFromCart(product.id)}
-                      className="text-gray-300 hover:text-rose-500 transition p-0.5 mt-1 cursor-pointer"
+                      className="text-gray-300 hover:text-rose-500 transition p-0.5 mt-0.5 cursor-pointer"
                       title="Hapus item"
                     >
                       <Trash2 className="w-3.5 h-3.5 ml-auto" />
@@ -158,10 +161,10 @@ export function DetailItemsSidebar({
         </div>
       </div>
 
-      {/* Bottom Area: Summary, Payment Method & Action CTA */}
-      <div className="mt-5 pt-4 border-t border-gray-100 space-y-4">
+      {/* Bottom Area: Summary, Payment Method & Action CTA (Fixed Height) */}
+      <div className="shrink-0 pt-3.5 border-t border-gray-100 space-y-3">
         {/* Calculation Summary matching reference */}
-        <div className="space-y-1.5 text-xs">
+        <div className="space-y-1 text-xs">
           <div className="flex items-center justify-between text-gray-400">
             <span>Item</span>
             <span className="font-semibold text-zinc-800">
@@ -190,15 +193,15 @@ export function DetailItemsSidebar({
             </span>
           </div>
 
-          <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-gray-100 font-extrabold text-[15px] text-zinc-900">
+          <div className="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 font-extrabold text-[15px] text-zinc-900">
             <span>Total</span>
-            <span className="tabular-nums">{formatRupiah(finalTotal)}</span>
+            <span className="tabular-nums text-[#FF5B35]">{formatRupiah(finalTotal)}</span>
           </div>
         </div>
 
         {/* Payment Method Cards */}
         <div>
-          <h4 className="text-xs font-bold text-zinc-900 mb-2">Payment Method</h4>
+          <h4 className="text-xs font-bold text-zinc-900 mb-1.5">Payment Method</h4>
           <div className="grid grid-cols-3 gap-2">
             {paymentMethods.map((m) => {
               const Icon = m.icon;
@@ -208,14 +211,14 @@ export function DetailItemsSidebar({
                 <button
                   key={m.id}
                   onClick={() => setPaymentMethod(m.id)}
-                  className={`p-2.5 rounded-2xl flex flex-col items-center justify-center gap-1.5 border transition cursor-pointer ${
+                  className={`py-2 px-1 rounded-2xl flex flex-col items-center justify-center gap-1 border transition cursor-pointer ${
                     isSelected
                       ? "bg-[#FFF4F0] border-[#FFCCBF] text-[#FF5B35] shadow-2xs"
                       : "bg-white border-gray-200 hover:border-gray-300 text-zinc-600"
                   }`}
                 >
-                  <Icon className="w-5 h-5 stroke-[2]" />
-                  <span className="text-[11px] font-bold">{m.label}</span>
+                  <Icon className="w-4 h-4 stroke-[2]" />
+                  <span className="text-[10.5px] font-bold">{m.label}</span>
                 </button>
               );
             })}
@@ -234,4 +237,3 @@ export function DetailItemsSidebar({
     </aside>
   );
 }
-

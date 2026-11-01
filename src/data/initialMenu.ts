@@ -43,7 +43,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     stock: 0,
     soldCount: 12,
     imageUrl:
-      "https://images.unsplash.com/photo-1621996346565-e3d5d6281729?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1551183053-bf91a1d81141?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "prod-3",
@@ -97,7 +97,7 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     stock: 3,
     soldCount: 21,
     imageUrl:
-      "https://images.unsplash.com/photo-1559715745-e1b123c75990?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80",
   },
   {
     id: "prod-8",
