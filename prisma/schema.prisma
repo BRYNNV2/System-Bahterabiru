@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id                String      @id @default(cuid())
+  name              String
+  category          String      // Main Course, Appetizer, Dessert, Side Dishes, Beverages, Kids
+  price             Int         // Original price in Rupiah
+  discountPercent   Int         @default(0) // e.g. 15 for 15%
+  isSpecialDiscount Boolean     @default(false)
+  stock             Int         @default(0) // Available portions
+  imageUrl          String
+  isActive          Boolean     @default(true)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  orderItems        OrderItem[]
+  stockLogs         StockLog[]
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  orderNumber   String      @unique
+  customerName  String
+  personCount   Int         @default(1)
+  subtotal      Int         // Subtotal before discount (or sum of items)
+  discountTotal Int         @default(0)
+  taxTotal      Int         @default(0)
+  totalAmount   Int         // Final payable amount
+  paymentMethod String      @default("QRIS") // QRIS, TUNAI, E-WALLET
+  status        String      @default("COMPLETED") // COMPLETED, PROCESSING, CANCELLED
+  createdAt     DateTime    @default(now())
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id              String  @id @default(cuid())
+  orderId         String
+  order           Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product @relation(fields: [productId], references: [id])
+  productName     String
+  quantity        Int
+  originalPrice   Int
+  discountPercent Int     @default(0)
+  finalUnitPrice  Int
+  lineTotal       Int
+}
+
+model StockLog {
+  id            String   @id @default(cuid())
+  productId     String
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  changeAmount  Int      // Negative for sales, Positive for restock
+  previousStock Int
+  newStock      Int
+  reason        String   // e.g. "Penjualan #ORD-001", "Restock Harian Admin"
+  createdAt     DateTime @default(now())
+}
+
