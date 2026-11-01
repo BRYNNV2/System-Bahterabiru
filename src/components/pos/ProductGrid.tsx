@@ -127,7 +127,7 @@ export function ProductGrid() {
                 }`}
               >
                 <div>
-                  {/* Food Image with Discount Badge */}
+                  {/* Food Image with Blue Discount Badge */}
                   <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden bg-gray-100">
                     <img
                       src={item.imageUrl}
@@ -163,42 +163,61 @@ export function ProductGrid() {
                   </p>
                 </div>
 
-                {/* Price Row matching reference */}
-                <div className="flex items-baseline justify-between mt-2 pt-1 border-t border-gray-50">
-                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                {/* Price Row & Action Controls */}
+                <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-50">
+                  <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
                     {item.discountPercent && (
                       <span className="text-[11px] text-gray-400 line-through font-medium">
                         {formatRupiah(item.price)}
                       </span>
                     )}
-                    <span className="font-extrabold text-zinc-900 text-[14px]">
+                    <span className="font-extrabold text-zinc-900 text-[13.5px]">
                       {formatRupiah(finalPrice)}
                     </span>
-                    <span className="text-[10.5px] text-gray-400 font-medium">
+                    <span className="text-[10px] text-gray-400 font-medium">
                       / Portion
                     </span>
                   </div>
 
-                  {/* Quantity adjustment buttons if in cart */}
-                  {qtyInCart > 0 && (
+                  {/* Stepper matching reference (- 2 +) */}
+                  {qtyInCart > 0 ? (
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 ml-1"
+                      className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] px-1.5 py-0.5 rounded-xl ml-1 shrink-0"
                     >
                       <button
                         onClick={() => decrementFromCart(item.id)}
-                        className="w-5 h-5 rounded-md bg-gray-100 hover:bg-gray-200 text-zinc-700 flex items-center justify-center transition"
+                        className="w-5 h-5 rounded-lg bg-white hover:bg-gray-100 text-zinc-700 flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
+                        aria-label="Kurangi"
+                        title={qtyInCart === 1 ? "Hapus dari pesanan" : "Kurangi 1"}
                       >
                         <Minus className="w-3 h-3 stroke-[2.5]" />
                       </button>
+                      <span className="text-xs font-black text-[#FF5B35] min-w-[14px] text-center tabular-nums">
+                        {qtyInCart}
+                      </span>
                       <button
                         onClick={() => addToCart(item.id)}
                         disabled={qtyInCart >= item.stock}
-                        className="w-5 h-5 rounded-md bg-[#FF5B35] hover:bg-[#e04d28] disabled:opacity-40 text-white flex items-center justify-center transition"
+                        className="w-5 h-5 rounded-lg bg-[#FF5B35] hover:bg-[#e04d28] disabled:opacity-30 text-white flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
+                        aria-label="Tambah"
+                        title="Tambah 1"
                       >
                         <Plus className="w-3 h-3 stroke-[2.5]" />
                       </button>
                     </div>
+                  ) : (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!isOutOfStock) addToCart(item.id);
+                      }}
+                      disabled={isOutOfStock}
+                      className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-[#FF5B35] text-zinc-600 hover:text-white disabled:opacity-30 flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95 ml-1 shrink-0"
+                      title={isOutOfStock ? "Stok Habis" : "Tambah ke Pesanan"}
+                    >
+                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -209,4 +228,3 @@ export function ProductGrid() {
     </section>
   );
 }
-

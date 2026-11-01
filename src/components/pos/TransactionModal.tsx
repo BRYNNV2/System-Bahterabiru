@@ -11,7 +11,7 @@ interface TransactionModalProps {
 }
 
 export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
-  const { completeCheckout, paymentMethod } = usePosStore();
+  const { completeCheckout, paymentMethod, setPaymentMethod } = usePosStore();
   const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(
     null
   );
@@ -25,13 +25,15 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
       const order = completeCheckout();
       setCompletedOrder(order);
       setIsProcessing(false);
-    }, 600);
+    }, 500);
   };
 
   const handleCloseAll = () => {
     setCompletedOrder(null);
     onClose();
   };
+
+  const paymentOptions: ("Cash" | "Debit" | "QRIS")[] = ["Cash", "Debit", "QRIS"];
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
@@ -55,11 +57,29 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
               </button>
             </div>
 
-            <div className="mt-4 p-4 rounded-2xl bg-gray-50/70 border border-gray-100 text-xs space-y-2">
-              <div className="flex justify-between text-gray-500">
-                <span>Metode Pembayaran</span>
-                <span className="font-bold text-[#FF5B35]">{paymentMethod}</span>
+            {/* Payment method toggle inside modal */}
+            <div className="mt-4">
+              <label className="block text-[11px] font-bold text-gray-400 mb-2 uppercase">
+                Metode Pembayaran
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {paymentOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setPaymentMethod(opt)}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
+                      paymentMethod === opt
+                        ? "bg-[#FFF4F0] border-[#FFCCBF] text-[#FF5B35]"
+                        : "bg-white border-gray-200 text-zinc-600 hover:border-gray-300"
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
               </div>
+            </div>
+
+            <div className="mt-4 p-4 rounded-2xl bg-gray-50/70 border border-gray-100 text-xs space-y-2">
               <div className="flex justify-between text-gray-500">
                 <span>Terminal</span>
                 <span className="font-semibold text-zinc-800">
@@ -75,14 +95,14 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
             <div className="grid grid-cols-2 gap-3 mt-5">
               <button
                 onClick={onClose}
-                className="py-3 rounded-2xl border border-gray-200 text-zinc-700 hover:bg-gray-50 text-xs font-bold transition cursor-pointer"
+                className="py-3 rounded-2xl border border-gray-200 text-zinc-700 hover:bg-gray-50 text-xs font-bold transition cursor-pointer active:scale-95"
               >
                 Batal
               </button>
               <button
                 onClick={handleConfirmOrder}
                 disabled={isProcessing}
-                className="py-3 rounded-2xl bg-[#FF5B35] hover:bg-[#e64c27] text-white text-xs font-bold transition shadow-md cursor-pointer disabled:opacity-50"
+                className="py-3 rounded-2xl bg-[#FF5B35] hover:bg-[#e64c27] text-white text-xs font-bold transition shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
               >
                 {isProcessing ? "Memproses..." : "Selesaikan Bayar"}
               </button>
@@ -143,14 +163,14 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
             <div className="grid grid-cols-2 gap-3 mt-5">
               <button
                 onClick={() => window.print()}
-                className="flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 text-zinc-800 text-xs font-bold hover:bg-gray-50 transition cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-gray-200 text-zinc-800 text-xs font-bold hover:bg-gray-50 transition cursor-pointer active:scale-95"
               >
                 <Printer className="w-4 h-4" />
                 <span>Cetak Struk</span>
               </button>
               <button
                 onClick={handleCloseAll}
-                className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-[#FF5B35] hover:bg-[#e04d28] text-white text-xs font-bold transition shadow-md cursor-pointer"
+                className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-[#FF5B35] hover:bg-[#e04d28] text-white text-xs font-bold transition shadow-md cursor-pointer active:scale-95"
               >
                 <RotateCcw className="w-4 h-4" />
                 <span>Pesanan Baru</span>
@@ -162,4 +182,3 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
     </div>
   );
 }
-
