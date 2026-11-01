@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { SlidersHorizontal, Check, Plus, Minus } from "lucide-react";
+import { SlidersHorizontal, Check, Plus, Minus, Search, X, ArrowUpDown } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { formatRupiah, getEffectivePrice } from "@/data/initialMenu";
 
@@ -9,7 +9,9 @@ export function ProductGrid() {
   const {
     menuItems,
     selectedCategory,
+    setSelectedCategory,
     searchQuery,
+    setSearchQuery,
     sortBy,
     setSortBy,
     addToCart,
@@ -21,13 +23,17 @@ export function ProductGrid() {
 
   const filteredItems = menuItems
     .filter((item) => {
-      if (selectedCategory !== "All Menu" && item.category !== selectedCategory) {
-        return false;
+      // If user typed in search, search across catalog or within category
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = item.name.toLowerCase().includes(q);
+        const matchesCategory = item.category.toLowerCase().includes(q);
+        if (!matchesName && !matchesCategory) return false;
+        return true;
       }
-      if (
-        searchQuery.trim() &&
-        !item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
+
+      // If no search, filter strictly by selected category
+      if (selectedCategory !== "All Menu" && item.category !== selectedCategory) {
         return false;
       }
       return true;
@@ -47,65 +53,149 @@ export function ProductGrid() {
 
   return (
     <section className="mt-7">
-      {/* Section Header */}
-      <div className="flex items-center justify-between mb-3.5">
-        <h2 className="text-[17px] font-bold text-zinc-900 tracking-tight">
-          Select Menu
-        </h2>
+      {/* Section Header with Search status and Sort Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        {/* Title and Result Counter */}
+        <div className="flex items-center gap-2.5">
+          <h2 className="text-[17px] font-bold text-zinc-900 tracking-tight">
+            Select Menu
+          </h2>
+          <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full tabular-nums">
+            {filteredItems.length} items
+          </span>
 
-        {/* Filter Button */}
-        <div className="relative">
-          <button
-            onClick={() => setShowFilterPopover((prev) => !prev)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-              sortBy !== "default"
-                ? "bg-[#FF5B35] text-white border-[#FF5B35]"
-                : "bg-white text-zinc-600 border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Filter</span>
-          </button>
-
-          {showFilterPopover && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-2xl shadow-xl border border-gray-100 p-2.5 z-30 animate-in fade-in zoom-in-95">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-2">
-                Urutan Menu
-              </p>
-              {[
-                { id: "default", label: "Default" },
-                { id: "price-asc", label: "Harga Termurah" },
-                { id: "price-desc", label: "Harga Tertinggi" },
-                { id: "stock-desc", label: "Stok Terbanyak" },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    setSortBy(
-                      opt.id as "default" | "price-asc" | "price-desc" | "stock-desc"
-                    );
-                    setShowFilterPopover(false);
-                  }}
-                  className="w-full flex items-center justify-between px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-[#FFF4F0] hover:text-[#FF5B35] rounded-xl transition cursor-pointer"
-                >
-                  <span>{opt.label}</span>
-                  {sortBy === opt.id && (
-                    <Check className="w-3.5 h-3.5 text-[#FF5B35]" />
-                  )}
-                </button>
-              ))}
+          {searchQuery && (
+            <div className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] text-[#FF5B35] px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+              <span>Cari: &ldquo;{searchQuery}&rdquo;</span>
+              <button
+                onClick={() => setSearchQuery("")}
+                className="hover:text-zinc-900 cursor-pointer ml-0.5"
+                title="Hapus pencarian"
+              >
+                <X className="w-3 h-3" />
+              </button>
             </div>
           )}
+        </div>
+
+        {/* Sorting Controls matching exact user request */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Quick 1-Click Sort Pills */}
+          <div className="flex items-center bg-[#F4F5F8] p-1 rounded-xl border border-gray-100">
+            <button
+              onClick={() => setSortBy("default")}
+              className={`px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold tracking-wider transition cursor-pointer ${
+                sortBy === "default"
+                  ? "bg-white text-zinc-900 shadow-2xs"
+                  : "text-gray-400 hover:text-zinc-800"
+              }`}
+            >
+              DEFAULT
+            </button>
+
+            <button
+              onClick={() => setSortBy("price-asc")}
+              className={`px-3 py-1 rounded-lg text-[10.5px] font-extrabold tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                sortBy === "price-asc"
+                  ? "bg-white text-[#FF5B35] shadow-2xs"
+                  : "text-gray-400 hover:text-zinc-800"
+              }`}
+              title="Urutkan dari termurah ke termahal"
+            >
+              <span>PRICE: LOW TO HIGH</span>
+            </button>
+
+            <button
+              onClick={() => setSortBy("price-desc")}
+              className={`px-3 py-1 rounded-lg text-[10.5px] font-extrabold tracking-wider transition cursor-pointer flex items-center gap-1 ${
+                sortBy === "price-desc"
+                  ? "bg-white text-[#FF5B35] shadow-2xs"
+                  : "text-gray-400 hover:text-zinc-800"
+              }`}
+              title="Urutkan dari termahal ke termurah"
+            >
+              <span>PRICE: HIGH TO LOW</span>
+            </button>
+          </div>
+
+          {/* More Filter Options Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowFilterPopover((prev) => !prev)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
+                sortBy === "stock-desc"
+                  ? "bg-[#FF5B35] text-white border-[#FF5B35]"
+                  : "bg-white text-zinc-600 border-gray-200 hover:border-gray-300"
+              }`}
+              title="Filter tambahan"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Filter</span>
+            </button>
+
+            {showFilterPopover && (
+              <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 p-2.5 z-30 animate-in fade-in zoom-in-95">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-2">
+                  Urutan Menu
+                </p>
+                {[
+                  { id: "default", label: "Default / Rekomendasi" },
+                  { id: "price-asc", label: "PRICE: LOW TO HIGH" },
+                  { id: "price-desc", label: "PRICE: HIGH TO LOW" },
+                  { id: "stock-desc", label: "STOK TERBANYAK" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      setSortBy(
+                        opt.id as
+                          | "default"
+                          | "price-asc"
+                          | "price-desc"
+                          | "stock-desc"
+                      );
+                      setShowFilterPopover(false);
+                    }}
+                    className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
+                      sortBy === opt.id
+                        ? "bg-[#FFF4F0] text-[#FF5B35]"
+                        : "text-zinc-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>{opt.label}</span>
+                    {sortBy === opt.id && (
+                      <Check className="w-3.5 h-3.5 text-[#FF5B35]" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* 4 Columns Product Grid */}
       {filteredItems.length === 0 ? (
         <div className="py-16 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-          <p className="text-sm font-bold text-zinc-700">Menu tidak ditemukan</p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            Coba pilih kategori lain atau ubah kata kunci pencarian.
+          <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-2 text-gray-400">
+            <Search className="w-5 h-5" />
+          </div>
+          <p className="text-sm font-bold text-zinc-800">
+            Menu tidak ditemukan
           </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {searchQuery
+              ? `Tidak ada menu yang cocok dengan kata kunci "${searchQuery}"`
+              : "Coba pilih kategori lain atau reset filter."}
+          </p>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="mt-3 px-3.5 py-1.5 rounded-xl bg-zinc-900 text-white text-xs font-bold transition hover:bg-zinc-800 cursor-pointer"
+            >
+              Reset Pencarian
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -156,7 +246,11 @@ export function ProductGrid() {
 
                   {/* Stock & Sold Info */}
                   <p className="text-[11px] text-gray-400 font-medium mt-0.5">
-                    <span className={item.stock === 0 ? "text-rose-500 font-semibold" : ""}>
+                    <span
+                      className={
+                        item.stock === 0 ? "text-rose-500 font-semibold" : ""
+                      }
+                    >
                       {item.stock} Available
                     </span>{" "}
                     &bull; {item.soldCount} Sold
@@ -189,7 +283,9 @@ export function ProductGrid() {
                         onClick={() => decrementFromCart(item.id)}
                         className="w-5 h-5 rounded-lg bg-white hover:bg-gray-100 text-zinc-700 flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
                         aria-label="Kurangi"
-                        title={qtyInCart === 1 ? "Hapus dari pesanan" : "Kurangi 1"}
+                        title={
+                          qtyInCart === 1 ? "Hapus dari pesanan" : "Kurangi 1"
+                        }
                       >
                         <Minus className="w-3 h-3 stroke-[2.5]" />
                       </button>
