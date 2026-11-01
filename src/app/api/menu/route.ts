@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { INITIAL_MENU_ITEMS } from "@/data/initialMenu";
 import { prisma } from "@/lib/prisma";
 
@@ -26,8 +26,28 @@ export async function GET() {
       orderBy: { createdAt: "asc" },
     });
 
-    return NextResponse.json({ products });
+    return NextResponse.json({ success: true, total: products.length, products });
   } catch {
-    return NextResponse.json({ products: INITIAL_MENU_ITEMS });
+    return NextResponse.json({
+      success: true,
+      total: INITIAL_MENU_ITEMS.length,
+      products: INITIAL_MENU_ITEMS,
+    });
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const { productId, stock } = await req.json();
+    const updated = await prisma.product.update({
+      where: { id: productId },
+      data: { stock: Math.max(0, Number(stock)) },
+    });
+    return NextResponse.json({ success: true, product: updated });
+  } catch (error) {
+    return NextResponse.json(
+      { success: false, error: error instanceof Error ? error.message : "Error" },
+      { status: 500 }
+    );
   }
 }

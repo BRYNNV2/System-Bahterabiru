@@ -19,13 +19,38 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
 
   if (!isOpen) return null;
 
-  const handleConfirmOrder = () => {
+  const handleConfirmOrder = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
-      const order = completeCheckout();
+    const order = completeCheckout();
+    if (order) {
       setCompletedOrder(order);
-      setIsProcessing(false);
-    }, 500);
+      try {
+        await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            items: order.items.map((i) => ({
+              productId: i.product.id,
+              productName: i.product.name,
+              quantity: i.quantity,
+              originalPrice: i.product.price,
+              unitPrice: i.unitPrice,
+              lineTotal: i.lineTotal,
+            })),
+            subtotal: order.subtotal,
+            discountTotal: order.discountTotal,
+            taxTotal: order.taxTotal,
+            totalAmount: order.totalAmount,
+            paymentMethod: order.paymentMethod,
+          }),
+        });
+      } catch {
+        // Fallback to local store
+      }
+    }
+    setIsProcessing(false);
   };
 
   const handleCloseAll = () => {
