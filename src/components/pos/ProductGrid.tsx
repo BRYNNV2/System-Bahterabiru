@@ -144,13 +144,6 @@ export function ProductGrid() {
                         {item.discountPercent}% Off
                       </div>
                     )}
-
-                    {/* Cart counter chip */}
-                    {qtyInCart > 0 && (
-                      <div className="absolute top-2.5 right-2.5 bg-[#FF5B35] text-white text-[11px] font-extrabold w-6 h-6 rounded-full flex items-center justify-center shadow-md">
-                        {qtyInCart}
-                      </div>
-                    )}
                   </div>
 
                   {/* Title */}
