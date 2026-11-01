@@ -61,9 +61,9 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
                 <span className="font-bold text-[#FF5B35]">{paymentMethod}</span>
               </div>
               <div className="flex justify-between text-gray-500">
-                <span>Kasir Bertugas</span>
+                <span>Terminal</span>
                 <span className="font-semibold text-zinc-800">
-                  Lina Punk Manado
+                  Kasir Kantin #01
                 </span>
               </div>
               <div className="flex justify-between text-gray-500">

@@ -7,15 +7,17 @@ import {
   BarChart3,
   Package,
   Settings,
-  MessageSquare,
-  LogOut,
 } from "lucide-react";
 import { usePosStore, AppNavTab } from "@/store/usePosStore";
 
 export function SidebarRail() {
   const { activeTab, setActiveTab } = usePosStore();
 
-  const navLinks: { id: AppNavTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  const navLinks: {
+    id: AppNavTab;
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }[] = [
     { id: "pos", label: "Katalog Kasir", icon: LayoutGrid },
     { id: "history", label: "Riwayat Transaksi", icon: Clock },
     { id: "analytics", label: "Perkembangan & Omzet", icon: BarChart3 },
@@ -23,10 +25,14 @@ export function SidebarRail() {
   ];
 
   return (
-    <aside className="w-[72px] sm:w-[80px] bg-white border-r border-gray-100 flex flex-col items-center justify-between py-6 shrink-0 z-20">
+    <aside className="w-[72px] sm:w-[80px] bg-white border-r border-gray-100 flex flex-col items-center justify-between py-6 shrink-0 z-20 h-full">
       {/* Top Brand Emblem */}
       <div className="flex flex-col items-center gap-7">
-        <div className="w-10 h-10 rounded-2xl bg-[#FFF2EE] flex items-center justify-center text-[#FF5B35] shadow-xs">
+        <button
+          onClick={() => setActiveTab("pos")}
+          title="Kantin Kampus POS"
+          className="w-10 h-10 rounded-2xl bg-[#FFF2EE] flex items-center justify-center text-[#FF5B35] shadow-xs cursor-pointer hover:scale-105 transition"
+        >
           {/* Coral Lotus / Clover glyph matching reference */}
           <svg
             width="22"
@@ -42,7 +48,7 @@ export function SidebarRail() {
             <path d="M7 10c-3 0-5 2-5 5 0 2 3 5 7 5" />
             <path d="M17 10c3 0 5 2 5 5 0 2-3 5-7 5" />
           </svg>
-        </div>
+        </button>
 
         {/* Navigation Item Icons */}
         <nav className="flex flex-col items-center gap-3">
@@ -61,7 +67,11 @@ export function SidebarRail() {
                     : "text-gray-400 hover:text-zinc-700 hover:bg-gray-50"
                 }`}
               >
-                <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5]" : "stroke-[1.8]"}`} />
+                <Icon
+                  className={`w-5 h-5 ${
+                    isActive ? "stroke-[2.5]" : "stroke-[1.8]"
+                  }`}
+                />
                 {isActive && (
                   <span className="absolute -right-3.5 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-[#FF5B35] rounded-l-full" />
                 )}
@@ -71,11 +81,11 @@ export function SidebarRail() {
         </nav>
       </div>
 
-      {/* Bottom Auxiliary Controls */}
-      <div className="flex flex-col items-center gap-3">
+      {/* Bottom Settings Control */}
+      <div className="flex flex-col items-center">
         <button
           onClick={() => setActiveTab("settings")}
-          title="Pengaturan Kasir"
+          title="Pengaturan Kantin"
           className={`w-10 h-10 rounded-2xl flex items-center justify-center transition cursor-pointer ${
             activeTab === "settings"
               ? "bg-[#FFF0EB] text-[#FF5B35]"
@@ -84,23 +94,7 @@ export function SidebarRail() {
         >
           <Settings className="w-5 h-5 stroke-[1.8]" />
         </button>
-
-        <button
-          title="Bantuan & Pesan"
-          className="w-10 h-10 rounded-2xl flex items-center justify-center text-gray-400 hover:text-zinc-700 hover:bg-gray-50 transition cursor-pointer"
-        >
-          <MessageSquare className="w-5 h-5 stroke-[1.8]" />
-        </button>
-
-        <button
-          title="Keluar Sesi"
-          onClick={() => alert("Sesi kasir tetap aktif")}
-          className="w-10 h-10 rounded-2xl flex items-center justify-center text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-        >
-          <LogOut className="w-5 h-5 stroke-[1.8]" />
-        </button>
       </div>
     </aside>
   );
 }
-

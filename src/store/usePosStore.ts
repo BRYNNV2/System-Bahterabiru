@@ -82,7 +82,7 @@ export const usePosStore = create<PosState>((set, get) => ({
     {
       id: "ord-prev-1",
       orderNumber: "TRX-8821",
-      customerName: "Lina Punk",
+      customerName: "Pelanggan Kantin",
       items: [
         {
           product: INITIAL_MENU_ITEMS[0],
@@ -198,7 +198,7 @@ export const usePosStore = create<PosState>((set, get) => ({
     const newOrder: CompletedOrder = {
       id: `ord-${Date.now()}`,
       orderNumber: `TRX-${Math.floor(1000 + Math.random() * 9000)}`,
-      customerName: "Lina Punk",
+      customerName: "Pelanggan Kantin",
       items: detailedItems,
       itemCount,
       subtotal,

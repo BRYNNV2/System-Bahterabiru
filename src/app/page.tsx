@@ -89,11 +89,11 @@ export default function PosTerminalPage() {
           <div className="max-w-md bg-gray-50/60 rounded-3xl p-6 border border-gray-100 space-y-4 text-xs">
             <div>
               <label className="block text-gray-400 font-bold mb-1">
-                Nama Kasir Bertugas
+                Nama Kantin / Merchant
               </label>
               <input
                 type="text"
-                defaultValue="Lina Punk Manado"
+                defaultValue="Kantin Kampus Utama"
                 className="w-full bg-white border border-gray-200 rounded-xl p-2.5 font-bold"
               />
             </div>
