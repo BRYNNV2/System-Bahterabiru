@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { SlidersHorizontal, Check, Plus, Minus, Search, X, ArrowUpDown } from "lucide-react";
+import { SlidersHorizontal, Plus, Minus, Search, X } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { formatRupiah, getEffectivePrice } from "@/data/initialMenu";
 
@@ -9,7 +9,6 @@ export function ProductGrid() {
   const {
     menuItems,
     selectedCategory,
-    setSelectedCategory,
     searchQuery,
     setSearchQuery,
     sortBy,
@@ -20,6 +19,19 @@ export function ProductGrid() {
   } = usePosStore();
 
   const [showFilterPopover, setShowFilterPopover] = useState(false);
+
+  const getActiveSortLabel = (sort: typeof sortBy) => {
+    switch (sort) {
+      case "price-asc":
+        return "PRICE: LOW";
+      case "price-desc":
+        return "PRICE: HIGH";
+      case "stock-desc":
+        return "MOST STOCK";
+      default:
+        return "NEWEST";
+    }
+  };
 
   const filteredItems = menuItems
     .filter((item) => {
@@ -53,19 +65,16 @@ export function ProductGrid() {
 
   return (
     <section className="mt-7">
-      {/* Section Header with Search status and Sort Controls */}
+      {/* Section Header matching exact user screenshot */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        {/* Title and Result Counter */}
-        <div className="flex items-center gap-2.5">
+        {/* Title and Active Search indicator */}
+        <div className="flex items-center gap-3">
           <h2 className="text-[17px] font-bold text-zinc-900 tracking-tight">
             Select Menu
           </h2>
-          <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-2.5 py-0.5 rounded-full tabular-nums">
-            {filteredItems.length} items
-          </span>
 
           {searchQuery && (
-            <div className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] text-[#FF5B35] px-2.5 py-0.5 rounded-full text-[11px] font-bold">
+            <div className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] text-[#FF5B35] px-2.5 py-0.5 rounded-full text-[11px] font-bold animate-in fade-in">
               <span>Cari: &ldquo;{searchQuery}&rdquo;</span>
               <button
                 onClick={() => setSearchQuery("")}
@@ -78,97 +87,98 @@ export function ProductGrid() {
           )}
         </div>
 
-        {/* Sorting Controls matching exact user request */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Quick 1-Click Sort Pills */}
-          <div className="flex items-center bg-[#F4F5F8] p-1 rounded-xl border border-gray-100">
-            <button
-              onClick={() => setSortBy("default")}
-              className={`px-2.5 py-1 rounded-lg text-[10.5px] font-extrabold tracking-wider transition cursor-pointer ${
-                sortBy === "default"
-                  ? "bg-white text-zinc-900 shadow-2xs"
-                  : "text-gray-400 hover:text-zinc-800"
-              }`}
-            >
-              DEFAULT
-            </button>
+        {/* Right Sort Controls (3 ITEMS | [NEWEST ▼] with Popover) */}
+        <div className="flex items-center gap-3.5 self-end sm:self-auto">
+          {/* Item Count */}
+          <span className="text-[11.5px] font-bold tracking-[0.16em] text-[#8E95A5] uppercase tabular-nums">
+            {filteredItems.length} ITEMS
+          </span>
 
-            <button
-              onClick={() => setSortBy("price-asc")}
-              className={`px-3 py-1 rounded-lg text-[10.5px] font-extrabold tracking-wider transition cursor-pointer flex items-center gap-1 ${
-                sortBy === "price-asc"
-                  ? "bg-white text-[#FF5B35] shadow-2xs"
-                  : "text-gray-400 hover:text-zinc-800"
-              }`}
-              title="Urutkan dari termurah ke termahal"
-            >
-              <span>PRICE: LOW TO HIGH</span>
-            </button>
+          {/* Vertical Separator */}
+          <div className="h-4 w-[1px] bg-gray-200" />
 
-            <button
-              onClick={() => setSortBy("price-desc")}
-              className={`px-3 py-1 rounded-lg text-[10.5px] font-extrabold tracking-wider transition cursor-pointer flex items-center gap-1 ${
-                sortBy === "price-desc"
-                  ? "bg-white text-[#FF5B35] shadow-2xs"
-                  : "text-gray-400 hover:text-zinc-800"
-              }`}
-              title="Urutkan dari termahal ke termurah"
-            >
-              <span>PRICE: HIGH TO LOW</span>
-            </button>
-          </div>
-
-          {/* More Filter Options Dropdown */}
+          {/* Pill Button + Dropdown Popover matching screenshot */}
           <div className="relative">
             <button
               onClick={() => setShowFilterPopover((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition cursor-pointer ${
-                sortBy === "stock-desc"
-                  ? "bg-[#FF5B35] text-white border-[#FF5B35]"
-                  : "bg-white text-zinc-600 border-gray-200 hover:border-gray-300"
-              }`}
-              title="Filter tambahan"
+              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-gray-200/90 bg-white hover:border-zinc-800 text-[11px] font-black tracking-wider uppercase text-zinc-900 transition cursor-pointer shadow-2xs"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Filter</span>
+              <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.2]" />
+              <span>{getActiveSortLabel(sortBy)}</span>
+              <span className="text-[#84CC16] text-[9px] transform scale-y-90">&#9660;</span>
             </button>
 
             {showFilterPopover && (
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-xl border border-gray-100 p-2.5 z-30 animate-in fade-in zoom-in-95">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 px-2">
-                  Urutan Menu
-                </p>
-                {[
-                  { id: "default", label: "Default / Rekomendasi" },
-                  { id: "price-asc", label: "PRICE: LOW TO HIGH" },
-                  { id: "price-desc", label: "PRICE: HIGH TO LOW" },
-                  { id: "stock-desc", label: "STOK TERBANYAK" },
-                ].map((opt) => (
+              <>
+                {/* Backdrop overlay to close when clicking outside */}
+                <div
+                  onClick={() => setShowFilterPopover(false)}
+                  className="fixed inset-0 z-30"
+                />
+
+                {/* The Exact Popover Card matching reference screenshot */}
+                <div className="absolute right-0 top-full mt-2 w-[210px] bg-white rounded-[26px] shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-gray-100 p-2 z-40 animate-in fade-in zoom-in-95">
+                  {/* Option 1: NEWEST ARRIVALS */}
                   <button
-                    key={opt.id}
                     onClick={() => {
-                      setSortBy(
-                        opt.id as
-                          | "default"
-                          | "price-asc"
-                          | "price-desc"
-                          | "stock-desc"
-                      );
+                      setSortBy("default");
                       setShowFilterPopover(false);
                     }}
-                    className={`w-full flex items-center justify-between px-2.5 py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
-                      sortBy === opt.id
-                        ? "bg-[#FFF4F0] text-[#FF5B35]"
-                        : "text-zinc-700 hover:bg-gray-50"
+                    className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer ${
+                      sortBy === "default"
+                        ? "bg-[#0D1117] text-white shadow-xs"
+                        : "text-zinc-800 hover:bg-gray-50"
                     }`}
                   >
-                    <span>{opt.label}</span>
-                    {sortBy === opt.id && (
-                      <Check className="w-3.5 h-3.5 text-[#FF5B35]" />
-                    )}
+                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                      NEWEST
+                    </span>
+                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                      ARRIVALS
+                    </span>
                   </button>
-                ))}
-              </div>
+
+                  {/* Option 2: PRICE: LOW TO HIGH */}
+                  <button
+                    onClick={() => {
+                      setSortBy("price-asc");
+                      setShowFilterPopover(false);
+                    }}
+                    className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
+                      sortBy === "price-asc"
+                        ? "bg-[#0D1117] text-white shadow-xs"
+                        : "text-zinc-800 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                      PRICE: LOW TO
+                    </span>
+                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                      HIGH
+                    </span>
+                  </button>
+
+                  {/* Option 3: PRICE: HIGH TO LOW */}
+                  <button
+                    onClick={() => {
+                      setSortBy("price-desc");
+                      setShowFilterPopover(false);
+                    }}
+                    className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
+                      sortBy === "price-desc"
+                        ? "bg-[#0D1117] text-white shadow-xs"
+                        : "text-zinc-800 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                      PRICE: HIGH TO
+                    </span>
+                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                      LOW
+                    </span>
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
