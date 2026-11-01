@@ -1,231 +1,170 @@
 export interface MenuItem {
   id: string;
   name: string;
-  category:
-    | "Main Course"
-    | "Appetizer"
-    | "Dessert"
-    | "Side Dishes"
-    | "Beverages"
-    | "Kids";
-  price: number; // Original price in IDR
-  discountedPrice?: number; // Explicit discounted price if on special discount
-  discountPercent: number; // e.g., 15 for 15%
-  isSpecialDiscount: boolean;
+  category: "Coffee" | "Tea" | "Mocktail" | "Rice" | "Pasta" | "Burger";
+  price: number; // Strikethrough / original price
+  discountPercent?: number; // e.g. 25 for 25% Off
+  discountedPrice?: number; // Price after discount
   stock: number; // Available count
+  soldCount: number; // Sold count
   imageUrl: string;
 }
 
-export const INITIAL_MENU_ITEMS: MenuItem[] = [
-  // === SPECIAL DISCOUNT TODAY ===
-  {
-    id: "disc-1",
-    name: "Tomato with Tofu Salad",
-    category: "Appetizer",
-    price: 115000,
-    discountedPrice: 97750,
-    discountPercent: 15,
-    isSpecialDiscount: true,
-    stock: 12,
-    imageUrl:
-      "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "disc-2",
-    name: "Japanese Chicken Gyoza",
-    category: "Side Dishes",
-    price: 95000,
-    discountedPrice: 81700,
-    discountPercent: 15,
-    isSpecialDiscount: true,
-    stock: 8,
-    imageUrl:
-      "https://images.unsplash.com/photo-1496116218417-1a781b1c416c?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "disc-3",
-    name: "2pcs of Amazing Avocado",
-    category: "Side Dishes",
-    price: 80000,
-    discountedPrice: 68000,
-    discountPercent: 15,
-    isSpecialDiscount: true,
-    stock: 10,
-    imageUrl:
-      "https://images.unsplash.com/photo-1523049673857-eb18f1d7b578?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "disc-4",
-    name: "Lettuce with Stuff",
-    category: "Appetizer",
-    price: 200000,
-    discountedPrice: 170000,
-    discountPercent: 15,
-    isSpecialDiscount: true,
-    stock: 5,
-    imageUrl:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=600&q=80",
-  },
+export const CATEGORIES_WITH_META = [
+  { id: "All Menu", label: "All Menu", count: 58, icon: "utensils" },
+  { id: "Coffee", label: "Coffee", count: 20, icon: "coffee" },
+  { id: "Tea", label: "Tea", count: 16, icon: "cup-soda" },
+  { id: "Mocktail", label: "Mocktail", count: 8, icon: "glass-water" },
+  { id: "Rice", label: "Rice", count: 6, icon: "bowl" },
+  { id: "Pasta", label: "Pasta", count: 4, icon: "soup" },
+  { id: "Burger", label: "Burger", count: 4, icon: "sandwich" },
+] as const;
 
-  // === EXPLORE OUR BEST MENU ===
+export type CategoryType = (typeof CATEGORIES_WITH_META)[number]["id"];
+
+export const INITIAL_MENU_ITEMS: MenuItem[] = [
   {
-    id: "menu-1",
-    name: "Biscuit Mama with Susu",
-    category: "Dessert",
-    price: 60000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 21,
+    id: "prod-1",
+    name: "Coffee Latte",
+    category: "Coffee",
+    price: 26200,
+    discountPercent: 25,
+    discountedPrice: 21200,
+    stock: 32,
+    soldCount: 8,
     imageUrl:
-      "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80",
   },
   {
-    id: "menu-2",
-    name: "Krosang Thats It",
-    category: "Appetizer",
-    price: 78000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 19,
+    id: "prod-2",
+    name: "Bolognese Spaghetti",
+    category: "Pasta",
+    price: 21200,
+    stock: 0,
+    soldCount: 12,
     imageUrl:
-      "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1621996346565-e3d5d6281729?auto=format&fit=crop&w=600&q=80",
   },
   {
-    id: "menu-3",
-    name: "Strawberry Float",
-    category: "Beverages",
-    price: 45000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 56,
-    imageUrl:
-      "https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "menu-4",
-    name: "Healthy Kids Meal",
-    category: "Kids",
-    price: 83000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 16,
-    imageUrl:
-      "https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "menu-5",
-    name: "Mangoo Cereal Milk",
-    category: "Dessert",
-    price: 95000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 18,
-    imageUrl:
-      "https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "menu-6",
-    name: "Smoothie Brown Berry",
-    category: "Beverages",
-    price: 95000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 18,
-    imageUrl:
-      "https://images.unsplash.com/photo-1577805947697-89e18249d767?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "menu-7",
-    name: "Rainbow Cupcake",
-    category: "Dessert",
-    price: 95000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 11,
-    imageUrl:
-      "https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "menu-8",
-    name: "Mie Gocengan Spicy",
-    category: "Main Course",
-    price: 95000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 8,
-    imageUrl:
-      "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "menu-9",
-    name: "Green Garden Salad Bowl",
-    category: "Side Dishes",
-    price: 72000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 14,
-    imageUrl:
-      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    id: "menu-10",
-    name: "Sesame Brioche Burger",
-    category: "Main Course",
-    price: 88000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 15,
+    id: "prod-3",
+    name: "Thanos Burger",
+    category: "Burger",
+    price: 21200,
+    stock: 12,
+    soldCount: 13,
     imageUrl:
       "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
   },
   {
-    id: "menu-11",
-    name: "Creamy Corn Soup",
-    category: "Appetizer",
-    price: 55000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 22,
+    id: "prod-4",
+    name: "Chamomile Tea",
+    category: "Tea",
+    price: 21200,
+    stock: 24,
+    soldCount: 6,
     imageUrl:
-      "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=600&q=80",
   },
   {
-    id: "menu-12",
-    name: "Nasi Ayam Katsu Kampus",
-    category: "Main Course",
-    price: 65000,
-    discountPercent: 0,
-    isSpecialDiscount: false,
-    stock: 25,
+    id: "prod-5",
+    name: "Neck Burner",
+    category: "Mocktail",
+    price: 26200,
+    discountPercent: 25,
+    discountedPrice: 21200,
+    stock: 0,
+    soldCount: 12,
+    imageUrl:
+      "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "prod-6",
+    name: "Black Tea",
+    category: "Tea",
+    price: 21200,
+    stock: 24,
+    soldCount: 6,
+    imageUrl:
+      "https://images.unsplash.com/photo-1594631252845-29fc4cc8cde9?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "prod-7",
+    name: "Otak Udang",
+    category: "Rice",
+    price: 26500,
+    discountPercent: 20,
+    discountedPrice: 21200,
+    stock: 3,
+    soldCount: 21,
+    imageUrl:
+      "https://images.unsplash.com/photo-1559715745-e1b123c75990?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "prod-8",
+    name: "Mie Sedap",
+    category: "Pasta",
+    price: 21200,
+    stock: 0,
+    soldCount: 34,
+    imageUrl:
+      "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "prod-9",
+    name: "Cinnaple",
+    category: "Coffee",
+    price: 21200,
+    stock: 15,
+    soldCount: 10,
+    imageUrl:
+      "https://images.unsplash.com/photo-1517256064527-09c73fc73e38?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "prod-10",
+    name: "Chicken Pop Matah",
+    category: "Rice",
+    price: 35000,
+    stock: 18,
+    soldCount: 14,
     imageUrl:
       "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=600&q=80",
   },
+  {
+    id: "prod-11",
+    name: "French Fries Cheese",
+    category: "Mocktail",
+    price: 23500,
+    discountPercent: 10,
+    discountedPrice: 21200,
+    stock: 20,
+    soldCount: 5,
+    imageUrl:
+      "https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80",
+  },
+  {
+    id: "prod-12",
+    name: "Garden Salad Bowl",
+    category: "Rice",
+    price: 25000,
+    discountPercent: 15,
+    discountedPrice: 21200,
+    stock: 16,
+    soldCount: 8,
+    imageUrl:
+      "https://images.unsplash.com/photo-1540420773420-3366772f4999?auto=format&fit=crop&w=600&q=80",
+  },
 ];
 
-export const CATEGORIES = [
-  "All",
-  "Main Course",
-  "Appetizer",
-  "Dessert",
-  "Side Dishes",
-  "Beverages",
-  "Kids",
-] as const;
-
-export type CategoryFilter = (typeof CATEGORIES)[number];
-
 export function getEffectivePrice(item: MenuItem): number {
-  if (item.isSpecialDiscount) {
-    if (item.discountedPrice) return item.discountedPrice;
+  if (item.discountedPrice) return item.discountedPrice;
+  if (item.discountPercent) {
     return Math.round(item.price * (1 - item.discountPercent / 100));
   }
   return item.price;
 }
 
-export function formatRupiah(amount: number, withDecimals = false): string {
+export function formatRupiah(amount: number): string {
   const absAmount = Math.abs(Math.round(amount));
   const formatted = absAmount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  const prefix = amount < 0 ? "-Rp " : "Rp ";
-  return withDecimals ? `${prefix}${formatted},00` : `${prefix}${formatted}`;
+  return amount < 0 ? `-Rp ${formatted}` : `Rp ${formatted}`;
 }
-

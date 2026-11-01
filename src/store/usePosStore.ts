@@ -2,7 +2,7 @@ import { create } from "zustand";
 import {
   INITIAL_MENU_ITEMS,
   MenuItem,
-  CategoryFilter,
+  CategoryType,
   getEffectivePrice,
 } from "@/data/initialMenu";
 
@@ -15,95 +15,107 @@ export interface CompletedOrder {
   id: string;
   orderNumber: string;
   customerName: string;
-  personCount: number;
   items: {
     product: MenuItem;
     quantity: number;
     unitPrice: number;
     lineTotal: number;
   }[];
+  itemCount: number;
   subtotal: number;
   discountTotal: number;
   taxTotal: number;
   totalAmount: number;
-  paymentMethod: "QRIS" | "TUNAI" | "KARTU_MAHASISWA";
+  paymentMethod: "Cash" | "Debit" | "QRIS";
   createdAt: string;
 }
 
+export type AppNavTab = "pos" | "analytics" | "inventory" | "history" | "settings";
+
 interface PosState {
+  activeTab: AppNavTab;
   menuItems: MenuItem[];
   cart: CartItem[];
-  customerName: string;
-  personCount: number;
+  selectedCategory: CategoryType;
   searchQuery: string;
-  selectedCategory: CategoryFilter;
   sortBy: "default" | "price-asc" | "price-desc" | "stock-desc";
-  onlyAvailable: boolean;
+  paymentMethod: "Cash" | "Debit" | "QRIS";
   recentOrders: CompletedOrder[];
+  isFilterOpen: boolean;
 
   // Actions
-  setMenuItems: (items: MenuItem[]) => void;
-  setCustomerName: (name: string) => void;
-  setPersonCount: (count: number) => void;
-  incrementPerson: () => void;
-  decrementPerson: () => void;
+  setActiveTab: (tab: AppNavTab) => void;
+  setSelectedCategory: (category: CategoryType) => void;
   setSearchQuery: (query: string) => void;
-  setSelectedCategory: (category: CategoryFilter) => void;
   setSortBy: (sort: "default" | "price-asc" | "price-desc" | "stock-desc") => void;
-  setOnlyAvailable: (only: boolean) => void;
+  setPaymentMethod: (method: "Cash" | "Debit" | "QRIS") => void;
+  setIsFilterOpen: (open: boolean) => void;
 
-  // Cart Actions
+  // Cart
   addToCart: (productId: string) => void;
   decrementFromCart: (productId: string) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
   getItemQuantity: (productId: string) => number;
 
-  // Checkout Action
-  completeCheckout: (
-    paymentMethod: "QRIS" | "TUNAI" | "KARTU_MAHASISWA"
-  ) => CompletedOrder | null;
+  // Inventory / Admin
+  updateProductStock: (productId: string, newStock: number) => void;
+
+  // Checkout
+  completeCheckout: () => CompletedOrder | null;
 }
 
 export const usePosStore = create<PosState>((set, get) => ({
+  activeTab: "pos",
   menuItems: INITIAL_MENU_ITEMS,
-  // Pre-populated with the exact items shown in the reference design
+  // Pre-populated matching the exact reference image
   cart: [
-    { productId: "disc-2", quantity: 2 }, // Japanese Chicken Gyoza
-    { productId: "disc-3", quantity: 2 }, // 2pcs of Amazing Avocado
-    { productId: "menu-4", quantity: 4 }, // Healthy Kids Meal
-    { productId: "menu-2", quantity: 2 }, // Krosang Thats It
-    { productId: "menu-5", quantity: 6 }, // Mangoo Cereal Milk
-    { productId: "menu-7", quantity: 10 }, // Rainbow Cupcake
+    { productId: "prod-9", quantity: 2 }, // Cinnaple
+    { productId: "prod-10", quantity: 1 }, // Chicken Pop Matah
+    { productId: "prod-2", quantity: 2 }, // Bolognese Spaghetti
   ],
-  customerName: "Emir Abiyyu",
-  personCount: 12,
+  selectedCategory: "All Menu",
   searchQuery: "",
-  selectedCategory: "All",
   sortBy: "default",
-  onlyAvailable: false,
-  recentOrders: [],
+  paymentMethod: "Cash",
+  recentOrders: [
+    {
+      id: "ord-prev-1",
+      orderNumber: "TRX-8821",
+      customerName: "Lina Punk",
+      items: [
+        {
+          product: INITIAL_MENU_ITEMS[0],
+          quantity: 2,
+          unitPrice: 21200,
+          lineTotal: 42400,
+        },
+      ],
+      itemCount: 2,
+      subtotal: 52400,
+      discountTotal: 10000,
+      taxTotal: 6360,
+      totalAmount: 48760,
+      paymentMethod: "QRIS",
+      createdAt: "2026-11-01 14:20",
+    },
+  ],
+  isFilterOpen: false,
 
-  setMenuItems: (items) => set({ menuItems: items }),
-  setCustomerName: (name) => set({ customerName: name }),
-  setPersonCount: (count) => set({ personCount: Math.max(1, count) }),
-  incrementPerson: () =>
-    set((state) => ({ personCount: state.personCount + 1 })),
-  decrementPerson: () =>
-    set((state) => ({ personCount: Math.max(1, state.personCount - 1) })),
-  setSearchQuery: (query) => set({ searchQuery: query }),
+  setActiveTab: (tab) => set({ activeTab: tab }),
   setSelectedCategory: (category) => set({ selectedCategory: category }),
+  setSearchQuery: (query) => set({ searchQuery: query }),
   setSortBy: (sortBy) => set({ sortBy }),
-  setOnlyAvailable: (onlyAvailable) => set({ onlyAvailable }),
+  setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
+  setIsFilterOpen: (isFilterOpen) => set({ isFilterOpen }),
 
   addToCart: (productId) => {
     const { menuItems, cart } = get();
-    const product = menuItems.find((item) => item.id === productId);
-    if (!product || product.stock <= 0) return;
+    const product = menuItems.find((p) => p.id === productId);
+    if (!product) return;
 
     const existing = cart.find((c) => c.productId === productId);
     if (existing) {
-      if (existing.quantity >= product.stock) return; // Prevent ordering more than stock
       set({
         cart: cart.map((c) =>
           c.productId === productId ? { ...c, quantity: c.quantity + 1 } : c
@@ -143,68 +155,76 @@ export const usePosStore = create<PosState>((set, get) => ({
     return found ? found.quantity : 0;
   },
 
-  completeCheckout: (paymentMethod) => {
-    const { cart, menuItems, customerName, personCount, recentOrders } = get();
+  updateProductStock: (productId, newStock) => {
+    set((state) => ({
+      menuItems: state.menuItems.map((item) =>
+        item.id === productId ? { ...item, stock: Math.max(0, newStock) } : item
+      ),
+    }));
+  },
+
+  completeCheckout: () => {
+    const { cart, menuItems, paymentMethod, recentOrders } = get();
     if (cart.length === 0) return null;
 
     let subtotal = 0;
     let discountTotal = 0;
+    let itemCount = 0;
 
     const detailedItems = cart
       .map((cartItem) => {
         const product = menuItems.find((m) => m.id === cartItem.productId);
         if (!product) return null;
         const effectiveUnit = getEffectivePrice(product);
-        const origLine = product.price * cartItem.quantity;
-        const finalLine = effectiveUnit * cartItem.quantity;
-        const itemDiscount = origLine - finalLine;
+        const originalLine = product.price * cartItem.quantity;
+        const lineTotal = effectiveUnit * cartItem.quantity;
 
-        subtotal += origLine;
-        discountTotal += itemDiscount;
+        subtotal += originalLine;
+        discountTotal += originalLine - lineTotal;
+        itemCount += cartItem.quantity;
 
         return {
           product,
           quantity: cartItem.quantity,
           unitPrice: effectiveUnit,
-          lineTotal: finalLine,
+          lineTotal,
         };
       })
       .filter(Boolean) as CompletedOrder["items"];
 
-    // Extra promotional discount if subtotal >= 1.000.000 to mirror the design's Rp 120.000 discount feel
-    if (discountTotal < 120000 && subtotal >= 1000000) {
-      discountTotal = 120000;
-    }
-
-    const taxTotal = detailedItems.length > 0 ? 40000 : 0;
+    const taxTotal = Math.round((subtotal - discountTotal) * 0.15);
     const totalAmount = Math.max(0, subtotal - discountTotal + taxTotal);
 
     const newOrder: CompletedOrder = {
       id: `ord-${Date.now()}`,
-      orderNumber: `KNS-${Math.floor(1000 + Math.random() * 9000)}`,
-      customerName: customerName.trim() || "Pelanggan Kantin",
-      personCount,
+      orderNumber: `TRX-${Math.floor(1000 + Math.random() * 9000)}`,
+      customerName: "Lina Punk",
       items: detailedItems,
+      itemCount,
       subtotal,
       discountTotal,
       taxTotal,
       totalAmount,
       paymentMethod,
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
     };
 
-    // Deduct stock from menuItems in real-time
-    const updatedMenuItems = menuItems.map((item) => {
-      const ordered = cart.find((c) => c.productId === item.id);
-      if (!ordered) return item;
+    // Update real-time stocks and sold counts
+    const updatedMenu = menuItems.map((item) => {
+      const inCart = cart.find((c) => c.productId === item.id);
+      if (!inCart) return item;
       return {
         ...item,
-        stock: Math.max(0, item.stock - ordered.quantity),
+        stock: Math.max(0, item.stock - inCart.quantity),
+        soldCount: item.soldCount + inCart.quantity,
       };
     });
 
     set({
-      menuItems: updatedMenuItems,
+      menuItems: updatedMenu,
       cart: [],
       recentOrders: [newOrder, ...recentOrders],
     });
