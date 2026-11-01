@@ -4,8 +4,9 @@
 
 @layer base {
   body {
-    @apply bg-white text-zinc-950 antialiased selection:bg-zinc-950 selection:text-white;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: #EDF0F5;
+    color: #09090b;
+    -webkit-font-smoothing: antialiased;
   }
 }
 
@@ -24,7 +25,7 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #18181b;
+  background: #a1a1aa;
 }
 
 .no-scrollbar::-webkit-scrollbar {
