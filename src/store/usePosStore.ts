@@ -50,7 +50,6 @@ interface PosState {
   recentOrders: CompletedOrder[];
   isFilterOpen: boolean;
   isSidebarOpen: boolean;
-  isMobileMenuOpen: boolean;
   isMobileCartOpen: boolean;
 
   // Actions
@@ -62,7 +61,6 @@ interface PosState {
   setIsFilterOpen: (open: boolean) => void;
   setIsSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
-  setIsMobileMenuOpen: (open: boolean) => void;
   setIsMobileCartOpen: (open: boolean) => void;
 
   // Cart
@@ -116,22 +114,16 @@ export const usePosStore = create<PosState>((set, get) => ({
   ],
   isFilterOpen: false,
   isSidebarOpen: true,
-  isMobileMenuOpen: false,
   isMobileCartOpen: false,
 
-  setActiveTab: (tab) => set({ activeTab: tab, isMobileMenuOpen: false }),
+  setActiveTab: (tab) => set({ activeTab: tab }),
   setSelectedCategory: (category) => set({ selectedCategory: category }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSortBy: (sortBy) => set({ sortBy }),
   setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
   setIsFilterOpen: (isFilterOpen) => set({ isFilterOpen }),
   setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
-  toggleSidebar: () =>
-    set((state) => ({
-      isSidebarOpen: !state.isSidebarOpen,
-      isMobileMenuOpen: !state.isMobileMenuOpen,
-    })),
-  setIsMobileMenuOpen: (isMobileMenuOpen) => set({ isMobileMenuOpen }),
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   setIsMobileCartOpen: (isMobileCartOpen) => set({ isMobileCartOpen }),
 
   addToCart: (productId) => {

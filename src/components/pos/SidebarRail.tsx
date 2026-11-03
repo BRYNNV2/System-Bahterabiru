@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   BookOpen,
   ConciergeBell,
@@ -9,7 +9,7 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  X,
+  Menu,
 } from "lucide-react";
 import { usePosStore, AppNavTab } from "@/store/usePosStore";
 
@@ -40,10 +40,16 @@ export function SidebarRail() {
     setActiveTab,
     isSidebarOpen,
     setIsSidebarOpen,
-    isMobileMenuOpen,
-    setIsMobileMenuOpen,
+    toggleSidebar,
   } = usePosStore();
   const [tipIndex, setTipIndex] = useState(0);
+
+  // Automatically close sidebar on small/mobile screens upon initial mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setIsSidebarOpen(false);
+    }
+  }, [setIsSidebarOpen]);
 
   const navLinks: {
     id: AppNavTab;
@@ -61,7 +67,7 @@ export function SidebarRail() {
 
   const renderInnerContent = (isMobile: boolean = false) => (
     <div className="flex flex-col justify-between h-full min-h-0">
-      {/* Top Section: Brand Logo + Navigation Menu */}
+      {/* Top Section: Brand Logo + Hamburger Toggle */}
       <div>
         {/* Brand Header */}
         <div className="flex items-center justify-between px-1 mb-6">
@@ -69,7 +75,7 @@ export function SidebarRail() {
             type="button"
             onClick={() => {
               setActiveTab("pos");
-              if (isMobile) setIsMobileMenuOpen(false);
+              if (isMobile) setIsSidebarOpen(false);
             }}
             className="flex items-center gap-2.5 cursor-pointer group"
           >
@@ -93,21 +99,15 @@ export function SidebarRail() {
             </span>
           </button>
 
-          {/* Close button (bisa ditutup dari desktop maupun mobile) */}
+          {/* Hamburger toggle button (No ugly X!) */}
           <button
             type="button"
-            onClick={() => {
-              if (isMobile) {
-                setIsMobileMenuOpen(false);
-              } else {
-                setIsSidebarOpen(false);
-              }
-            }}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center text-zinc-600 transition cursor-pointer"
-            aria-label="Tutup Menu"
+            onClick={() => setIsSidebarOpen(false)}
+            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] text-zinc-700 flex items-center justify-center transition cursor-pointer active:scale-95 shadow-2xs"
+            aria-label="Tutup Sidebar"
             title="Tutup Sidebar"
           >
-            <X className="w-4 h-4 stroke-[2]" />
+            <Menu className="w-5 h-5 stroke-[2]" />
           </button>
         </div>
 
@@ -123,7 +123,7 @@ export function SidebarRail() {
                 key={item.id}
                 onClick={() => {
                   setActiveTab(item.id);
-                  if (isMobile) setIsMobileMenuOpen(false);
+                  if (isMobile) setIsSidebarOpen(false);
                 }}
                 className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl border text-[13px] font-semibold transition-all cursor-pointer ${
                   isActive
@@ -197,7 +197,7 @@ export function SidebarRail() {
 
   return (
     <>
-      {/* 1. Desktop Sidebar (collapsible via hamburger or close button) */}
+      {/* 1. Desktop Sidebar (collapsible via hamburger) */}
       {isSidebarOpen && (
         <aside className="hidden lg:flex w-[225px] xl:w-[242px] bg-white border-r border-gray-200/70 px-4 py-5 flex-col justify-between shrink-0 z-20 h-full overflow-y-auto custom-scrollbar select-none animate-in slide-in-from-left duration-200">
           {renderInnerContent(false)}
@@ -205,11 +205,11 @@ export function SidebarRail() {
       )}
 
       {/* 2. Mobile Drawer (visible on < lg when opened) */}
-      {isMobileMenuOpen && (
+      {isSidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           {/* Dark Backdrop */}
           <div
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={() => setIsSidebarOpen(false)}
             className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-in fade-in"
           />
 
