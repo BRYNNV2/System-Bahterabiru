@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import {
   INITIAL_MENU_ITEMS,
   MenuItem,
@@ -12,10 +13,13 @@ export interface CartItem {
   quantity: number;
 }
 
+export type OrderStatusType = "Preparing" | "Ready" | "Completed";
+
 export interface CompletedOrder {
   id: string;
   orderNumber: string;
   customerName: string;
+  status?: OrderStatusType;
   items: {
     product: MenuItem;
     quantity: number;
@@ -58,6 +62,7 @@ interface PosState {
   isSidebarOpen: boolean;
   isMobileCartOpen: boolean;
   isModalBlurActive: boolean;
+  isAdminAuthenticated: boolean;
 
   // Actions
   setActiveTab: (tab: AppNavTab) => void;
@@ -76,6 +81,10 @@ interface PosState {
   setIsMobileCartOpen: (open: boolean) => void;
   setIsModalBlurActive: (active: boolean) => void;
 
+  // Admin Auth
+  loginAdmin: (username: string, password: string) => boolean;
+  logoutAdmin: () => void;
+
   // Cart
   addToCart: (productId: string) => void;
   addToCartWithQty: (productId: string, qty: number) => void;
@@ -84,242 +93,357 @@ interface PosState {
   clearCart: () => void;
   getItemQuantity: (productId: string) => number;
 
-  // Inventory / Admin
+  // Admin Menu CRUD & Stock
   updateProductStock: (productId: string, newStock: number) => void;
+  addMenuItem: (item: Omit<MenuItem, "id" | "soldCount">) => void;
+  updateMenuItem: (id: string, updates: Partial<MenuItem>) => void;
+  deleteMenuItem: (id: string) => void;
+
+  // Admin Orders Management
+  updateOrderStatus: (orderId: string, status: OrderStatusType) => void;
+  deleteOrder: (orderId: string) => void;
 
   // Checkout
   completeCheckout: () => CompletedOrder | null;
 }
 
-export const usePosStore = create<PosState>((set, get) => ({
-  activeTab: "pos",
-  activeSidebarGroup: "Food",
-  menuItems: INITIAL_MENU_ITEMS,
-  // Pre-populated matching the reference screenshot (Steak sapi bakar, Ayam kentang, Mie kuah pedas)
-  cart: [
-    { productId: "prod-1", quantity: 1 },
-    { productId: "prod-2", quantity: 1 },
-    { productId: "prod-4", quantity: 1 },
-  ],
-  selectedCategory: "All Menu",
-  searchQuery: "",
-  sortBy: "default",
-  paymentMethod: "Cash",
-  orderMode: "Buy",
-  customerName: "",
-  selectedTable: "",
-  orderNote: "",
-  recentOrders: [
-    {
-      id: "ord-prev-1",
-      orderNumber: "TRX-8821",
-      customerName: "Pelanggan Meja 04",
-      items: [
+export const usePosStore = create<PosState>()(
+  persist(
+    (set, get) => ({
+      activeTab: "pos",
+      activeSidebarGroup: "Food",
+      menuItems: INITIAL_MENU_ITEMS,
+      cart: [
+        { productId: "prod-1", quantity: 1 },
+        { productId: "prod-2", quantity: 1 },
+        { productId: "prod-4", quantity: 1 },
+      ],
+      selectedCategory: "All Menu",
+      searchQuery: "",
+      sortBy: "default",
+      paymentMethod: "Cash",
+      orderMode: "Buy",
+      customerName: "",
+      selectedTable: "",
+      orderNote: "",
+      recentOrders: [
         {
-          product: INITIAL_MENU_ITEMS[0],
-          quantity: 2,
-          unitPrice: 35000,
-          lineTotal: 70000,
+          id: "ord-prev-1",
+          orderNumber: "#F8371",
+          customerName: "Rizky Pratama (Table 04)",
+          status: "Preparing",
+          items: [
+            {
+              product: INITIAL_MENU_ITEMS[0],
+              quantity: 2,
+              unitPrice: 35000,
+              lineTotal: 70000,
+            },
+            {
+              product: INITIAL_MENU_ITEMS[3],
+              quantity: 1,
+              unitPrice: 19000,
+              lineTotal: 19000,
+            },
+          ],
+          itemCount: 3,
+          subtotal: 89000,
+          discountTotal: 0,
+          taxTotal: 8900,
+          totalAmount: 97900,
+          paymentMethod: "QRIS",
+          createdAt: "Today, 13:45",
+        },
+        {
+          id: "ord-prev-2",
+          orderNumber: "#F8377",
+          customerName: "Nadia Putri (Table 02)",
+          status: "Completed",
+          items: [
+            {
+              product: INITIAL_MENU_ITEMS[1],
+              quantity: 1,
+              unitPrice: 25000,
+              lineTotal: 25000,
+            },
+            {
+              product: INITIAL_MENU_ITEMS[12],
+              quantity: 2,
+              unitPrice: 18500,
+              lineTotal: 37000,
+            },
+          ],
+          itemCount: 3,
+          subtotal: 62000,
+          discountTotal: 0,
+          taxTotal: 6200,
+          totalAmount: 68200,
+          paymentMethod: "Cash",
+          createdAt: "Today, 13:20",
         },
       ],
-      itemCount: 2,
-      subtotal: 70000,
-      discountTotal: 0,
-      taxTotal: 7000,
-      totalAmount: 77000,
-      paymentMethod: "QRIS",
-      createdAt: "12:40",
-    },
-  ],
-  isFilterOpen: false,
-  isSidebarOpen: true,
-  isMobileCartOpen: false,
-  isModalBlurActive: false,
+      isFilterOpen: false,
+      isSidebarOpen: true,
+      isMobileCartOpen: false,
+      isModalBlurActive: false,
+      isAdminAuthenticated: false,
 
-  setActiveTab: (tab) => set({ activeTab: tab }),
-  setActiveSidebarGroup: (group) =>
-    set({
-      activeSidebarGroup: group,
-      selectedCategory: "All Menu",
-      activeTab: "pos",
-    }),
-  setSelectedCategory: (category) => set({ selectedCategory: category }),
-  setSearchQuery: (query) => set({ searchQuery: query }),
-  setSortBy: (sortBy) => set({ sortBy }),
-  setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
-  setOrderMode: (orderMode) => set({ orderMode }),
-  setCustomerName: (customerName) => set({ customerName }),
-  setSelectedTable: (selectedTable) => set({ selectedTable }),
-  setOrderNote: (orderNote) => set({ orderNote }),
-  setIsFilterOpen: (isFilterOpen) => set({ isFilterOpen }),
-  setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
-  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-  setIsMobileCartOpen: (isMobileCartOpen) => set({ isMobileCartOpen }),
-  setIsModalBlurActive: (isModalBlurActive) => set({ isModalBlurActive }),
+      setActiveTab: (tab) => set({ activeTab: tab }),
+      setActiveSidebarGroup: (group) =>
+        set({
+          activeSidebarGroup: group,
+          selectedCategory: "All Menu",
+          activeTab: "pos",
+        }),
+      setSelectedCategory: (category) => set({ selectedCategory: category }),
+      setSearchQuery: (query) => set({ searchQuery: query }),
+      setSortBy: (sortBy) => set({ sortBy }),
+      setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
+      setOrderMode: (orderMode) => set({ orderMode }),
+      setCustomerName: (customerName) => set({ customerName }),
+      setSelectedTable: (selectedTable) => set({ selectedTable }),
+      setOrderNote: (orderNote) => set({ orderNote }),
+      setIsFilterOpen: (isFilterOpen) => set({ isFilterOpen }),
+      setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
+      toggleSidebar: () =>
+        set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+      setIsMobileCartOpen: (isMobileCartOpen) => set({ isMobileCartOpen }),
+      setIsModalBlurActive: (isModalBlurActive) => set({ isModalBlurActive }),
 
-  addToCart: (productId) => {
-    const { menuItems, cart } = get();
-    const product = menuItems.find((p) => p.id === productId);
-    if (!product || product.stock <= 0) return;
+      loginAdmin: (username, password) => {
+        const cleanUser = username.trim().toLowerCase();
+        if (
+          (cleanUser === "admin" ||
+            cleanUser === "admin@coca.com" ||
+            cleanUser === "admin@bahterabiru.com") &&
+          password === "admin123"
+        ) {
+          set({ isAdminAuthenticated: true });
+          return true;
+        }
+        return false;
+      },
 
-    const existing = cart.find((c) => c.productId === productId);
-    if (existing) {
-      set({
-        cart: cart.map((c) =>
-          c.productId === productId
-            ? { ...c, quantity: Math.min(product.stock, c.quantity + 1) }
-            : c
-        ),
-      });
-    } else {
-      set({ cart: [...cart, { productId, quantity: 1 }] });
-    }
-  },
+      logoutAdmin: () => set({ isAdminAuthenticated: false }),
 
-  addToCartWithQty: (productId, qty) => {
-    const { menuItems, cart } = get();
-    const product = menuItems.find((p) => p.id === productId);
-    if (!product || product.stock <= 0 || qty <= 0) return;
+      addToCart: (productId) => {
+        const { menuItems, cart } = get();
+        const product = menuItems.find((p) => p.id === productId);
+        if (!product || product.stock <= 0) return;
 
-    const existing = cart.find((c) => c.productId === productId);
-    if (existing) {
-      set({
-        cart: cart.map((c) =>
-          c.productId === productId
-            ? { ...c, quantity: Math.min(product.stock, c.quantity + qty) }
-            : c
-        ),
-      });
-    } else {
-      set({
-        cart: [
-          ...cart,
-          { productId, quantity: Math.min(product.stock, qty) },
-        ],
-      });
-    }
-  },
+        const existing = cart.find((c) => c.productId === productId);
+        if (existing) {
+          set({
+            cart: cart.map((c) =>
+              c.productId === productId
+                ? { ...c, quantity: Math.min(product.stock, c.quantity + 1) }
+                : c
+            ),
+          });
+        } else {
+          set({ cart: [...cart, { productId, quantity: 1 }] });
+        }
+      },
 
-  decrementFromCart: (productId) => {
-    const { cart } = get();
-    const existing = cart.find((c) => c.productId === productId);
-    if (!existing) return;
+      addToCartWithQty: (productId, qty) => {
+        const { menuItems, cart } = get();
+        const product = menuItems.find((p) => p.id === productId);
+        if (!product || product.stock <= 0 || qty <= 0) return;
 
-    if (existing.quantity <= 1) {
-      set({ cart: cart.filter((c) => c.productId !== productId) });
-    } else {
-      set({
-        cart: cart.map((c) =>
-          c.productId === productId ? { ...c, quantity: c.quantity - 1 } : c
-        ),
-      });
-    }
-  },
+        const existing = cart.find((c) => c.productId === productId);
+        if (existing) {
+          set({
+            cart: cart.map((c) =>
+              c.productId === productId
+                ? { ...c, quantity: Math.min(product.stock, c.quantity + qty) }
+                : c
+            ),
+          });
+        } else {
+          set({
+            cart: [
+              ...cart,
+              { productId, quantity: Math.min(product.stock, qty) },
+            ],
+          });
+        }
+      },
 
-  removeFromCart: (productId) => {
-    set((state) => ({
-      cart: state.cart.filter((c) => c.productId !== productId),
-    }));
-  },
+      decrementFromCart: (productId) => {
+        const { cart } = get();
+        const existing = cart.find((c) => c.productId === productId);
+        if (!existing) return;
 
-  clearCart: () => set({ cart: [] }),
+        if (existing.quantity <= 1) {
+          set({ cart: cart.filter((c) => c.productId !== productId) });
+        } else {
+          set({
+            cart: cart.map((c) =>
+              c.productId === productId
+                ? { ...c, quantity: c.quantity - 1 }
+                : c
+            ),
+          });
+        }
+      },
 
-  getItemQuantity: (productId) => {
-    const found = get().cart.find((c) => c.productId === productId);
-    return found ? found.quantity : 0;
-  },
+      removeFromCart: (productId) => {
+        set((state) => ({
+          cart: state.cart.filter((c) => c.productId !== productId),
+        }));
+      },
 
-  updateProductStock: (productId, newStock) => {
-    set((state) => ({
-      menuItems: state.menuItems.map((item) =>
-        item.id === productId ? { ...item, stock: Math.max(0, newStock) } : item
-      ),
-    }));
-  },
+      clearCart: () => set({ cart: [] }),
 
-  completeCheckout: () => {
-    const {
-      cart,
-      menuItems,
-      paymentMethod,
-      recentOrders,
-      customerName,
-      selectedTable,
-    } = get();
-    if (cart.length === 0) return null;
+      getItemQuantity: (productId) => {
+        const found = get().cart.find((c) => c.productId === productId);
+        return found ? found.quantity : 0;
+      },
 
-    let subtotal = 0;
-    let discountTotal = 0;
-    let itemCount = 0;
+      updateProductStock: (productId, newStock) => {
+        set((state) => ({
+          menuItems: state.menuItems.map((item) =>
+            item.id === productId
+              ? { ...item, stock: Math.max(0, newStock) }
+              : item
+          ),
+        }));
+      },
 
-    const detailedItems = cart
-      .map((cartItem) => {
-        const product = menuItems.find((m) => m.id === cartItem.productId);
-        if (!product) return null;
-        const effectiveUnit = getEffectivePrice(product);
-        const originalLine = product.price * cartItem.quantity;
-        const lineTotal = effectiveUnit * cartItem.quantity;
-
-        subtotal += originalLine;
-        discountTotal += originalLine - lineTotal;
-        itemCount += cartItem.quantity;
-
-        return {
-          product,
-          quantity: cartItem.quantity,
-          unitPrice: effectiveUnit,
-          lineTotal,
+      addMenuItem: (newItem) => {
+        const created: MenuItem = {
+          ...newItem,
+          id: `prod-${Date.now()}`,
+          soldCount: 0,
         };
-      })
-      .filter(Boolean) as CompletedOrder["items"];
+        set((state) => ({
+          menuItems: [created, ...state.menuItems],
+        }));
+      },
 
-    const netSubtotal = Math.max(0, subtotal - discountTotal);
-    const taxTotal = Math.round(netSubtotal * 0.1);
-    const totalAmount = netSubtotal + taxTotal;
+      updateMenuItem: (id, updates) => {
+        set((state) => ({
+          menuItems: state.menuItems.map((item) =>
+            item.id === id ? { ...item, ...updates } : item
+          ),
+        }));
+      },
 
-    const formattedCustomer = customerName.trim()
-      ? selectedTable
-        ? `${customerName.trim()} (${selectedTable})`
-        : customerName.trim()
-      : selectedTable
-      ? `Pelanggan (${selectedTable})`
-      : "Pelanggan Kantin";
+      deleteMenuItem: (id) => {
+        set((state) => ({
+          menuItems: state.menuItems.filter((item) => item.id !== id),
+          cart: state.cart.filter((c) => c.productId !== id),
+        }));
+      },
 
-    const newOrder: CompletedOrder = {
-      id: `ord-${Date.now()}`,
-      orderNumber: `TRX-${Math.floor(1000 + Math.random() * 9000)}`,
-      customerName: formattedCustomer,
-      items: detailedItems,
-      itemCount,
-      subtotal: netSubtotal,
-      discountTotal,
-      taxTotal,
-      totalAmount,
-      paymentMethod,
-      createdAt: new Date().toLocaleTimeString("id-ID", {
-        hour: "2-digit",
-        minute: "2-digit",
+      updateOrderStatus: (orderId, status) => {
+        set((state) => ({
+          recentOrders: state.recentOrders.map((o) =>
+            o.id === orderId ? { ...o, status } : o
+          ),
+        }));
+      },
+
+      deleteOrder: (orderId) => {
+        set((state) => ({
+          recentOrders: state.recentOrders.filter((o) => o.id !== orderId),
+        }));
+      },
+
+      completeCheckout: () => {
+        const {
+          cart,
+          menuItems,
+          paymentMethod,
+          recentOrders,
+          customerName,
+          selectedTable,
+        } = get();
+        if (cart.length === 0) return null;
+
+        let subtotal = 0;
+        let discountTotal = 0;
+        let itemCount = 0;
+
+        const detailedItems = cart
+          .map((cartItem) => {
+            const product = menuItems.find((m) => m.id === cartItem.productId);
+            if (!product) return null;
+            const effectiveUnit = getEffectivePrice(product);
+            const originalLine = product.price * cartItem.quantity;
+            const lineTotal = effectiveUnit * cartItem.quantity;
+
+            subtotal += originalLine;
+            discountTotal += originalLine - lineTotal;
+            itemCount += cartItem.quantity;
+
+            return {
+              product,
+              quantity: cartItem.quantity,
+              unitPrice: effectiveUnit,
+              lineTotal,
+            };
+          })
+          .filter(Boolean) as CompletedOrder["items"];
+
+        const netSubtotal = Math.max(0, subtotal - discountTotal);
+        const taxTotal = Math.round(netSubtotal * 0.1);
+        const totalAmount = netSubtotal + taxTotal;
+
+        const formattedCustomer = customerName.trim()
+          ? selectedTable
+            ? `${customerName.trim()} (${selectedTable})`
+            : customerName.trim()
+          : selectedTable
+          ? `Pelanggan (${selectedTable})`
+          : "Pelanggan Kantin";
+
+        const newOrder: CompletedOrder = {
+          id: `ord-${Date.now()}`,
+          orderNumber: `#F${Math.floor(1000 + Math.random() * 9000)}`,
+          customerName: formattedCustomer,
+          status: "Preparing",
+          items: detailedItems,
+          itemCount,
+          subtotal: netSubtotal,
+          discountTotal,
+          taxTotal,
+          totalAmount,
+          paymentMethod,
+          createdAt: `Today, ${new Date().toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}`,
+        };
+
+        const updatedMenu = menuItems.map((item) => {
+          const inCart = cart.find((c) => c.productId === item.id);
+          if (!inCart) return item;
+          return {
+            ...item,
+            stock: Math.max(0, item.stock - inCart.quantity),
+            soldCount: item.soldCount + inCart.quantity,
+          };
+        });
+
+        set({
+          menuItems: updatedMenu,
+          cart: [],
+          customerName: "",
+          orderNote: "",
+          recentOrders: [newOrder, ...recentOrders],
+        });
+
+        return newOrder;
+      },
+    }),
+    {
+      name: "coca-pos-storage-v2",
+      partialize: (state) => ({
+        menuItems: state.menuItems,
+        recentOrders: state.recentOrders,
+        isAdminAuthenticated: state.isAdminAuthenticated,
       }),
-    };
-
-    const updatedMenu = menuItems.map((item) => {
-      const inCart = cart.find((c) => c.productId === item.id);
-      if (!inCart) return item;
-      return {
-        ...item,
-        stock: Math.max(0, item.stock - inCart.quantity),
-        soldCount: item.soldCount + inCart.quantity,
-      };
-    });
-
-    set({
-      menuItems: updatedMenu,
-      cart: [],
-      customerName: "",
-      orderNote: "",
-      recentOrders: [newOrder, ...recentOrders],
-    });
-
-    return newOrder;
-  },
-}));
+    }
+  )
+);
