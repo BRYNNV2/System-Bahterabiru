@@ -1,9 +1,19 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Search, X, ArrowUpDown } from "lucide-react";
+import {
+  Search,
+  X,
+  ArrowUpDown,
+  Coffee,
+  Wine,
+  UtensilsCrossed,
+  Soup,
+  Croissant,
+  Cookie,
+} from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
-import { CategoryType } from "@/data/initialMenu";
+import { CategoryType, SidebarGroupType } from "@/data/initialMenu";
 
 const FILTER_PILLS: { id: CategoryType; label: string }[] = [
   { id: "All Menu", label: "All" },
@@ -13,6 +23,19 @@ const FILTER_PILLS: { id: CategoryType; label: string }[] = [
   { id: "Rice bowl", label: "Rice bowl" },
 ];
 
+const MOBILE_GROUPS: {
+  id: SidebarGroupType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: "Food", label: "Food", icon: UtensilsCrossed },
+  { id: "Coffee", label: "Coffee", icon: Coffee },
+  { id: "Beverages", label: "Beverages", icon: Wine },
+  { id: "Appetizer", label: "Appetizer", icon: Soup },
+  { id: "Bread", label: "Bread", icon: Croissant },
+  { id: "Snack", label: "Snack", icon: Cookie },
+];
+
 export function HeaderBar() {
   const {
     searchQuery,
@@ -20,9 +43,9 @@ export function HeaderBar() {
     selectedCategory,
     setSelectedCategory,
     activeSidebarGroup,
+    setActiveSidebarGroup,
     sortBy,
     setSortBy,
-    setActiveTab,
   } = usePosStore();
 
   const [showSortMenu, setShowSortMenu] = useState(false);
@@ -42,29 +65,54 @@ export function HeaderBar() {
   return (
     <div className="mb-4">
       {/* Top Breadcrumb for Buyer Self-Ordering */}
-      <div className="flex items-center gap-1.5 text-xs mb-3 px-0.5">
-        <button
-          type="button"
-          onClick={() => setSelectedCategory("All Menu")}
-          className="text-zinc-900 font-bold hover:underline cursor-pointer"
-        >
-          Menu
-        </button>
-        <span className="text-zinc-300">/</span>
-        <span className="text-zinc-400 font-medium">{activeSidebarGroup}</span>
+      <div className="flex items-center justify-between gap-2 mb-2.5 px-0.5">
+        <div className="flex items-center gap-1.5 text-xs">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory("All Menu")}
+            className="text-zinc-900 font-bold hover:underline cursor-pointer"
+          >
+            Menu
+          </button>
+          <span className="text-zinc-300">/</span>
+          <span className="text-zinc-400 font-medium">{activeSidebarGroup}</span>
+        </div>
+      </div>
+
+      {/* Mobile Horizontal Group Switcher (Visible on < md so phone users can switch groups with 1 tap) */}
+      <div className="flex md:hidden items-center gap-2 overflow-x-auto no-scrollbar mb-3 pb-0.5">
+        {MOBILE_GROUPS.map((grp) => {
+          const Icon = grp.icon;
+          const isActive = activeSidebarGroup === grp.id;
+          return (
+            <button
+              type="button"
+              key={grp.id}
+              onClick={() => setActiveSidebarGroup(grp.id)}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs shrink-0 transition cursor-pointer ${
+                isActive
+                  ? "bg-zinc-900 text-white font-bold shadow-xs"
+                  : "bg-white border border-zinc-200/70 text-zinc-600 font-medium"
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{grp.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Unified Search & Category Pill Bar */}
-      <div className="bg-white rounded-2xl px-4 py-2.5 border border-zinc-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl px-3.5 sm:px-4 py-2.5 border border-zinc-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 sm:gap-3">
         {/* Left: Search Input */}
-        <div className="relative flex-1 flex items-center xl:border-r xl:border-zinc-100 xl:pr-4">
+        <div className="relative flex-1 flex items-center border-b xl:border-b-0 xl:border-r border-zinc-100 pb-2 xl:pb-0 xl:pr-4">
           <Search className="w-4 h-4 text-zinc-400 shrink-0 stroke-[2]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search menu..."
-            className="w-full bg-transparent text-zinc-800 placeholder:text-zinc-300 text-xs font-medium pl-2.5 pr-7 py-1.5 focus:outline-none"
+            className="w-full bg-transparent text-zinc-800 placeholder:text-zinc-300 text-xs font-medium pl-2.5 pr-7 py-1 focus:outline-none"
           />
           {searchQuery && (
             <button
@@ -79,31 +127,33 @@ export function HeaderBar() {
         </div>
 
         {/* Right: Category Pills + Sort */}
-        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-0.5 xl:pb-0">
-          {FILTER_PILLS.map((pill) => {
-            const isActive = selectedCategory === pill.id;
-            return (
-              <button
-                type="button"
-                key={pill.id}
-                onClick={() => setSelectedCategory(pill.id)}
-                className={`px-4 py-1.5 rounded-full text-xs transition-all shrink-0 cursor-pointer ${
-                  isActive
-                    ? "border border-zinc-900 bg-zinc-900 text-white font-semibold shadow-2xs"
-                    : "border border-transparent bg-[#F4F4F5] hover:bg-zinc-200/70 text-zinc-600 font-medium"
-                }`}
-              >
-                {pill.label}
-              </button>
-            );
-          })}
+        <div className="flex items-center justify-between sm:justify-start gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar pb-0.5 xl:pb-0">
+            {FILTER_PILLS.map((pill) => {
+              const isActive = selectedCategory === pill.id;
+              return (
+                <button
+                  type="button"
+                  key={pill.id}
+                  onClick={() => setSelectedCategory(pill.id)}
+                  className={`px-3 sm:px-4 py-1.5 rounded-full text-[11px] sm:text-xs transition-all shrink-0 cursor-pointer ${
+                    isActive
+                      ? "border border-zinc-900 bg-zinc-900 text-white font-semibold shadow-2xs"
+                      : "border border-transparent bg-[#F4F4F5] hover:bg-zinc-200/70 text-zinc-600 font-medium"
+                  }`}
+                >
+                  {pill.label}
+                </button>
+              );
+            })}
+          </div>
 
           {/* Compact Sort Dropdown */}
           <div className="relative shrink-0" ref={sortRef}>
             <button
               type="button"
               onClick={() => setShowSortMenu((prev) => !prev)}
-              className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 transition cursor-pointer ${
+              className={`px-3 py-1.5 rounded-full text-[11px] sm:text-xs flex items-center gap-1.5 transition cursor-pointer ${
                 sortBy !== "default"
                   ? "border border-zinc-900 bg-zinc-900 text-white font-semibold"
                   : "bg-[#F4F4F5] hover:bg-zinc-200/70 text-zinc-600 font-medium"

@@ -116,6 +116,7 @@ export function AdminDashboard() {
 
   // Sidebar & Page Navigation State
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<AdminPageTab>("dashboard");
 
   // Timeframe & Chart State
@@ -504,176 +505,215 @@ export function AdminDashboard() {
   });
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#F7F8FA] flex font-sans select-none text-slate-900">
+    <div className="h-[100dvh] w-screen overflow-hidden bg-[#F7F8FA] flex font-sans select-none text-slate-900">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-[120] bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-semibold">
+        <div className="fixed bottom-16 lg:bottom-5 right-4 sm:right-5 z-[120] bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-semibold">
           <CheckCircle2 className="w-4 h-4 text-[#3B82F6]" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* =====================================================================
-          1. LEFT SIDEBAR (Exact FinPay Sidebar Layout)
-         ===================================================================== */}
-      {isAdminSidebarOpen && (
-        <aside className="w-[230px] lg:w-[242px] bg-white border-r border-slate-200/80 px-4 py-5 flex flex-col justify-between shrink-0 h-full overflow-y-auto custom-scrollbar z-20">
-          <div>
-            {/* Brand Logo + Collapse Button */}
-            <div className="flex items-center justify-between px-2 mb-7">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#2563EB] flex items-center justify-center shadow-[0_4px_12px_rgba(37,99,235,0.3)]">
-                  <div className="w-3.5 h-3.5 rounded-full border-[2.5px] border-white" />
-                </div>
-                <span className="text-[18px] font-extrabold text-slate-900 tracking-tight">
-                  CocaPay
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsAdminSidebarOpen(false)}
-                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
-                title="Tutup Sidebar"
-              >
-                <PanelLeft className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* MAIN MENU */}
-            <div className="mb-6">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
-                MAIN MENU
-              </span>
-              <nav className="space-y-1">
-                {[
-                  { id: "dashboard", label: "Dashboard", icon: Home },
-                  { id: "transactions", label: "Transaction", icon: Receipt },
-                  { id: "analytics", label: "Analytics", icon: BarChart2 },
-                  {
-                    id: "crud",
-                    label: "Menu CRUD & Stok",
-                    icon: UtensilsCrossed,
-                  },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activePage === item.id;
-                  return (
-                    <button
-                      type="button"
-                      key={item.id}
-                      onClick={() => setActivePage(item.id as AdminPageTab)}
-                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${
-                        isActive
-                          ? "bg-[#F1F5F9] text-[#2563EB] font-bold"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium"
-                      }`}
-                    >
-                      <Icon
-                        className={`w-4 h-4 ${
-                          isActive ? "text-[#2563EB]" : "text-slate-400"
-                        }`}
-                      />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-            {/* OTHER */}
-            <div>
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
-                OTHER
-              </span>
-              <nav className="space-y-1">
-                <button
-                  type="button"
-                  onClick={() => setActivePage("crud")}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition cursor-pointer"
-                >
-                  <Settings className="w-4 h-4 text-slate-400" />
-                  <span>Settings & Katalog</span>
-                </button>
-
-                <Link
-                  href="/"
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition"
-                >
-                  <HelpCircle className="w-4 h-4 text-slate-400" />
-                  <span>Halaman Pembeli (POS)</span>
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={logoutAdmin}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-rose-50 hover:text-rose-600 font-medium transition cursor-pointer"
-                >
-                  <LogOut className="w-4 h-4 text-slate-400" />
-                  <span>Sign Out</span>
-                </button>
-              </nav>
-            </div>
-          </div>
-
-          {/* Bottom Action Card (FinPay Bottom Card Style) */}
-          <div className="mt-6 pt-2">
-            <div className="bg-[#F8FAFC] rounded-2xl p-4 border border-slate-200/70">
-              <div className="flex items-center justify-between mb-2">
-                <span className="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
-                  POS Pro
-                </span>
-                <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
-              </div>
-              <p className="text-xs font-bold text-slate-800">
-                Update Menu Baru!
-              </p>
-              <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
-                Tambah varian makanan atau atur stok kantin
-              </p>
-              <button
-                type="button"
-                onClick={openCreateModal}
-                className="w-full mt-3 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
-              >
-                + Tambah Menu
-              </button>
-            </div>
-          </div>
-        </aside>
+      {/* Mobile Backdrop Overlay (< lg) */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/45 backdrop-blur-[2px] z-40 lg:hidden"
+        />
       )}
+
+      {/* =====================================================================
+          1. LEFT SIDEBAR (Exact FinPay Sidebar Layout — Drawer on < lg, Docked on lg+)
+         ===================================================================== */}
+      <aside
+        className={`${
+          isMobileSidebarOpen
+            ? "fixed inset-y-0 left-0 z-50 flex w-[256px] shadow-2xl"
+            : isAdminSidebarOpen
+            ? "hidden lg:flex lg:w-[235px] xl:w-[242px]"
+            : "hidden"
+        } bg-white border-r border-slate-200/80 px-4 py-5 flex-col justify-between shrink-0 h-full overflow-y-auto custom-scrollbar z-20`}
+      >
+        <div>
+          {/* Brand Logo + Collapse Button */}
+          <div className="flex items-center justify-between px-2 mb-7">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#2563EB] flex items-center justify-center shadow-[0_4px_12px_rgba(37,99,235,0.3)]">
+                <div className="w-3.5 h-3.5 rounded-full border-[2.5px] border-white" />
+              </div>
+              <span className="text-[18px] font-extrabold text-slate-900 tracking-tight">
+                CocaPay
+              </span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSidebarOpen(false);
+                if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+                  setIsAdminSidebarOpen(false);
+                }
+              }}
+              className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+              title="Tutup Sidebar"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* MAIN MENU */}
+          <div className="mb-6">
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
+              MAIN MENU
+            </span>
+            <nav className="space-y-1">
+              {[
+                { id: "dashboard", label: "Dashboard", icon: Home },
+                { id: "transactions", label: "Transaction", icon: Receipt },
+                { id: "analytics", label: "Analytics", icon: BarChart2 },
+                {
+                  id: "crud",
+                  label: "Menu CRUD & Stok",
+                  icon: UtensilsCrossed,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                const isActive = activePage === item.id;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => {
+                      setActivePage(item.id as AdminPageTab);
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${
+                      isActive
+                        ? "bg-[#F1F5F9] text-[#2563EB] font-bold"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                    }`}
+                  >
+                    <Icon
+                      className={`w-4 h-4 ${
+                        isActive ? "text-[#2563EB]" : "text-slate-400"
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* OTHER */}
+          <div>
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
+              OTHER
+            </span>
+            <nav className="space-y-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActivePage("crud");
+                  setIsMobileSidebarOpen(false);
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition cursor-pointer"
+              >
+                <Settings className="w-4 h-4 text-slate-400" />
+                <span>Settings & Katalog</span>
+              </button>
+
+              <Link
+                href="/"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition"
+              >
+                <HelpCircle className="w-4 h-4 text-slate-400" />
+                <span>Halaman Pembeli (POS)</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={logoutAdmin}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-rose-50 hover:text-rose-600 font-medium transition cursor-pointer"
+              >
+                <LogOut className="w-4 h-4 text-slate-400" />
+                <span>Sign Out</span>
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Bottom Action Card (FinPay Bottom Card Style) */}
+        <div className="mt-6 pt-2">
+          <div className="bg-[#F8FAFC] rounded-2xl p-4 border border-slate-200/70">
+            <div className="flex items-center justify-between mb-2">
+              <span className="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                POS Pro
+              </span>
+              <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+            <p className="text-xs font-bold text-slate-800">
+              Update Menu Baru!
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+              Tambah varian makanan atau atur stok kantin
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setIsMobileSidebarOpen(false);
+                openCreateModal();
+              }}
+              className="w-full mt-3 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+            >
+              + Tambah Menu
+            </button>
+          </div>
+        </div>
+      </aside>
 
       {/* =====================================================================
           2. RIGHT MAIN CONTENT AREA (Top Header + Bento Grid)
          ===================================================================== */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* TOP HEADER BAR (Exact FinPay Header) */}
-        <header className="h-16 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between shrink-0 z-10">
-          <div className="flex items-center gap-3">
+        {/* TOP HEADER BAR (Exact FinPay Header + Responsive Toggle) */}
+        <header className="h-14 sm:h-16 bg-white border-b border-slate-200/80 px-3.5 sm:px-6 flex items-center justify-between shrink-0 z-10 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            {/* Mobile Drawer Button (< lg) */}
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition cursor-pointer shrink-0"
+              title="Buka Menu Admin"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
+
+            {/* Desktop Sidebar Expand Button (lg+) */}
             {!isAdminSidebarOpen && (
               <button
                 type="button"
                 onClick={() => setIsAdminSidebarOpen(true)}
-                className="w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition cursor-pointer"
+                className="hidden lg:flex w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 items-center justify-center transition cursor-pointer shrink-0"
                 title="Buka Sidebar"
               >
                 <PanelLeft className="w-4 h-4" />
               </button>
             )}
-            <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+            <h1 className="text-sm sm:text-lg font-extrabold text-slate-900 tracking-tight truncate">
               Hey Admin, Welcome back! 👋🏻
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Search Box with ⌘K badge */}
-            <div className="relative hidden sm:flex items-center bg-[#F8FAFC] border border-slate-200/80 rounded-xl px-3 py-1.5 w-64">
-              <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
+            <div className="relative flex items-center bg-[#F8FAFC] border border-slate-200/80 rounded-xl px-2.5 sm:px-3 py-1.5 w-36 sm:w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 mr-1.5 sm:mr-2 shrink-0" />
               <input
                 type="text"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Search"
+                placeholder="Search..."
                 className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none"
               />
               {globalSearch ? (
@@ -685,7 +725,7 @@ export function AdminDashboard() {
                   <X className="w-3 h-3" />
                 </button>
               ) : (
-                <span className="text-[10px] font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/70 shrink-0">
+                <span className="hidden sm:inline-block text-[10px] font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/70 shrink-0">
                   ⌘ K
                 </span>
               )}
@@ -696,7 +736,7 @@ export function AdminDashboard() {
               onClick={() =>
                 showToast(`${recentOrders.length} transaksi tercatat hari ini.`)
               }
-              className="w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition cursor-pointer relative"
+              className="w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition cursor-pointer relative shrink-0"
               title="Notifikasi Pesanan"
             >
               <Bell className="w-4 h-4" />
@@ -709,12 +749,12 @@ export function AdminDashboard() {
             VIEW A: HALAMAN UTAMA DASHBOARD (Exact FinPay 3-Column Bento Grid)
            =================================================================== */}
         {activePage === "dashboard" || activePage === "analytics" ? (
-          <main className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 max-w-[1600px] mx-auto">
+          <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 pb-20 lg:pb-6 custom-scrollbar">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 max-w-[1600px] mx-auto">
               {/* -------------------------------------------------------------
                   COLUMN 1 (LEFT — 3 cols): Blue POS Card + 4 Quick Actions + Target Harian + Popular Items
                  ------------------------------------------------------------- */}
-              <div className="xl:col-span-3 space-y-5">
+              <div className="lg:col-span-4 xl:col-span-3 space-y-4 sm:space-y-5">
                 {/* 1. Royal Blue POS Terminal Card */}
                 <div className="bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] rounded-2xl p-5 text-white shadow-[0_10px_25px_rgba(37,99,235,0.22)] relative overflow-hidden">
                   <div className="flex items-center justify-between mb-5">
@@ -912,9 +952,9 @@ export function AdminDashboard() {
               {/* -------------------------------------------------------------
                   COLUMN 2 (CENTER — 6 cols): 3 KPI Cards + Money Statistics Bidirectional Chart + Recent Transaction Table
                  ------------------------------------------------------------- */}
-              <div className="xl:col-span-6 space-y-5">
+              <div className="lg:col-span-8 xl:col-span-6 space-y-4 sm:space-y-5">
                 {/* 1. Top 3 KPI Cards: Total Income, Total Expenses, Net Profit */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
                   {/* Total Income */}
                   <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between">
                     <div className="flex items-center justify-between mb-4">
@@ -1056,9 +1096,9 @@ export function AdminDashboard() {
                   </div>
 
                   {/* Bidirectional Positive/Negative Bar Chart matching FinPay */}
-                  <div className="flex gap-3">
+                  <div className="flex gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar">
                     {/* Left Y-Axis Labels */}
-                    <div className="flex flex-col justify-between text-[10px] font-semibold text-slate-400 py-1 pb-6 shrink-0">
+                    <div className="flex flex-col justify-between text-[9px] sm:text-[10px] font-semibold text-slate-400 py-1 pb-6 shrink-0">
                       <span>8 Jt</span>
                       <span>4 Jt</span>
                       <span>0</span>
@@ -1067,9 +1107,9 @@ export function AdminDashboard() {
                     </div>
 
                     {/* Bars Grid */}
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-[290px]">
                       <div
-                        className="grid gap-2 h-44 items-center relative"
+                        className="grid gap-1.5 sm:gap-2 h-44 items-center relative"
                         style={{
                           gridTemplateColumns: `repeat(${currentDataset.bars.length}, minmax(0, 1fr))`,
                         }}
@@ -1169,8 +1209,8 @@ export function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full min-w-[520px] text-left border-collapse">
                       <thead>
                         <tr className="bg-[#F8FAFC] text-[10.5px] font-semibold text-slate-400 border-y border-slate-200/70">
                           <th className="py-2.5 px-3">Menu & Pelanggan ⇅</th>
@@ -1257,7 +1297,7 @@ export function AdminDashboard() {
               {/* -------------------------------------------------------------
                   COLUMN 3 (RIGHT — 3 cols): Statistics Donut Chart (Kategori Produk) + Recent Activity Timeline
                  ------------------------------------------------------------- */}
-              <div className="xl:col-span-3 space-y-5">
+              <div className="lg:col-span-12 xl:col-span-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-5">
                 {/* 1. Statistics Donut Chart Card (Kategori Produk) */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
                   <div className="flex items-center justify-between mb-3">
@@ -1460,10 +1500,10 @@ export function AdminDashboard() {
           /* ===================================================================
               VIEW B: HALAMAN TERPISAH CRUD MENU & STOK (FinPay Clean Style)
              =================================================================== */
-          <main className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar space-y-5">
-            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 pb-20 lg:pb-6 custom-scrollbar space-y-4 sm:space-y-5">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4">
               <div>
-                <h2 className="text-lg font-extrabold text-slate-900">
+                <h2 className="text-base sm:text-lg font-extrabold text-slate-900">
                   Manajemen CRUD Menu & Stok
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -1471,18 +1511,18 @@ export function AdminDashboard() {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setActivePage("dashboard")}
-                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                  className="flex-1 sm:flex-initial justify-center px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer flex items-center"
                 >
-                  ← Kembali ke Dashboard
+                  ← Dashboard
                 </button>
                 <button
                   type="button"
                   onClick={openCreateModal}
-                  className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                  className="flex-1 sm:flex-initial justify-center px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tambah Menu Baru</span>
@@ -1652,10 +1692,10 @@ export function AdminDashboard() {
           /* ===================================================================
               VIEW C: HALAMAN TRANSAKSI LENGKAP
              =================================================================== */
-          <main className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar space-y-5">
-            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center justify-between">
+          <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 pb-20 lg:pb-6 custom-scrollbar space-y-4 sm:space-y-5">
+            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-extrabold text-slate-900">
+                <h2 className="text-base sm:text-lg font-extrabold text-slate-900">
                   Daftar Seluruh Transaksi ({filteredOrders.length})
                 </h2>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -1665,7 +1705,7 @@ export function AdminDashboard() {
               <button
                 type="button"
                 onClick={() => setActivePage("dashboard")}
-                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                className="self-start sm:self-auto px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
               >
                 ← Kembali ke Dashboard
               </button>
@@ -1778,6 +1818,32 @@ export function AdminDashboard() {
             </div>
           </main>
         )}
+
+        {/* Mobile Bottom Navigation Bar (< lg) */}
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-4 gap-1 z-30">
+          {[
+            { id: "dashboard", label: "Dashboard", icon: Home },
+            { id: "transactions", label: "Pesanan", icon: Receipt },
+            { id: "analytics", label: "Statistik", icon: BarChart2 },
+            { id: "crud", label: "CRUD Stok", icon: UtensilsCrossed },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activePage === tab.id;
+            return (
+              <button
+                type="button"
+                key={tab.id}
+                onClick={() => setActivePage(tab.id as AdminPageTab)}
+                className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition cursor-pointer ${
+                  isActive ? "text-[#2563EB] bg-blue-50/70" : "text-slate-400"
+                }`}
+              >
+                <Icon className="w-4 h-4 mb-0.5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </nav>
       </div>
 
       {/* =====================================================================

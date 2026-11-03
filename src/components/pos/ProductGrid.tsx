@@ -115,7 +115,7 @@ export function ProductGrid() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
           {filteredItems.map((item) => {
             const qtyInCart = getItemQuantity(item.id);
             const isOutOfStock = item.stock <= 0;
@@ -128,7 +128,7 @@ export function ProductGrid() {
                 className="group cursor-pointer select-none flex flex-col"
               >
                 {/* Rounded Image Card with Badges & Hover QUICK VIEW */}
-                <div className="relative aspect-[4/4.2] w-full rounded-[22px] overflow-hidden bg-[#ECEEF2] shadow-[0_4px_16px_rgba(0,0,0,0.04)] group-hover:shadow-[0_12px_28px_rgba(0,0,0,0.1)] transition-all duration-300">
+                <div className="relative aspect-[4/4.2] w-full rounded-[18px] sm:rounded-[22px] overflow-hidden bg-[#ECEEF2] shadow-[0_4px_16px_rgba(0,0,0,0.04)] group-hover:shadow-[0_12px_28px_rgba(0,0,0,0.1)] transition-all duration-300">
                   <img
                     src={item.imageUrl}
                     alt={item.name}
@@ -142,13 +142,13 @@ export function ProductGrid() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                   {/* Top-Left Badge: STOK HABIS or FEATURED (Clean Monochrome Pill) */}
-                  <div className="absolute top-3.5 left-3.5 flex flex-col gap-1.5">
+                  <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 flex flex-col gap-1.5">
                     {isOutOfStock ? (
-                      <span className="px-3 py-1 rounded-full bg-zinc-900/90 text-white text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
+                      <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-zinc-900/90 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
                         STOK HABIS
                       </span>
                     ) : item.featured ? (
-                      <span className="px-3 py-1 rounded-full bg-white/95 text-zinc-900 text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                      <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/95 text-zinc-900 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
                         FEATURED
                       </span>
                     ) : null}
@@ -156,16 +156,16 @@ export function ProductGrid() {
 
                   {/* Top-Right Badge: Quantity already in cart */}
                   {qtyInCart > 0 && (
-                    <div className="absolute top-3.5 right-3.5 px-2.5 py-1 rounded-full bg-zinc-900 text-white text-[10px] font-extrabold uppercase tracking-wide shadow-md ring-2 ring-white/80">
+                    <div className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-zinc-900 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide shadow-md ring-2 ring-white/80">
                       {qtyInCart} PCS
                     </div>
                   )}
 
                   {/* Bottom-Center Hover Pill: QUICK VIEW */}
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                    <div className="bg-white hover:bg-zinc-50 text-zinc-900 px-5 py-2.5 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.22)] flex items-center gap-2 whitespace-nowrap transition-colors">
-                      <Eye className="w-3.5 h-3.5 text-zinc-600 stroke-[2.2]" />
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider">
+                  <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                    <div className="bg-white hover:bg-zinc-50 text-zinc-900 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.22)] flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors">
+                      <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-zinc-600 stroke-[2.2]" />
+                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider">
                         QUICK VIEW
                       </span>
                     </div>
@@ -173,26 +173,26 @@ export function ProductGrid() {
                 </div>
 
                 {/* Bottom Card Metadata: Title + Price on row 1, Category + Sold info on row 2 */}
-                <div className="pt-3 px-0.5">
-                  <div className="flex items-baseline justify-between gap-2">
+                <div className="pt-2.5 sm:pt-3 px-0.5">
+                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-0.5 sm:gap-2">
                     <h3
-                      className="font-extrabold text-zinc-900 text-[13px] sm:text-[13.5px] uppercase tracking-tight truncate"
+                      className="font-extrabold text-zinc-900 text-[12px] sm:text-[13.5px] uppercase tracking-tight truncate"
                       title={item.name}
                     >
                       {item.name}
                     </h3>
-                    <span className="font-extrabold text-zinc-900 text-[13px] sm:text-[13.5px] tabular-nums shrink-0">
+                    <span className="font-extrabold text-zinc-900 text-[12px] sm:text-[13.5px] tabular-nums shrink-0">
                       {formatRupiah(finalPrice)}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-2 mt-0.5">
-                    <span className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-widest">
+                  <div className="flex items-center justify-between gap-1 mt-0.5">
+                    <span className="text-[9.5px] sm:text-[10.5px] font-semibold text-zinc-400 uppercase tracking-widest truncate">
                       {item.category}
                     </span>
-                    <span className="text-[10px] font-medium text-zinc-400">
+                    <span className="text-[9.5px] sm:text-[10px] font-medium text-zinc-400 shrink-0">
                       {isOutOfStock
-                        ? "Habis Terjual"
+                        ? "Habis"
                         : `Stok ${item.stock} • ${item.soldCount} Terjual`}
                     </span>
                   </div>
@@ -217,7 +217,7 @@ export function ProductGrid() {
               transition:
                 "background-color 300ms ease-out, backdrop-filter 300ms ease-out, -webkit-backdrop-filter 300ms ease-out, opacity 280ms ease-out",
             }}
-            className={`fixed inset-0 z-[100] flex items-center justify-center p-4 ${
+            className={`fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 ${
               isQuickViewVisible
                 ? "bg-zinc-950/60 opacity-100"
                 : "bg-zinc-950/0 opacity-0"
@@ -229,7 +229,7 @@ export function ProductGrid() {
                 transition:
                   "transform 380ms cubic-bezier(0.16, 1, 0.3, 1), opacity 280ms cubic-bezier(0.16, 1, 0.3, 1)",
               }}
-              className={`bg-white rounded-[28px] max-w-3xl w-full overflow-hidden shadow-[0_25px_70px_rgba(0,0,0,0.42)] grid grid-cols-1 md:grid-cols-2 relative ${
+              className={`bg-white rounded-[24px] sm:rounded-[28px] max-w-3xl w-full max-h-[90dvh] overflow-y-auto custom-scrollbar shadow-[0_25px_70px_rgba(0,0,0,0.42)] grid grid-cols-1 md:grid-cols-2 relative ${
                 isQuickViewVisible
                   ? "opacity-100 scale-100 translate-y-0"
                   : "opacity-0 scale-[0.92] translate-y-6"
@@ -239,15 +239,15 @@ export function ProductGrid() {
             <button
               type="button"
               onClick={handleCloseQuickView}
-              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-600 hover:text-zinc-900 flex items-center justify-center transition cursor-pointer z-10 active:scale-90"
+              className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5 w-8 h-8 rounded-full bg-white/90 md:bg-zinc-100 hover:bg-zinc-200 text-zinc-700 hover:text-zinc-900 shadow-sm md:shadow-none flex items-center justify-center transition cursor-pointer z-20 active:scale-90"
               aria-label="Tutup detail menu"
             >
               <X className="w-4 h-4 stroke-[2.2]" />
             </button>
 
             {/* Left Column: Framed Dish Photo */}
-            <div className="bg-[#F4F4F5] p-6 sm:p-9 flex items-center justify-center">
-              <div className="w-full aspect-square rounded-2xl overflow-hidden shadow-md bg-white relative">
+            <div className="bg-[#F4F4F5] p-4 sm:p-8 flex items-center justify-center">
+              <div className="w-full aspect-[16/11] sm:aspect-square rounded-2xl overflow-hidden shadow-md bg-white relative">
                 <img
                   src={quickViewItem.imageUrl}
                   alt={quickViewItem.name}
@@ -262,7 +262,7 @@ export function ProductGrid() {
             </div>
 
             {/* Right Column: Detailed Sales, Stock, Pcs Purchased & Options */}
-            <div className="p-6 sm:p-8 flex flex-col justify-between bg-white">
+            <div className="p-5 sm:p-8 flex flex-col justify-between bg-white">
               <div>
                 {/* Top Meta Row: Category & Real-time Stock */}
                 <div className="flex items-center justify-between pr-8">

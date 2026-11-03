@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Menu, Flame } from "lucide-react";
+import { Menu, Flame, ShoppingBag } from "lucide-react";
 import { SidebarRail } from "@/components/pos/SidebarRail";
 import { HeaderBar } from "@/components/pos/HeaderBar";
 import { CategoryCards } from "@/components/pos/CategoryCards";
@@ -9,16 +9,31 @@ import { ProductGrid } from "@/components/pos/ProductGrid";
 import { DetailItemsSidebar } from "@/components/pos/DetailItemsSidebar";
 import { TransactionModal } from "@/components/pos/TransactionModal";
 import { usePosStore } from "@/store/usePosStore";
+import { formatRupiah, getEffectivePrice } from "@/data/initialMenu";
 
 export default function PosTerminalPage() {
-  const { setActiveSidebarGroup, toggleSidebar, isModalBlurActive } =
-    usePosStore();
+  const {
+    setActiveSidebarGroup,
+    toggleSidebar,
+    isModalBlurActive,
+    cart,
+    menuItems,
+  } = usePosStore();
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
 
   const isBackgroundBlurred = isModalBlurActive || isTransactionOpen;
 
+  // Calculate live cart count & total for mobile/tablet floating bar & header button
+  const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const subTotal = cart.reduce((sum, item) => {
+    const prod = menuItems.find((m) => m.id === item.productId);
+    return sum + (prod ? getEffectivePrice(prod) * item.quantity : 0);
+  }, 0);
+  const finalTotal = subTotal + Math.round(subTotal * 0.1);
+
   return (
-    <div className="h-screen w-screen overflow-hidden bg-zinc-950 flex flex-col font-sans">
+    <div className="h-[100dvh] w-screen overflow-hidden bg-zinc-950 flex flex-col font-sans">
       <div
         style={{
           filter: isBackgroundBlurred
@@ -30,10 +45,10 @@ export default function PosTerminalPage() {
         }}
         className="h-full w-full overflow-hidden bg-[#F7F7F8] flex flex-col origin-center"
       >
-        {/* Top Global Header Bar (Minimalist Monochrome Theme + Single Hamburger Toggle) */}
-        <header className="h-14 bg-white border-b border-zinc-100 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 select-none">
+        {/* Top Global Header Bar (Minimalist Monochrome Theme + Responsive Controls) */}
+        <header className="h-14 bg-white border-b border-zinc-100 px-3.5 sm:px-6 flex items-center justify-between shrink-0 z-30 select-none">
           {/* Left: Single Hamburger Toggle + Brand Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={toggleSidebar}
@@ -47,40 +62,94 @@ export default function PosTerminalPage() {
             <button
               type="button"
               onClick={() => setActiveSidebarGroup("Food")}
-              className="flex items-center gap-2.5 cursor-pointer group"
+              className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group"
             >
               <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
                 <Flame className="w-4 h-4 fill-white" />
               </div>
-              <span className="text-[16px] font-extrabold text-zinc-900 tracking-tight">
+              <span className="text-[15px] sm:text-[16px] font-extrabold text-zinc-900 tracking-tight">
                 Coca{" "}
                 <span className="font-medium text-zinc-500">coffeetalk</span>
               </span>
             </button>
           </div>
+
+          {/* Right (Mobile & Tablet < lg): Order / Cart Drawer Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsMobileCartOpen(true)}
+            className="lg:hidden flex items-center gap-2 px-3.5 py-2 rounded-full bg-zinc-900 text-white text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" />
+            <span>Pesanan</span>
+            {totalCartItems > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-white text-zinc-900 text-[10px] font-extrabold leading-none">
+                {totalCartItems}
+              </span>
+            )}
+          </button>
         </header>
 
         {/* Main 3-Column Buyer Self-Ordering Workspace */}
-        <div className="flex-1 flex min-h-0 overflow-hidden">
-          {/* Left Vertical Icon Rail */}
+        <div className="flex-1 flex min-h-0 overflow-hidden relative">
+          {/* Left Vertical Icon Rail (Drawer on mobile, vertical rail on md+) */}
           <SidebarRail />
 
           {/* Center Main Catalog Area */}
-          <main className="flex-1 min-w-0 h-full overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 custom-scrollbar bg-[#F7F7F8]">
+          <main
+            className={`flex-1 min-w-0 h-full overflow-y-auto px-3.5 sm:px-6 py-3.5 sm:py-5 custom-scrollbar bg-[#F7F7F8] ${
+              totalCartItems > 0 ? "pb-24 lg:pb-6" : "pb-8"
+            }`}
+          >
             {/* Breadcrumb + Unified Search & Category Pill Bar */}
             <HeaderBar />
 
             {/* Category Cards (Unified inside HeaderBar) */}
             <CategoryCards />
 
-            {/* Clean 4-Column Product Grid */}
+            {/* Responsive Product Grid */}
             <ProductGrid />
           </main>
 
-          {/* Right Panel: Customer Information & Orders Details */}
+          {/* Right Panel: Customer Information & Orders Details (Docked on lg+, Slide-over Drawer on < lg) */}
           <DetailItemsSidebar
-            onProcessTransaction={() => setIsTransactionOpen(true)}
+            isOpenMobile={isMobileCartOpen}
+            onCloseMobile={() => setIsMobileCartOpen(false)}
+            onProcessTransaction={() => {
+              setIsMobileCartOpen(false);
+              setIsTransactionOpen(true);
+            }}
           />
+
+          {/* Floating Bottom Checkout Bar for Mobile & Tablet (< lg) when Cart has items */}
+          {totalCartItems > 0 && !isMobileCartOpen && (
+            <div className="lg:hidden fixed bottom-3.5 inset-x-3.5 sm:inset-x-6 z-30">
+              <button
+                type="button"
+                onClick={() => setIsMobileCartOpen(true)}
+                className="w-full bg-zinc-900 hover:bg-zinc-800 text-white rounded-2xl px-4 py-3.5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] flex items-center justify-between transition active:scale-[0.99] cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center font-extrabold text-xs">
+                    {totalCartItems}
+                  </div>
+                  <div className="text-left">
+                    <span className="block text-[10px] text-zinc-400 font-medium leading-none">
+                      Total Pesanan (Termasuk Pajak)
+                    </span>
+                    <span className="text-sm font-black text-white tabular-nums">
+                      {formatRupiah(finalTotal)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-white text-zinc-900 px-3.5 py-2 rounded-xl text-xs font-extrabold">
+                  <ShoppingBag className="w-3.5 h-3.5 stroke-[2.2]" />
+                  <span>Checkout</span>
+                </div>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

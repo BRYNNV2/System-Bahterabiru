@@ -7,16 +7,21 @@ import {
   Trash2,
   ChevronRight,
   ShoppingBag,
+  X,
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { formatRupiah, getEffectivePrice } from "@/data/initialMenu";
 
 interface DetailItemsSidebarProps {
   onProcessTransaction: () => void;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export function DetailItemsSidebar({
   onProcessTransaction,
+  isOpenMobile = false,
+  onCloseMobile,
 }: DetailItemsSidebarProps) {
   const {
     cart,
@@ -67,11 +72,44 @@ export function DetailItemsSidebar({
   const finalTotal = subTotal + taxAmount;
 
   return (
-    <aside className="w-[330px] lg:w-[355px] shrink-0 bg-white border-l border-zinc-100 p-5 flex flex-col justify-between h-full overflow-hidden select-none z-10">
-      {/* Top & Middle Area */}
-      <div className="flex flex-col flex-1 min-h-0">
-        {/* 1. Segmented Toggle: Buy / Reservation */}
-        <div className="bg-[#F4F4F5] p-1 rounded-full grid grid-cols-2 mb-4 shrink-0">
+    <>
+      {/* Backdrop Overlay for Mobile & Tablet (< lg) */}
+      {isOpenMobile && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/45 backdrop-blur-[2px] z-40 lg:hidden"
+        />
+      )}
+
+      <aside
+        className={`${
+          isOpenMobile
+            ? "fixed inset-y-0 right-0 z-50 flex w-full max-w-[380px] shadow-2xl"
+            : "hidden lg:flex lg:w-[325px] xl:w-[355px]"
+        } shrink-0 bg-white border-l border-zinc-100 p-4 sm:p-5 flex-col justify-between h-full overflow-hidden select-none z-10`}
+      >
+        {/* Top & Middle Area */}
+        <div className="flex flex-col flex-1 min-h-0">
+          {/* Mobile Drawer Top Header (< lg) */}
+          <div className="flex lg:hidden items-center justify-between pb-3 mb-3 border-b border-zinc-100 shrink-0">
+            <div className="flex items-center gap-2">
+              <ShoppingBag className="w-4 h-4 text-zinc-900" />
+              <span className="text-sm font-extrabold text-zinc-900">
+                Detail Pesanan & Meja
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="w-8 h-8 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 flex items-center justify-center cursor-pointer"
+              aria-label="Tutup panel pesanan"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* 1. Segmented Toggle: Buy / Reservation */}
+          <div className="bg-[#F4F4F5] p-1 rounded-full grid grid-cols-2 mb-4 shrink-0">
           <button
             type="button"
             onClick={() => setOrderMode("Buy")}
@@ -317,6 +355,7 @@ export function DetailItemsSidebar({
           Pay Now
         </button>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }
