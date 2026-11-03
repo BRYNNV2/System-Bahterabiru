@@ -46,31 +46,31 @@ export function HeaderBar() {
         <button
           type="button"
           onClick={() => setSelectedCategory("All Menu")}
-          className="text-[#FF6B2C] font-semibold hover:underline cursor-pointer"
+          className="text-[#2563EB] font-semibold hover:underline cursor-pointer"
         >
           Menu
         </button>
-        <span className="text-gray-300">/</span>
-        <span className="text-gray-400 font-medium">{activeSidebarGroup}</span>
+        <span className="text-slate-300">/</span>
+        <span className="text-slate-400 font-medium">{activeSidebarGroup}</span>
       </div>
 
       {/* Unified Search & Category Pill Bar */}
-      <div className="bg-white rounded-2xl px-4 py-2.5 border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
+      <div className="bg-white rounded-2xl px-4 py-2.5 border border-slate-100 shadow-[0_2px_12px_rgba(15,23,42,0.03)] flex flex-col xl:flex-row xl:items-center justify-between gap-3">
         {/* Left: Search Input */}
-        <div className="relative flex-1 flex items-center xl:border-r xl:border-gray-100 xl:pr-4">
-          <Search className="w-4 h-4 text-zinc-400 shrink-0 stroke-[2]" />
+        <div className="relative flex-1 flex items-center xl:border-r xl:border-slate-100 xl:pr-4">
+          <Search className="w-4 h-4 text-slate-400 shrink-0 stroke-[2]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search menu..."
-            className="w-full bg-transparent text-zinc-800 placeholder:text-gray-300 text-xs font-medium pl-2.5 pr-7 py-1.5 focus:outline-none"
+            className="w-full bg-transparent text-slate-800 placeholder:text-slate-300 text-xs font-medium pl-2.5 pr-7 py-1.5 focus:outline-none"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="text-gray-400 hover:text-zinc-700 cursor-pointer"
+              className="text-slate-400 hover:text-slate-700 cursor-pointer"
               aria-label="Clear search"
             >
               <X className="w-3.5 h-3.5" />
@@ -89,8 +89,8 @@ export function HeaderBar() {
                 onClick={() => setSelectedCategory(pill.id)}
                 className={`px-4 py-1.5 rounded-full text-xs transition-all shrink-0 cursor-pointer ${
                   isActive
-                    ? "border border-[#FF6B2C] bg-[#FFF5EF] text-[#FF6B2C] font-semibold"
-                    : "border border-transparent bg-[#F7F8FA] hover:bg-gray-100 text-zinc-600 font-medium"
+                    ? "border border-[#2563EB] bg-[#EFF6FF] text-[#2563EB] font-semibold shadow-[0_2px_8px_rgba(37,99,235,0.12)]"
+                    : "border border-transparent bg-[#F8FAFC] hover:bg-[#EFF6FF]/60 hover:text-[#2563EB] text-slate-600 font-medium"
                 }`}
               >
                 {pill.label}
@@ -105,8 +105,8 @@ export function HeaderBar() {
               onClick={() => setShowSortMenu((prev) => !prev)}
               className={`px-3 py-1.5 rounded-full text-xs flex items-center gap-1.5 transition cursor-pointer ${
                 sortBy !== "default"
-                  ? "border border-[#FF6B2C] bg-[#FFF5EF] text-[#FF6B2C] font-semibold"
-                  : "bg-[#F7F8FA] hover:bg-gray-100 text-zinc-500 font-medium"
+                  ? "border border-[#2563EB] bg-[#EFF6FF] text-[#2563EB] font-semibold"
+                  : "bg-[#F8FAFC] hover:bg-[#EFF6FF]/60 hover:text-[#2563EB] text-slate-500 font-medium"
               }`}
               title="Urutkan Harga"
             >
@@ -121,7 +121,7 @@ export function HeaderBar() {
             </button>
 
             {showSortMenu && (
-              <div className="absolute right-0 mt-2 w-40 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-50 text-xs">
+              <div className="absolute right-0 mt-2 w-40 bg-white rounded-2xl shadow-xl border border-slate-100 py-1.5 z-50 text-xs">
                 {[
                   { id: "default", label: "Default" },
                   { id: "price-asc", label: "Harga Terendah" },
@@ -135,10 +135,10 @@ export function HeaderBar() {
                       setSortBy(opt.id as typeof sortBy);
                       setShowSortMenu(false);
                     }}
-                    className={`w-full text-left px-3.5 py-2 hover:bg-[#FFF5EF] transition cursor-pointer ${
+                    className={`w-full text-left px-3.5 py-2 hover:bg-[#EFF6FF] transition cursor-pointer ${
                       sortBy === opt.id
-                        ? "text-[#FF6B2C] font-bold bg-[#FFF5EF]/60"
-                        : "text-zinc-600 font-medium"
+                        ? "text-[#2563EB] font-bold bg-[#EFF6FF]/70"
+                        : "text-slate-600 font-medium"
                     }`}
                   >
                     {opt.label}

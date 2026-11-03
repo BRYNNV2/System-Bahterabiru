@@ -33,7 +33,7 @@ export function SidebarRail() {
   ];
 
   return (
-    <aside className="w-[88px] sm:w-[100px] bg-white border-r border-gray-100 py-5 px-2 flex flex-col items-center shrink-0 h-full overflow-y-auto custom-scrollbar select-none z-20">
+    <aside className="w-[88px] sm:w-[100px] bg-white border-r border-slate-100 py-5 px-2 flex flex-col items-center shrink-0 h-full overflow-y-auto custom-scrollbar select-none z-20">
       {/* Main Vertical Category Rail for Buyer Self-Ordering */}
       <nav className="flex flex-col items-center gap-3 w-full">
         {menuGroups.map((group) => {
@@ -47,8 +47,8 @@ export function SidebarRail() {
               onClick={() => setActiveSidebarGroup(group.id)}
               className={`w-[68px] h-[68px] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 isActive
-                  ? "bg-gradient-to-b from-[#FF8C42] to-[#FF5511] text-white shadow-[0_8px_20px_rgba(255,94,26,0.28)] scale-[1.02]"
-                  : "bg-transparent text-gray-400 hover:text-zinc-700 hover:bg-[#F8F9FB]"
+                  ? "bg-gradient-to-b from-[#3B82F6] to-[#2563EB] text-white shadow-[0_8px_20px_rgba(37,99,235,0.28)] scale-[1.02]"
+                  : "bg-transparent text-slate-400 hover:text-[#2563EB] hover:bg-[#EFF6FF]/70"
               }`}
             >
               <div
@@ -64,7 +64,7 @@ export function SidebarRail() {
               </div>
               <span
                 className={`text-[11px] leading-none tracking-tight ${
-                  isActive ? "font-bold text-white" : "font-medium text-gray-400"
+                  isActive ? "font-bold text-white" : "font-medium text-slate-400"
                 }`}
               >
                 {group.label}

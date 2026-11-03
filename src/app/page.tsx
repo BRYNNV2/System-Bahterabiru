@@ -28,16 +28,16 @@ export default function PosTerminalPage() {
           transition:
             "filter 340ms cubic-bezier(0.16, 1, 0.3, 1), transform 340ms cubic-bezier(0.16, 1, 0.3, 1)",
         }}
-        className="h-full w-full overflow-hidden bg-[#F8F9FB] flex flex-col origin-center"
+        className="h-full w-full overflow-hidden bg-[#F8FAFC] flex flex-col origin-center"
       >
-        {/* Top Global Header Bar (Coca coffeetalk style + Single Hamburger Toggle) */}
-        <header className="h-14 bg-white border-b border-gray-100 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 select-none">
+        {/* Top Global Header Bar (Blue & White Theme + Single Hamburger Toggle) */}
+        <header className="h-14 bg-white border-b border-slate-100 px-4 sm:px-6 flex items-center justify-between shrink-0 z-30 select-none">
           {/* Left: Single Hamburger Toggle + Brand Logo */}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={toggleSidebar}
-              className="w-9 h-9 rounded-xl bg-[#F8F9FB] hover:bg-[#FFF5EF] text-zinc-700 hover:text-[#FF6B2C] flex items-center justify-center transition cursor-pointer active:scale-95"
+              className="w-9 h-9 rounded-xl bg-[#F8FAFC] hover:bg-[#EFF6FF] text-slate-700 hover:text-[#2563EB] flex items-center justify-center transition cursor-pointer active:scale-95"
               aria-label="Buka/Tutup Sidebar"
               title="Buka/Tutup Sidebar"
             >
@@ -49,12 +49,12 @@ export default function PosTerminalPage() {
               onClick={() => setActiveSidebarGroup("Food")}
               className="flex items-center gap-2.5 cursor-pointer group"
             >
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF8C42] to-[#FF5511] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#3B82F6] to-[#2563EB] text-white flex items-center justify-center shadow-[0_4px_12px_rgba(37,99,235,0.28)] group-hover:scale-105 transition-transform">
                 <Flame className="w-4 h-4 fill-white" />
               </div>
-              <span className="text-[16px] font-extrabold text-zinc-900 tracking-tight">
+              <span className="text-[16px] font-extrabold text-slate-900 tracking-tight">
                 Coca{" "}
-                <span className="font-bold text-zinc-700">coffeetalk</span>
+                <span className="font-bold text-[#2563EB]">coffeetalk</span>
               </span>
             </button>
           </div>
@@ -66,7 +66,7 @@ export default function PosTerminalPage() {
           <SidebarRail />
 
           {/* Center Main Catalog Area */}
-          <main className="flex-1 min-w-0 h-full overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 custom-scrollbar bg-[#F8F9FB]">
+          <main className="flex-1 min-w-0 h-full overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 custom-scrollbar bg-[#F8FAFC]">
             {/* Breadcrumb + Unified Search & Category Pill Bar */}
             <HeaderBar />
 
