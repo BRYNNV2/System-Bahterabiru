@@ -35,7 +35,11 @@ import {
   UtensilsCrossed,
   Clock,
 } from "lucide-react";
-import { usePosStore, OrderStatusType } from "@/store/usePosStore";
+import {
+  usePosStore,
+  OrderStatusType,
+  CompletedOrder,
+} from "@/store/usePosStore";
 import {
   formatRupiah,
   getEffectivePrice,
@@ -144,7 +148,26 @@ export function AdminDashboard() {
   const [revenueTimeframe, setRevenueTimeframe] =
     useState<RevenueTimeframe>("monthly");
   const [selectedBarIndex, setSelectedBarIndex] = useState<number>(5); // Jun default
+  const [hoveredBarIndex, setHoveredBarIndex] = useState<number | null>(null);
   const [statsSubTab, setStatsSubTab] = useState<"income" | "sold">("income");
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+
+  // Interactive Feature States (Modals, Custom Targets, Table Sort & Filter)
+  const [dailyTargetAmount, setDailyTargetAmount] = useState<number>(2000000);
+  const [customExpenses, setCustomExpenses] = useState<number>(0);
+  const [isFinanceModalOpen, setIsFinanceModalOpen] = useState<
+    "income" | "expenses" | "profit" | "target" | "terminal" | null
+  >(null);
+  const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<
+    string | null
+  >(null);
+  const [selectedOrderDetail, setSelectedOrderDetail] =
+    useState<CompletedOrder | null>(null);
+  const [txStatusFilter, setTxStatusFilter] = useState<
+    "ALL" | OrderStatusType
+  >("ALL");
+  const [txSortField, setTxSortField] = useState<"date" | "amount">("date");
+  const [txSortAsc, setTxSortAsc] = useState<boolean>(false);
 
   // Search & Filter State
   const [globalSearch, setGlobalSearch] = useState("");
@@ -360,9 +383,16 @@ export function AdminDashboard() {
   const liveOrdersRevenue = recentOrders.reduce((s, o) => s + o.totalAmount, 0);
   const totalSoldUnits = menuItems.reduce((s, m) => s + m.soldCount, 0);
 
-  const totalIncome = 10450000 + liveOrdersRevenue;
-  const totalExpenses = 4200000;
+  const totalIncome = liveOrdersRevenue;
+  const totalExpenses = customExpenses;
   const totalNetProfit = totalIncome - totalExpenses;
+  const todayRevenue = liveOrdersRevenue;
+  const dailyTargetPct = Math.min(
+    100,
+    Math.round((todayRevenue / Math.max(1, dailyTargetAmount)) * 100)
+  );
+  const liveBarPct = liveOrdersRevenue > 0 ? Math.min(100, Math.max(18, Math.round((liveOrdersRevenue / Math.max(1, dailyTargetAmount)) * 100))) : 4;
+  const expBarPct = customExpenses > 0 ? Math.min(100, Math.max(15, Math.round((customExpenses / Math.max(1, dailyTargetAmount)) * 100))) : 4;
 
   // Bidirectional Bar Chart Datasets (Per Hari, Minggu, Bulan)
   const REVENUE_DATASETS: Record<
@@ -381,65 +411,65 @@ export function AdminDashboard() {
   > = {
     daily: {
       label: "Per Hari (7 Hari)",
-      balance: 8450000 + liveOrdersRevenue,
+      balance: liveOrdersRevenue,
       bars: [
-        { label: "Sen", income: 1450000, expense: 520000, inPct: 68, exPct: 45 },
-        { label: "Sel", income: 1220000, expense: 610000, inPct: 55, exPct: 58 },
-        { label: "Rab", income: 1380000, expense: 490000, inPct: 64, exPct: 48 },
-        { label: "Kam", income: 1690000, expense: 440000, inPct: 82, exPct: 38 },
+        { label: "Sen", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Sel", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Rab", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Kam", income: 0, expense: 0, inPct: 4, exPct: 4 },
         {
-          label: "Jum",
-          income: 1920000 + liveOrdersRevenue,
-          expense: 580000,
-          inPct: 92,
-          exPct: 50,
+          label: "Hari Ini",
+          income: liveOrdersRevenue,
+          expense: customExpenses,
+          inPct: liveBarPct,
+          exPct: expBarPct,
         },
-        { label: "Sab", income: 1540000, expense: 510000, inPct: 75, exPct: 44 },
-        { label: "Min", income: 1250000, expense: 450000, inPct: 58, exPct: 40 },
+        { label: "Sab", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Min", income: 0, expense: 0, inPct: 4, exPct: 4 },
       ],
     },
     weekly: {
       label: "Per Minggu (8 Mgg)",
-      balance: 19800000 + liveOrdersRevenue,
+      balance: liveOrdersRevenue,
       bars: [
-        { label: "Mgg 1", income: 3800000, expense: 1400000, inPct: 62, exPct: 46 },
-        { label: "Mgg 2", income: 3400000, expense: 1650000, inPct: 54, exPct: 58 },
-        { label: "Mgg 3", income: 4100000, expense: 1500000, inPct: 68, exPct: 50 },
-        { label: "Mgg 4", income: 4750000, expense: 1320000, inPct: 80, exPct: 42 },
-        { label: "Mgg 5", income: 3950000, expense: 1280000, inPct: 65, exPct: 40 },
-        { label: "Mgg 6", income: 4500000, expense: 1420000, inPct: 76, exPct: 45 },
-        { label: "Mgg 7", income: 4900000, expense: 1600000, inPct: 84, exPct: 52 },
+        { label: "Mgg 1", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Mgg 2", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Mgg 3", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Mgg 4", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Mgg 5", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Mgg 6", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Mgg 7", income: 0, expense: 0, inPct: 4, exPct: 4 },
         {
-          label: "Mgg 8",
-          income: 5400000 + liveOrdersRevenue,
-          expense: 1480000,
-          inPct: 94,
-          exPct: 48,
+          label: "Mgg Ini",
+          income: liveOrdersRevenue,
+          expense: customExpenses,
+          inPct: liveBarPct,
+          exPct: expBarPct,
         },
       ],
     },
     monthly: {
       label: "Bulanan (Tahun Ini)",
-      balance: 34970000 + liveOrdersRevenue,
+      balance: liveOrdersRevenue,
       bars: [
-        { label: "Jan", income: 6200000, expense: 3100000, inPct: 72, exPct: 55 },
-        { label: "Feb", income: 4400000, expense: 3800000, inPct: 48, exPct: 72 },
-        { label: "Mar", income: 5300000, expense: 3400000, inPct: 62, exPct: 60 },
-        { label: "Apr", income: 7100000, expense: 2900000, inPct: 84, exPct: 46 },
-        { label: "May", income: 4800000, expense: 2500000, inPct: 54, exPct: 38 },
+        { label: "Jan", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Feb", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Mar", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Apr", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "May", income: 0, expense: 0, inPct: 4, exPct: 4 },
         {
-          label: "Jun",
-          income: 7000000 + liveOrdersRevenue,
-          expense: 4000000,
-          inPct: 82,
-          exPct: 48,
+          label: "Bln Ini",
+          income: liveOrdersRevenue,
+          expense: customExpenses,
+          inPct: liveBarPct,
+          exPct: expBarPct,
         },
-        { label: "Jul", income: 4600000, expense: 3500000, inPct: 50, exPct: 62 },
-        { label: "Aug", income: 5500000, expense: 3100000, inPct: 64, exPct: 52 },
-        { label: "Sep", income: 7200000, expense: 3000000, inPct: 86, exPct: 50 },
-        { label: "Oct", income: 5100000, expense: 2900000, inPct: 58, exPct: 48 },
-        { label: "Nov", income: 4200000, expense: 3700000, inPct: 45, exPct: 68 },
-        { label: "Dec", income: 5000000, expense: 2800000, inPct: 56, exPct: 44 },
+        { label: "Jul", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Aug", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Sep", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Oct", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Nov", income: 0, expense: 0, inPct: 4, exPct: 4 },
+        { label: "Dec", income: 0, expense: 0, inPct: 4, exPct: 4 },
       ],
     },
   };
@@ -447,7 +477,11 @@ export function AdminDashboard() {
   const currentDataset = REVENUE_DATASETS[revenueTimeframe];
   const safeBarIdx =
     selectedBarIndex < currentDataset.bars.length ? selectedBarIndex : 0;
-  const activePoint = currentDataset.bars[safeBarIdx];
+  const displayBarIdx =
+    hoveredBarIndex !== null && hoveredBarIndex < currentDataset.bars.length
+      ? hoveredBarIndex
+      : safeBarIdx;
+  const activePoint = currentDataset.bars[displayBarIdx];
 
   // Category Statistics for Donut Chart
   const categoryMap = new Map<
@@ -504,14 +538,27 @@ export function AdminDashboard() {
     );
   });
 
-  const filteredOrders = recentOrders.filter((ord) => {
-    const q = globalSearch.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      ord.customerName.toLowerCase().includes(q) ||
-      ord.orderNumber.toLowerCase().includes(q)
-    );
-  });
+  const filteredOrders = recentOrders
+    .filter((ord) => {
+      if (txStatusFilter !== "ALL") {
+        const st = ord.status || "Preparing";
+        if (st !== txStatusFilter) return false;
+      }
+      const q = globalSearch.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        ord.customerName.toLowerCase().includes(q) ||
+        ord.orderNumber.toLowerCase().includes(q)
+      );
+    })
+    .sort((a, b) => {
+      if (txSortField === "amount") {
+        return txSortAsc
+          ? a.totalAmount - b.totalAmount
+          : b.totalAmount - a.totalAmount;
+      }
+      return txSortAsc ? 1 : -1;
+    });
 
   // Calculate SVG Donut stroke-dasharray segments
   let cumulativePercent = 0;
@@ -779,14 +826,22 @@ export function AdminDashboard() {
                   COLUMN 1 (LEFT — 3 cols): Blue POS Card + 4 Quick Actions + Target Harian + Popular Items
                  ------------------------------------------------------------- */}
               <div className="lg:col-span-4 xl:col-span-3 space-y-4 sm:space-y-5">
-                {/* 1. Royal Blue POS Terminal Card */}
-                <div className="bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] rounded-2xl p-5 text-white shadow-[0_10px_25px_rgba(37,99,235,0.22)] relative overflow-hidden">
+                {/* 1. Royal Blue POS Terminal Card (Interactive on Hover & Click) */}
+                <div
+                  onClick={() => setIsFinanceModalOpen("terminal")}
+                  className="group bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] rounded-2xl p-5 text-white shadow-[0_10px_25px_rgba(37,99,235,0.22)] hover:shadow-[0_16px_32px_rgba(37,99,235,0.35)] hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden cursor-pointer"
+                >
+                  {/* Hover Explanation Badge */}
+                  <div className="absolute top-3 right-14 opacity-0 group-hover:opacity-100 translate-y-1 group-hover:translate-y-0 transition-all duration-200 bg-slate-950/85 backdrop-blur-xs text-white text-[10px] font-semibold px-2.5 py-1 rounded-lg pointer-events-none">
+                    Klik untuk rincian saldo kasir
+                  </div>
+
                   <div className="flex items-center justify-between mb-5">
-                    <div className="w-9 h-7 rounded-md bg-white/20 border border-white/30 flex items-center justify-center">
+                    <div className="w-9 h-7 rounded-md bg-white/20 border border-white/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                       <CreditCard className="w-4 h-4 text-white" />
                     </div>
                     <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
-                      <div className="w-3.5 h-3.5 rounded-full bg-white" />
+                      <div className="w-3.5 h-3.5 rounded-full bg-white group-hover:scale-110 transition-transform" />
                     </div>
                   </div>
 
@@ -800,7 +855,7 @@ export function AdminDashboard() {
                   <div className="flex items-end justify-between mt-5 pt-2">
                     <div>
                       <span className="block text-[10px] text-blue-200 font-medium">
-                        Saldo Kasir Aktif
+                        Saldo Kasir Aktif (Klik Detail)
                       </span>
                       <span className="text-lg font-extrabold tabular-nums">
                         {formatRupiah(totalIncome)}
@@ -823,17 +878,18 @@ export function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* 2. 4 Quick Action Buttons Row */}
+                {/* 2. 4 Quick Action Buttons Row (with Hover Tooltips) */}
                 <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 grid grid-cols-4 gap-2 text-center">
                   <button
                     type="button"
                     onClick={openCreateModal}
-                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                    title="Tambah menu makanan atau minuman baru ke katalog pembeli"
+                    className="group relative flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-blue-50/70 transition cursor-pointer"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-[#2563EB] group-hover:text-white border border-slate-200/70 flex items-center justify-center text-slate-700 transition-colors">
                       <Plus className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-600">
+                    <span className="text-[10px] font-semibold text-slate-600 group-hover:text-[#2563EB]">
                       Add Menu
                     </span>
                   </button>
@@ -841,12 +897,13 @@ export function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setActivePage("crud")}
-                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                    title="Buka halaman kelola stok pcs, harga, dan edit menu"
+                    className="group relative flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-blue-50/70 transition cursor-pointer"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-[#2563EB] group-hover:text-white border border-slate-200/70 flex items-center justify-center text-slate-700 transition-colors">
                       <FolderKanban className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-600">
+                    <span className="text-[10px] font-semibold text-slate-600 group-hover:text-[#2563EB]">
                       CRUD Stok
                     </span>
                   </button>
@@ -854,52 +911,69 @@ export function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setActivePage("transactions")}
-                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                    title="Kelola seluruh daftar pesanan masuk dan ubah status pesanan"
+                    className="group relative flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-blue-50/70 transition cursor-pointer"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-[#2563EB] group-hover:text-white border border-slate-200/70 flex items-center justify-center text-slate-700 transition-colors">
                       <Receipt className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-600">
+                    <span className="text-[10px] font-semibold text-slate-600 group-hover:text-[#2563EB]">
                       Pesanan
                     </span>
                   </button>
 
                   <Link
                     href="/"
-                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition"
+                    title="Buka tampilan katalog pemesanan mandiri (Halaman Pembeli)"
+                    className="group relative flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-blue-50/70 transition"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-[#2563EB] group-hover:text-white border border-slate-200/70 flex items-center justify-center text-slate-700 transition-colors">
                       <ExternalLink className="w-4 h-4" />
                     </div>
-                    <span className="text-[10px] font-semibold text-slate-600">
+                    <span className="text-[10px] font-semibold text-slate-600 group-hover:text-[#2563EB]">
                       Buka POS
                     </span>
                   </Link>
                 </div>
 
-                {/* 3. Daily Target Card (with FinPay Striped Progress Bar) */}
-                <div className="bg-white rounded-2xl p-4 border border-slate-200/80 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold text-slate-900">
-                      Target Omzet Harian
-                    </h3>
-                    <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                {/* 3. Daily Target Card (Clickable to Edit Daily Target + Hover Tooltip) */}
+                <div
+                  onClick={() => setIsFinanceModalOpen("target")}
+                  className="group relative bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer space-y-3"
+                >
+                  {/* Hover Explanation Tooltip */}
+                  <div className="hidden group-hover:block absolute -top-9 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                    Target Harian: {dailyTargetPct}% tercapai • Klik untuk ubah target
                   </div>
 
-                  <StripedProgressBar percentage={76} />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <h3 className="text-xs font-bold text-slate-900 group-hover:text-[#2563EB] transition-colors">
+                        Target Omzet Harian
+                      </h3>
+                      <span className="text-[9.5px] font-semibold text-[#2563EB] bg-blue-50 px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        Ubah Target
+                      </span>
+                    </div>
+                    <Pencil className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#2563EB] transition-colors" />
+                  </div>
+
+                  <StripedProgressBar percentage={dailyTargetPct} />
 
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-slate-500">
-                      <strong className="text-slate-900">Rp 1.520.000</strong> •
-                      76%
+                      <strong className="text-slate-900">
+                        {formatRupiah(todayRevenue)}
+                      </strong>{" "}
+                      • {dailyTargetPct}%
                     </span>
                     <span className="font-bold text-slate-900">
-                      Rp 2.000.000
+                      {formatRupiah(dailyTargetAmount)}
                     </span>
                   </div>
                 </div>
 
-                {/* 4. Popular Items Card (Adapted from "Saving Plans" in FinPay) */}
+                {/* 4. Popular Items Card (Interactive Hover & Click to Edit Menu/Stock) */}
                 <div className="bg-white rounded-2xl p-4 border border-slate-200/80 space-y-3.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-900">
@@ -932,13 +1006,23 @@ export function AdminDashboard() {
                       const soldPct = Math.round(
                         (item.soldCount / totalCap) * 100
                       );
+                      const itemOmzet =
+                        item.soldCount * getEffectivePrice(item);
 
                       return (
                         <div
                           key={item.id}
                           onClick={() => openEditModal(item)}
-                          className="p-3 rounded-xl border border-slate-200/70 hover:border-blue-300 transition cursor-pointer space-y-2"
+                          className="group relative p-3 rounded-xl border border-slate-200/70 hover:border-[#2563EB] hover:bg-blue-50/20 hover:shadow-xs transition-all cursor-pointer space-y-2"
                         >
+                          {/* Hover Tooltip for Popular Item */}
+                          <div className="hidden group-hover:flex items-center justify-between text-[10px] bg-slate-900 text-white px-2.5 py-1 rounded-lg">
+                            <span>Omzet: {formatRupiah(itemOmzet)}</span>
+                            <span className="text-blue-300 font-bold">
+                              Klik Edit Menu / Stok →
+                            </span>
+                          </div>
+
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 min-w-0">
                               <img
@@ -946,11 +1030,13 @@ export function AdminDashboard() {
                                 alt={item.name}
                                 className="w-6 h-6 rounded-md object-cover shrink-0"
                               />
-                              <span className="text-xs font-bold text-slate-800 truncate">
+                              <span className="text-xs font-bold text-slate-800 group-hover:text-[#2563EB] truncate transition-colors">
                                 {item.name}
                               </span>
                             </div>
-                            <MoreVertical className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                            <span className="text-[10px] font-semibold text-slate-400 group-hover:text-[#2563EB] shrink-0">
+                              Stok: {item.stock}
+                            </span>
                           </div>
 
                           <StripedProgressBar percentage={soldPct} />
@@ -960,7 +1046,7 @@ export function AdminDashboard() {
                               <strong className="text-slate-800">
                                 {item.soldCount} Terjual
                               </strong>{" "}
-                              • {soldPct}%
+                              • {soldPct}% rasio
                             </span>
                             <span className="font-bold text-slate-800">
                               {formatRupiah(getEffectivePrice(item))}
@@ -977,78 +1063,111 @@ export function AdminDashboard() {
                   COLUMN 2 (CENTER — 6 cols): 3 KPI Cards + Money Statistics Bidirectional Chart + Recent Transaction Table
                  ------------------------------------------------------------- */}
               <div className="lg:col-span-8 xl:col-span-6 space-y-4 sm:space-y-5">
-                {/* 1. Top 3 KPI Cards: Total Income, Total Expenses, Net Profit */}
+                {/* 1. Top 3 KPI Cards: Total Income, Total Expenses, Net Profit (Interactive on Hover & Click) */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
                   {/* Total Income */}
-                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between">
+                  <div
+                    onClick={() => setIsFinanceModalOpen("income")}
+                    className="group relative bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-[#2563EB] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="hidden group-hover:block absolute -top-10 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                      Akumulasi omzet kotor + pesanan baru • Klik untuk rincian
+                    </div>
                     <div className="flex items-center justify-between mb-4">
-                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-blue-50 border border-slate-200/70 flex items-center justify-center text-slate-700 transition-colors">
                         <ArrowDownLeft className="w-4 h-4 text-[#2563EB]" />
                       </div>
-                      <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-[10px] font-bold text-[#2563EB] opacity-0 group-hover:opacity-100 transition-opacity">
+                        Lihat Detail →
+                      </span>
                     </div>
                     <div>
                       <span className="block text-[11px] text-slate-400 font-medium">
                         Total Pendapatan
                       </span>
-                      <span className="text-lg font-extrabold text-slate-900 tabular-nums mt-0.5 block">
+                      <span className="text-lg font-extrabold text-slate-900 group-hover:text-[#2563EB] transition-colors tabular-nums mt-0.5 block">
                         {formatRupiah(totalIncome)}
                       </span>
                       <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold">
-                        +Rp 1,5 Jt (26%)
+                        {recentOrders.length} Transaksi Masuk
                       </span>
                     </div>
                   </div>
 
                   {/* Total Expenses */}
-                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between">
+                  <div
+                    onClick={() => setIsFinanceModalOpen("expenses")}
+                    className="group relative bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-[#2563EB] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="hidden group-hover:block absolute -top-10 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                      HPP bahan baku & operasional • Klik untuk sesuaikan biaya
+                    </div>
                     <div className="flex items-center justify-between mb-4">
-                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-rose-50 border border-slate-200/70 flex items-center justify-center text-slate-700 transition-colors">
                         <ArrowUpRight className="w-4 h-4 text-rose-500" />
                       </div>
-                      <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-[10px] font-bold text-[#2563EB] opacity-0 group-hover:opacity-100 transition-opacity">
+                        Atur Biaya →
+                      </span>
                     </div>
                     <div>
                       <span className="block text-[11px] text-slate-400 font-medium">
                         Biaya Operasional
                       </span>
-                      <span className="text-lg font-extrabold text-slate-900 tabular-nums mt-0.5 block">
+                      <span className="text-lg font-extrabold text-slate-900 group-hover:text-[#2563EB] transition-colors tabular-nums mt-0.5 block">
                         {formatRupiah(totalExpenses)}
                       </span>
                       <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 text-[10px] font-bold">
-                        -Rp 650 Rb (15%)
+                        Klik untuk atur HPP
                       </span>
                     </div>
                   </div>
 
                   {/* Total Net Profit */}
-                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between">
+                  <div
+                    onClick={() => setIsFinanceModalOpen("profit")}
+                    className="group relative bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-[#2563EB] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
+                  >
+                    <div className="hidden group-hover:block absolute -top-10 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                      Selisih Pendapatan dikurangi Biaya • Klik analisis margin
+                    </div>
                     <div className="flex items-center justify-between mb-4">
-                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-emerald-50 border border-slate-200/70 flex items-center justify-center text-slate-700 transition-colors">
                         <Wallet className="w-4 h-4 text-emerald-600" />
                       </div>
-                      <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                      <span className="text-[10px] font-bold text-[#2563EB] opacity-0 group-hover:opacity-100 transition-opacity">
+                        Analisis →
+                      </span>
                     </div>
                     <div>
                       <span className="block text-[11px] text-slate-400 font-medium">
                         Laba Bersih
                       </span>
-                      <span className="text-lg font-extrabold text-slate-900 tabular-nums mt-0.5 block">
+                      <span className="text-lg font-extrabold text-slate-900 group-hover:text-[#2563EB] transition-colors tabular-nums mt-0.5 block">
                         {formatRupiah(totalNetProfit)}
                       </span>
                       <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold">
-                        +Rp 2,1 Jt (70%)
+                        Margin{" "}
+                        {Math.round(
+                          (totalNetProfit / Math.max(1, totalIncome)) * 100
+                        )}
+                        %
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* 2. Aliran Pendapatan (Money Statistics Bidirectional Bar Chart: Per Hari / Minggu / Bulan) */}
+                {/* 2. Aliran Pendapatan (Money Statistics Bidirectional Bar Chart: Interactive Hover & Click) */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Aliran Pendapatan (Money Statistics)
-                    </h3>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Aliran Pendapatan (Money Statistics)
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Arahkan kursor atau klik batang grafik untuk melihat rincian laba periode
+                      </p>
+                    </div>
 
                     {/* Per Hari | Per Minggu | Per Bulan Switcher */}
                     <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-xl border border-slate-200/70">
@@ -1063,6 +1182,7 @@ export function AdminDashboard() {
                           onClick={() => {
                             setRevenueTimeframe(tf.id as RevenueTimeframe);
                             setSelectedBarIndex(4);
+                            setHoveredBarIndex(null);
                           }}
                           className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
                             revenueTimeframe === tf.id
@@ -1076,7 +1196,7 @@ export function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Balance + Legend + Floating Tooltip */}
+                  {/* Balance + Legend + Dynamic Interactive Callout Card */}
                   <div className="flex flex-wrap items-end justify-between gap-4 mb-5 relative">
                     <div>
                       <span className="block text-[10px] text-slate-400">
@@ -1087,11 +1207,22 @@ export function AdminDashboard() {
                       </span>
                     </div>
 
-                    {/* Floating Callout Card matching FinPay Jun 2025 tooltip */}
-                    <div className="bg-white rounded-xl px-3.5 py-2 border border-slate-200/90 shadow-md text-[11px]">
-                      <span className="block font-bold text-slate-400 text-[10px] mb-0.5">
-                        Sorotan: {activePoint.label}
-                      </span>
+                    {/* Dynamic Callout Card (Updates Live on Hover or Click) */}
+                    <div
+                      onClick={() => setIsFinanceModalOpen("income")}
+                      className="bg-[#F8FAFC] hover:bg-blue-50/50 rounded-xl px-3.5 py-2.5 border border-blue-200/80 shadow-xs text-[11px] transition cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <span className="font-bold text-[#2563EB] text-[10.5px]">
+                          Periode: {activePoint.label}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-[9.5px] font-bold">
+                          Laba{" "}
+                          {formatRupiah(
+                            activePoint.income - activePoint.expense
+                          )}
+                        </span>
+                      </div>
                       <div className="flex items-center justify-between gap-4">
                         <span className="text-slate-500">Pendapatan</span>
                         <strong className="text-slate-900 tabular-nums">
@@ -1099,7 +1230,7 @@ export function AdminDashboard() {
                         </strong>
                       </div>
                       <div className="flex items-center justify-between gap-4">
-                        <span className="text-slate-500">Modal</span>
+                        <span className="text-slate-500">Modal (HPP)</span>
                         <strong className="text-slate-900 tabular-nums">
                           {formatRupiah(activePoint.expense)}
                         </strong>
@@ -1119,8 +1250,8 @@ export function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Bidirectional Positive/Negative Bar Chart matching FinPay */}
-                  <div className="flex gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar">
+                  {/* Bidirectional Positive/Negative Bar Chart with Rich Hover Tooltips */}
+                  <div className="flex gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar pt-2">
                     {/* Left Y-Axis Labels */}
                     <div className="flex flex-col justify-between text-[9px] sm:text-[10px] font-semibold text-slate-400 py-1 pb-6 shrink-0">
                       <span>8 Jt</span>
@@ -1148,20 +1279,54 @@ export function AdminDashboard() {
                         </div>
 
                         {currentDataset.bars.map((bar, idx) => {
-                          const isSelected = idx === safeBarIdx;
+                          const isSelected = idx === displayBarIdx;
+                          const isHovered = idx === hoveredBarIndex;
+                          const netBarProfit = bar.income - bar.expense;
+                          const marginPct = Math.round(
+                            (netBarProfit / Math.max(1, bar.income)) * 100
+                          );
+
                           return (
                             <div
                               key={bar.label}
-                              onClick={() => setSelectedBarIndex(idx)}
-                              className="h-full flex flex-col items-center justify-center relative z-10 cursor-pointer group"
+                              onMouseEnter={() => setHoveredBarIndex(idx)}
+                              onMouseLeave={() => setHoveredBarIndex(null)}
+                              onClick={() => {
+                                setSelectedBarIndex(idx);
+                                showToast(
+                                  `Periode ${bar.label}: Omzet ${formatRupiah(
+                                    bar.income
+                                  )} | Laba Bersih ${formatRupiah(netBarProfit)} (${marginPct}%)`
+                                );
+                              }}
+                              className={`h-full flex flex-col items-center justify-center relative z-10 cursor-pointer group rounded-xl transition-colors ${
+                                isHovered
+                                  ? "bg-blue-50/80"
+                                  : isSelected
+                                  ? "bg-slate-50/80"
+                                  : ""
+                              }`}
                             >
+                              {/* Floating Hover Tooltip directly on the hovered bar */}
+                              {isHovered && (
+                                <div className="hidden sm:block absolute -top-14 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap pointer-events-none">
+                                  <p className="font-bold text-blue-300">
+                                    {bar.label} • Margin {marginPct}%
+                                  </p>
+                                  <p>
+                                    Masuk: {formatRupiah(bar.income)} | Modal:{" "}
+                                    {formatRupiah(bar.expense)}
+                                  </p>
+                                </div>
+                              )}
+
                               {/* Top Half (Positive Income Bar in Royal Blue #2563EB) */}
                               <div className="w-full h-1/2 flex items-end justify-center pb-[1px]">
                                 <div
                                   style={{ height: `${bar.inPct}%` }}
                                   className={`w-full max-w-[20px] rounded-t-md transition-all duration-300 ${
                                     isSelected
-                                      ? "bg-[#1D4ED8] ring-2 ring-blue-200"
+                                      ? "bg-[#1D4ED8] ring-2 ring-blue-300 scale-x-105"
                                       : "bg-[#2563EB] group-hover:bg-[#1D4ED8]"
                                   }`}
                                 />
@@ -1173,7 +1338,7 @@ export function AdminDashboard() {
                                   style={{ height: `${bar.exPct}%` }}
                                   className={`w-full max-w-[20px] rounded-b-md transition-all duration-300 ${
                                     isSelected
-                                      ? "bg-[#60A5FA]"
+                                      ? "bg-[#60A5FA] scale-x-105"
                                       : "bg-[#93C5FD] group-hover:bg-[#60A5FA]"
                                   }`}
                                 />
@@ -1191,42 +1356,66 @@ export function AdminDashboard() {
                         }}
                       >
                         {currentDataset.bars.map((bar, idx) => (
-                          <span
+                          <button
+                            type="button"
                             key={bar.label}
-                            className={`text-[10px] font-semibold ${
-                              idx === safeBarIdx
-                                ? "text-[#2563EB] font-bold"
-                                : "text-slate-400"
+                            onMouseEnter={() => setHoveredBarIndex(idx)}
+                            onMouseLeave={() => setHoveredBarIndex(null)}
+                            onClick={() => setSelectedBarIndex(idx)}
+                            className={`text-[10px] font-semibold cursor-pointer transition ${
+                              idx === displayBarIdx
+                                ? "text-[#2563EB] font-extrabold underline underline-offset-4"
+                                : "text-slate-400 hover:text-slate-700"
                             }`}
                           >
                             {bar.label}
-                          </span>
+                          </button>
                         ))}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 3. Recent Transaction Table (Pesanan Terbaru) */}
+                {/* 3. Recent Transaction Table (Interactive Sort, Filter & Clickable Row for Order Detail Modal) */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Recent Transaction (Pesanan Terbaru)
-                    </h3>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Recent Transaction (Pesanan Terbaru)
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Klik baris pesanan untuk melihat detail struk atau klik status untuk ubah cepat
+                      </p>
+                    </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Interactive Status Filter Button */}
                       <button
                         type="button"
-                        onClick={() => setActivePage("transactions")}
-                        className="px-3 py-1.5 rounded-lg border border-slate-200/80 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                        onClick={() => {
+                          const cycle: ("ALL" | OrderStatusType)[] = [
+                            "ALL",
+                            "Preparing",
+                            "Ready",
+                            "Completed",
+                          ];
+                          const next =
+                            cycle[
+                              (cycle.indexOf(txStatusFilter) + 1) % cycle.length
+                            ];
+                          setTxStatusFilter(next);
+                        }}
+                        title="Klik untuk memfilter status pesanan"
+                        className="px-3 py-1.5 rounded-lg border border-slate-200/80 text-[11px] font-semibold text-slate-700 hover:border-[#2563EB] hover:text-[#2563EB] transition cursor-pointer"
                       >
-                        Minggu Ini ▾
+                        Status:{" "}
+                        {txStatusFilter === "ALL" ? "Semua" : txStatusFilter} ▾
                       </button>
                       <button
                         type="button"
                         onClick={() => setActivePage("transactions")}
-                        className="w-8 h-8 rounded-lg border border-slate-200/80 flex items-center justify-center text-slate-600 hover:bg-slate-50 cursor-pointer"
-                        title="Lihat Semua Transaksi"
+                        className="w-8 h-8 rounded-lg border border-slate-200/80 flex items-center justify-center text-slate-600 hover:bg-blue-50 hover:text-[#2563EB] transition cursor-pointer"
+                        title="Buka Halaman Seluruh Transaksi"
                       >
                         <SlidersHorizontal className="w-3.5 h-3.5" />
                       </button>
@@ -1237,11 +1426,29 @@ export function AdminDashboard() {
                     <table className="w-full min-w-[520px] text-left border-collapse">
                       <thead>
                         <tr className="bg-[#F8FAFC] text-[10.5px] font-semibold text-slate-400 border-y border-slate-200/70">
-                          <th className="py-2.5 px-3">Menu & Pelanggan ⇅</th>
-                          <th className="py-2.5 px-3">Waktu ⇅</th>
-                          <th className="py-2.5 px-3">Nominal ⇅</th>
-                          <th className="py-2.5 px-3">Metode ⇅</th>
-                          <th className="py-2.5 px-3 text-right">Status ⇅</th>
+                          <th className="py-2.5 px-3">Menu & Pelanggan</th>
+                          <th
+                            onClick={() => {
+                              setTxSortField("date");
+                              setTxSortAsc((p) => !p);
+                            }}
+                            title="Klik untuk urutkan waktu"
+                            className="py-2.5 px-3 cursor-pointer hover:text-[#2563EB]"
+                          >
+                            Waktu ⇅
+                          </th>
+                          <th
+                            onClick={() => {
+                              setTxSortField("amount");
+                              setTxSortAsc((p) => !p);
+                            }}
+                            title="Klik untuk urutkan nominal tertinggi/terendah"
+                            className="py-2.5 px-3 cursor-pointer hover:text-[#2563EB]"
+                          >
+                            Nominal ⇅
+                          </th>
+                          <th className="py-2.5 px-3">Metode</th>
+                          <th className="py-2.5 px-3 text-right">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-xs">
@@ -1260,10 +1467,12 @@ export function AdminDashboard() {
                           return (
                             <tr
                               key={ord.id}
-                              className="hover:bg-slate-50/80 transition"
+                              onClick={() => setSelectedOrderDetail(ord)}
+                              title="Klik untuk membuka detail struk pesanan ini"
+                              className="group hover:bg-blue-50/40 transition cursor-pointer"
                             >
                               <td className="py-3 px-3">
-                                <p className="font-bold text-slate-900">
+                                <p className="font-bold text-slate-900 group-hover:text-[#2563EB] transition-colors">
                                   {firstItem}
                                   {ord.items.length > 1
                                     ? ` +${ord.items.length - 1} lainnya`
@@ -1287,16 +1496,20 @@ export function AdminDashboard() {
                               <td className="py-3 px-3 text-slate-500 text-[11px]">
                                 Pembayaran {ord.paymentMethod}
                               </td>
-                              <td className="py-3 px-3 text-right">
+                              <td
+                                className="py-3 px-3 text-right"
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 <button
                                   type="button"
+                                  title="Klik untuk mengubah status pesanan"
                                   onClick={() => {
                                     updateOrderStatus(ord.id, nextStatus);
                                     showToast(
                                       `Status ${ord.orderNumber} -> ${nextStatus}`
                                     );
                                   }}
-                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${
+                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition hover:scale-105 ${
                                     currentStatus === "Completed"
                                       ? "bg-emerald-50 text-emerald-600"
                                       : currentStatus === "Ready"
@@ -1319,19 +1532,22 @@ export function AdminDashboard() {
               </div>
 
               {/* -------------------------------------------------------------
-                  COLUMN 3 (RIGHT — 3 cols): Statistics Donut Chart (Kategori Produk) + Recent Activity Timeline
+                  COLUMN 3 (RIGHT — 3 cols): Interactive Statistics Donut Chart + Clickable Recent Activity
                  ------------------------------------------------------------- */}
               <div className="lg:col-span-12 xl:col-span-3 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-4 sm:gap-5">
-                {/* 1. Statistics Donut Chart Card (Kategori Produk) */}
+                {/* 1. Statistics Donut Chart Card (Kategori Produk — Interactive Hover & Click) */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-1">
                     <h3 className="text-sm font-bold text-slate-900">
                       Statistics (Kategori)
                     </h3>
-                    <span className="text-[11px] font-semibold text-slate-500">
-                      Bulan Ini ▾
+                    <span className="text-[10.5px] font-semibold text-[#2563EB] bg-blue-50 px-2 py-0.5 rounded-md">
+                      Interaktif
                     </span>
                   </div>
+                  <p className="text-[11px] text-slate-400 mb-3">
+                    Arahkan kursor ke lingkaran/kategori atau klik untuk lihat menu
+                  </p>
 
                   {/* Sub-tabs matching FinPay Statistics card */}
                   <div className="grid grid-cols-2 border-b border-slate-100 text-[11px] mb-5">
@@ -1341,10 +1557,10 @@ export function AdminDashboard() {
                       className={`pb-2 font-bold transition cursor-pointer ${
                         statsSubTab === "income"
                           ? "text-slate-900 border-b-2 border-[#2563EB]"
-                          : "text-slate-400"
+                          : "text-slate-400 hover:text-slate-600"
                       }`}
                     >
-                      Omzet • Rp 10,4 Jt
+                      Omzet • {formatRupiah(totalCategoryRevenue)}
                     </button>
                     <button
                       type="button"
@@ -1352,92 +1568,154 @@ export function AdminDashboard() {
                       className={`pb-2 font-bold transition cursor-pointer ${
                         statsSubTab === "sold"
                           ? "text-slate-900 border-b-2 border-[#2563EB]"
-                          : "text-slate-400"
+                          : "text-slate-400 hover:text-slate-600"
                       }`}
                     >
                       Terjual • {totalSoldUnits} Pcs
                     </button>
                   </div>
 
-                  {/* Multi-Segment SVG Donut Chart */}
-                  <div className="relative w-44 h-44 mx-auto my-4 flex items-center justify-center">
-                    <svg
-                      viewBox="0 0 36 36"
-                      className="w-full h-full -rotate-90"
-                    >
-                      <circle
-                        cx="18"
-                        cy="18"
-                        r="15.915"
-                        fill="transparent"
-                        stroke="#F1F5F9"
-                        strokeWidth="4.2"
-                      />
-                      {donutSegments.map((seg) => (
-                        <circle
-                          key={seg.category}
-                          cx="18"
-                          cy="18"
-                          r="15.915"
-                          fill="transparent"
-                          stroke={seg.color}
-                          strokeWidth="4.2"
-                          strokeDasharray={seg.strokeDasharray}
-                          strokeDashoffset={seg.strokeDashoffset}
-                          strokeLinecap="butt"
-                        />
-                      ))}
-                    </svg>
+                  {/* Multi-Segment Interactive SVG Donut Chart */}
+                  {(() => {
+                    const activeSeg = donutSegments.find(
+                      (s) => s.category === hoveredCategory
+                    );
+                    return (
+                      <>
+                        <div className="relative w-44 h-44 mx-auto my-4 flex items-center justify-center">
+                          <svg
+                            viewBox="0 0 36 36"
+                            className="w-full h-full -rotate-90 overflow-visible"
+                          >
+                            <circle
+                              cx="18"
+                              cy="18"
+                              r="15.915"
+                              fill="transparent"
+                              stroke="#F1F5F9"
+                              strokeWidth="4.2"
+                            />
+                            {donutSegments.map((seg) => {
+                              const isHovered =
+                                hoveredCategory === seg.category;
+                              return (
+                                <circle
+                                  key={seg.category}
+                                  cx="18"
+                                  cy="18"
+                                  r="15.915"
+                                  fill="transparent"
+                                  stroke={seg.color}
+                                  strokeWidth={isHovered ? "5.4" : "4.2"}
+                                  strokeDasharray={seg.strokeDasharray}
+                                  strokeDashoffset={seg.strokeDashoffset}
+                                  strokeLinecap="butt"
+                                  onMouseEnter={() =>
+                                    setHoveredCategory(seg.category)
+                                  }
+                                  onMouseLeave={() => setHoveredCategory(null)}
+                                  onClick={() =>
+                                    setSelectedCategoryDetail(seg.category)
+                                  }
+                                  className="transition-all duration-200 cursor-pointer"
+                                  style={{
+                                    opacity:
+                                      hoveredCategory && !isHovered ? 0.35 : 1,
+                                  }}
+                                />
+                              );
+                            })}
+                          </svg>
 
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        {statsSubTab === "income"
-                          ? "Total Kategori"
-                          : "Unit Terjual"}
-                      </span>
-                      <span className="text-base font-extrabold text-slate-900 tabular-nums mt-0.5">
-                        {statsSubTab === "income"
-                          ? formatRupiah(totalCategoryRevenue)
-                          : `${totalSoldUnits} Pcs`}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Category Legend List */}
-                  <div className="space-y-3 mt-5">
-                    {donutSegments.map((seg) => (
-                      <div
-                        key={seg.category}
-                        className="flex items-center justify-between text-xs"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            style={{ backgroundColor: seg.color }}
-                            className="w-3.5 h-3.5 rounded-md inline-block shrink-0"
-                          />
-                          <span className="font-semibold text-slate-700">
-                            {seg.category}{" "}
-                            <span className="text-slate-400 font-normal">
-                              • {seg.pct}%
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-4">
+                            <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">
+                              {activeSeg
+                                ? `${activeSeg.category} (${activeSeg.pct}%)`
+                                : statsSubTab === "income"
+                                ? "Total Kategori"
+                                : "Unit Terjual"}
                             </span>
-                          </span>
+                            <span className="text-sm sm:text-base font-extrabold text-slate-900 tabular-nums mt-0.5">
+                              {activeSeg
+                                ? statsSubTab === "income"
+                                  ? formatRupiah(activeSeg.revenue)
+                                  : `${activeSeg.sold} Pcs`
+                                : statsSubTab === "income"
+                                ? formatRupiah(totalCategoryRevenue)
+                                : `${totalSoldUnits} Pcs`}
+                            </span>
+                            {activeSeg && (
+                              <span className="text-[9.5px] font-bold text-[#2563EB] mt-0.5">
+                                Klik lihat menu →
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="font-bold text-slate-900 tabular-nums">
-                          {statsSubTab === "income"
-                            ? formatRupiah(seg.revenue)
-                            : `${seg.sold} Pcs`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+
+                        {/* Interactive Category Legend List */}
+                        <div className="space-y-2 mt-4">
+                          {donutSegments.map((seg) => {
+                            const isHovered = hoveredCategory === seg.category;
+                            return (
+                              <div
+                                key={seg.category}
+                                onMouseEnter={() =>
+                                  setHoveredCategory(seg.category)
+                                }
+                                onMouseLeave={() => setHoveredCategory(null)}
+                                onClick={() =>
+                                  setSelectedCategoryDetail(seg.category)
+                                }
+                                title={`Klik untuk melihat daftar menu dan stok kategori ${seg.category}`}
+                                className={`flex items-center justify-between text-xs p-2 rounded-xl transition cursor-pointer ${
+                                  isHovered
+                                    ? "bg-blue-50/80 ring-1 ring-blue-200"
+                                    : "hover:bg-slate-50"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <span
+                                    style={{ backgroundColor: seg.color }}
+                                    className="w-3.5 h-3.5 rounded-md inline-block shrink-0"
+                                  />
+                                  <span
+                                    className={`font-semibold ${
+                                      isHovered
+                                        ? "text-[#2563EB] font-bold"
+                                        : "text-slate-700"
+                                    }`}
+                                  >
+                                    {seg.category}{" "}
+                                    <span className="text-slate-400 font-normal">
+                                      • {seg.pct}%
+                                    </span>
+                                  </span>
+                                </div>
+                                <span className="font-bold text-slate-900 tabular-nums">
+                                  {statsSubTab === "income"
+                                    ? formatRupiah(seg.revenue)
+                                    : `${seg.sold} Pcs`}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
-                {/* 2. Recent Activity Timeline Card */}
+                {/* 2. Recent Activity Timeline Card (Clickable Items) */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-sm font-bold text-slate-900">
-                      Recent Activity
-                    </h3>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Recent Activity
+                      </h3>
+                      <p className="text-[10.5px] text-slate-400">
+                        Klik aktivitas untuk membuka detailnya
+                      </p>
+                    </div>
                     <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
                   </div>
 
@@ -1446,34 +1724,50 @@ export function AdminDashboard() {
                       <span className="block text-xs font-bold text-slate-900 mb-3">
                         Today
                       </span>
-                      <div className="space-y-3.5 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
+                      <div className="space-y-2.5 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
                         {[
                           {
-                            title: `Order baru ${recentOrders[0]?.orderNumber || "#F8371"} diterima`,
+                            title: `Order baru ${
+                              recentOrders[0]?.orderNumber || "#F8371"
+                            } diterima`,
+                            desc: "Klik untuk melihat struk pesanan terbaru",
                             time: "14:05",
+                            onClick: () => {
+                              if (recentOrders[0]) {
+                                setSelectedOrderDetail(recentOrders[0]);
+                              } else {
+                                setActivePage("transactions");
+                              }
+                            },
                           },
                           {
                             title: "Sinkronisasi stok katalog menu aktif",
+                            desc: "Klik untuk membuka halaman CRUD & Stok",
                             time: "13:30",
+                            onClick: () => setActivePage("crud"),
                           },
                           {
-                            title: "Admin masuk ke portal manajemen",
+                            title: "Laporan target omzet harian diperbarui",
+                            desc: "Klik untuk mengatur target omzet harian",
                             time: "12:45",
+                            onClick: () => setIsFinanceModalOpen("target"),
                           },
                         ].map((act, i) => (
                           <div
                             key={i}
-                            className="flex items-start gap-3 relative z-10"
+                            onClick={act.onClick}
+                            title={act.desc}
+                            className="group flex items-start gap-3 relative z-10 p-1.5 -mx-1.5 rounded-xl hover:bg-blue-50/50 transition cursor-pointer"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200 flex items-center justify-center shrink-0">
-                              <Clock className="w-3.5 h-3.5 text-slate-500" />
+                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-[#2563EB] border border-slate-200 flex items-center justify-center shrink-0 transition-colors">
+                              <Clock className="w-3.5 h-3.5 text-slate-500 group-hover:text-white" />
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-slate-800 leading-snug">
+                              <p className="text-xs font-bold text-slate-800 group-hover:text-[#2563EB] leading-snug transition-colors">
                                 {act.title}
                               </p>
-                              <span className="text-[10px] text-slate-400">
-                                {act.time}
+                              <span className="block text-[10px] text-slate-400">
+                                {act.time} • {act.desc}
                               </span>
                             </div>
                           </div>
@@ -1485,30 +1779,38 @@ export function AdminDashboard() {
                       <span className="block text-xs font-bold text-slate-900 mb-3">
                         Yesterday
                       </span>
-                      <div className="space-y-3.5 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
+                      <div className="space-y-2.5 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
                         {[
                           {
                             title: "Rekapitulasi kasir harian ditutup",
+                            desc: "Klik untuk melihat ringkasan laba bersih",
                             time: "21:00",
+                            onClick: () => setIsFinanceModalOpen("profit"),
                           },
                           {
                             title: "Restock 24 pcs Steak sapi bakar",
+                            desc: "Klik untuk edit stok Steak sapi bakar",
                             time: "16:20",
+                            onClick: () => {
+                              if (menuItems[0]) openEditModal(menuItems[0]);
+                            },
                           },
                         ].map((act, i) => (
                           <div
                             key={i}
-                            className="flex items-start gap-3 relative z-10"
+                            onClick={act.onClick}
+                            title={act.desc}
+                            className="group flex items-start gap-3 relative z-10 p-1.5 -mx-1.5 rounded-xl hover:bg-blue-50/50 transition cursor-pointer"
                           >
-                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200 flex items-center justify-center shrink-0">
-                              <Clock className="w-3.5 h-3.5 text-slate-500" />
+                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] group-hover:bg-[#2563EB] border border-slate-200 flex items-center justify-center shrink-0 transition-colors">
+                              <Clock className="w-3.5 h-3.5 text-slate-500 group-hover:text-white" />
                             </div>
                             <div>
-                              <p className="text-xs font-bold text-slate-800 leading-snug">
+                              <p className="text-xs font-bold text-slate-800 group-hover:text-[#2563EB] leading-snug transition-colors">
                                 {act.title}
                               </p>
-                              <span className="text-[10px] text-slate-400">
-                                {act.time}
+                              <span className="block text-[10px] text-slate-400">
+                                {act.time} • {act.desc}
                               </span>
                             </div>
                           </div>
@@ -2063,6 +2365,354 @@ export function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          INTERACTIVE MODAL 1: CATEGORY DETAIL & QUICK STOCK (Clicked from Donut Chart)
+         ===================================================================== */}
+      {selectedCategoryDetail && (
+        <div
+          onClick={() => setSelectedCategoryDetail(null)}
+          style={{
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+          className="fixed inset-0 z-[115] bg-slate-950/55 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 max-h-[88vh] overflow-y-auto custom-scrollbar"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#2563EB] text-[10px] font-bold uppercase">
+                  Statistik Kategori
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 mt-1">
+                  Rincian Menu Kategori: {selectedCategoryDetail}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryDetail(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 mb-5">
+              {menuItems
+                .filter((m) => m.category === selectedCategoryDetail)
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-[#F8FAFC] border border-slate-200/70"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-11 h-11 rounded-xl object-cover shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                          {item.name}
+                        </p>
+                        <p className="text-[11px] font-semibold text-[#2563EB]">
+                          {formatRupiah(getEffectivePrice(item))} •{" "}
+                          {item.soldCount} Terjual
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateProductStock(item.id, item.stock - 1)
+                        }
+                        className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="text-xs font-extrabold text-slate-900 min-w-[44px] text-center">
+                        {item.stock} pcs
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateProductStock(item.id, item.stock + 1)
+                        }
+                        className="w-6 h-6 rounded-lg bg-[#2563EB] text-white flex items-center justify-center hover:bg-blue-700 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setSelectedCategoryDetail(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold cursor-pointer"
+              >
+                Tutup
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCrudCategoryFilter(selectedCategoryDetail);
+                  setSelectedCategoryDetail(null);
+                  setActivePage("crud");
+                }}
+                className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+              >
+                Buka di Halaman CRUD →
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          INTERACTIVE MODAL 2: ORDER RECEIPT DETAIL (Clicked from Recent Transaction Row)
+         ===================================================================== */}
+      {selectedOrderDetail && (
+        <div
+          onClick={() => setSelectedOrderDetail(null)}
+          style={{
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+          className="fixed inset-0 z-[115] bg-slate-950/55 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#2563EB] text-[10px] font-bold">
+                  Struk Pesanan {selectedOrderDetail.orderNumber}
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 mt-1">
+                  {selectedOrderDetail.customerName}
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  {selectedOrderDetail.createdAt} • Pembayaran{" "}
+                  {selectedOrderDetail.paymentMethod}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrderDetail(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 my-4 max-h-60 overflow-y-auto custom-scrollbar">
+              {selectedOrderDetail.items.map((line, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#F8FAFC] text-xs"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src={line.product.imageUrl}
+                      alt={line.product.name}
+                      className="w-9 h-9 rounded-lg object-cover"
+                    />
+                    <div>
+                      <p className="font-bold text-slate-900">
+                        {line.product.name}
+                      </p>
+                      <span className="text-[10.5px] text-slate-400">
+                        {line.quantity} pcs x {formatRupiah(line.unitPrice)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="font-extrabold text-slate-900 tabular-nums">
+                    {formatRupiah(line.lineTotal)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-slate-100 pt-3 space-y-1.5 text-xs mb-4">
+              <div className="flex justify-between text-slate-500">
+                <span>Subtotal</span>
+                <span className="font-bold text-slate-800">
+                  {formatRupiah(selectedOrderDetail.subtotal)}
+                </span>
+              </div>
+              <div className="flex justify-between text-slate-500">
+                <span>Pajak (10%)</span>
+                <span className="font-bold text-slate-800">
+                  {formatRupiah(selectedOrderDetail.taxTotal)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-1 border-t border-slate-100">
+                <span>Total Bayar</span>
+                <span className="text-[#2563EB]">
+                  {formatRupiah(selectedOrderDetail.totalAmount)}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase">
+                Ubah Status Pesanan
+              </span>
+              <div className="grid grid-cols-3 gap-2">
+                {(["Preparing", "Ready", "Completed"] as OrderStatusType[]).map(
+                  (st) => {
+                    const active =
+                      (selectedOrderDetail.status || "Preparing") === st;
+                    return (
+                      <button
+                        type="button"
+                        key={st}
+                        onClick={() => {
+                          updateOrderStatus(selectedOrderDetail.id, st);
+                          setSelectedOrderDetail({
+                            ...selectedOrderDetail,
+                            status: st,
+                          });
+                          showToast(
+                            `Status ${selectedOrderDetail.orderNumber} -> ${st}`
+                          );
+                        }}
+                        className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          active
+                            ? "bg-[#2563EB] text-white"
+                            : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100"
+                        }`}
+                      >
+                        {st}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =====================================================================
+          INTERACTIVE MODAL 3: FINANCIAL BREAKDOWN & TARGET ADJUSTER (Clicked from KPI Cards / Target Card)
+         ===================================================================== */}
+      {isFinanceModalOpen && (
+        <div
+          onClick={() => setIsFinanceModalOpen(null)}
+          style={{
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+          }}
+          className="fixed inset-0 z-[115] bg-slate-950/55 flex items-center justify-center p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100"
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#2563EB] text-[10px] font-bold uppercase">
+                  Manajemen Keuangan & Target POS
+                </span>
+                <h3 className="text-base font-extrabold text-slate-900 mt-1">
+                  {isFinanceModalOpen === "target"
+                    ? "Atur Target Omzet Harian"
+                    : isFinanceModalOpen === "expenses"
+                    ? "Atur Biaya Operasional (HPP)"
+                    : "Rincian Saldo & Laba Bersih Kasir"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFinanceModalOpen(null)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-slate-200/70 space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Total Pendapatan Kotor</span>
+                  <strong className="text-slate-900">
+                    {formatRupiah(totalIncome)}
+                  </strong>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Biaya Operasional (HPP)</span>
+                  <strong className="text-rose-600">
+                    -{formatRupiah(totalExpenses)}
+                  </strong>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-slate-200 font-extrabold text-sm">
+                  <span className="text-slate-900">Laba Bersih (Net Profit)</span>
+                  <span className="text-emerald-600">
+                    {formatRupiah(totalNetProfit)}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Target Omzet Harian (Rp)
+                </label>
+                <input
+                  type="number"
+                  step={100000}
+                  min={500000}
+                  value={dailyTargetAmount}
+                  onChange={(e) =>
+                    setDailyTargetAmount(
+                      Math.max(100000, Number(e.target.value) || 0)
+                    )
+                  }
+                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:border-[#2563EB]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Estimasi Biaya Operasional / HPP Bulanan (Rp)
+                </label>
+                <input
+                  type="number"
+                  step={100000}
+                  min={0}
+                  value={customExpenses}
+                  onChange={(e) =>
+                    setCustomExpenses(Math.max(0, Number(e.target.value) || 0))
+                  }
+                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:border-[#2563EB]"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsFinanceModalOpen(null);
+                  showToast(
+                    "Parameter target harian & biaya operasional berhasil diperbarui."
+                  );
+                }}
+                className="w-full py-3 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs cursor-pointer transition"
+              >
+                Simpan & Terapkan ke Dashboard
+              </button>
+            </div>
           </div>
         </div>
       )}

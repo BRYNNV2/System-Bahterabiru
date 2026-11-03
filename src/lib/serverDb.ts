@@ -1,7 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { INITIAL_MENU_ITEMS, MenuItem } from "@/data/initialMenu";
-import { CompletedOrder } from "@/store/usePosStore";
+import { prisma } from "@/lib/prisma";
+import { MenuItem } from "@/data/initialMenu";
+import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
 
 export interface ServerPosDatabase {
   menuItems: MenuItem[];
@@ -11,69 +12,103 @@ export interface ServerPosDatabase {
 
 const DB_FILE_PATH = path.join(process.cwd(), "prisma", "pos-database.json");
 
-const DEFAULT_RECENT_ORDERS: CompletedOrder[] = [
-  {
-    id: "ord-prev-1",
-    orderNumber: "#F8371",
-    customerName: "Rizky Pratama (Table 04)",
-    status: "Preparing",
-    items: [
-      {
-        product: INITIAL_MENU_ITEMS[0],
-        quantity: 2,
-        unitPrice: 35000,
-        lineTotal: 70000,
-      },
-      {
-        product: INITIAL_MENU_ITEMS[3],
-        quantity: 1,
-        unitPrice: 19000,
-        lineTotal: 19000,
-      },
-    ],
-    itemCount: 3,
-    subtotal: 89000,
-    discountTotal: 0,
-    taxTotal: 8900,
-    totalAmount: 97900,
-    paymentMethod: "QRIS",
-    createdAt: "Today, 13:45",
-  },
-  {
-    id: "ord-prev-2",
-    orderNumber: "#F8377",
-    customerName: "Nadia Putri (Table 02)",
-    status: "Completed",
-    items: [
-      {
-        product: INITIAL_MENU_ITEMS[1],
-        quantity: 1,
-        unitPrice: 25000,
-        lineTotal: 25000,
-      },
-      {
-        product: INITIAL_MENU_ITEMS[12],
-        quantity: 2,
-        unitPrice: 18500,
-        lineTotal: 37000,
-      },
-    ],
-    itemCount: 3,
-    subtotal: 62000,
-    discountTotal: 0,
-    taxTotal: 6200,
-    totalAmount: 68200,
-    paymentMethod: "Cash",
-    createdAt: "Today, 13:20",
-  },
-];
+export const DEFAULT_RECENT_ORDERS: CompletedOrder[] = [];
 
-// Global in-memory fallback in case filesystem is read-only in some cloud environments
+// Global in-memory fallback in case offline or DB unreachable
 const globalForDb = globalThis as unknown as {
   posMemoryDb: ServerPosDatabase | undefined;
 };
 
-export function readServerDb(): ServerPosDatabase {
+function mapDbRowToMenuItem(row: {
+  id: string;
+  name: string;
+  category: string;
+  group: string;
+  price: number;
+  discountPercent: number | null;
+  discountedPrice: number | null;
+  stock: number;
+  soldCount: number;
+  featured: boolean;
+  description: string;
+  servingOptions: unknown;
+  imageUrl: string;
+}): MenuItem {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category as MenuItem["category"],
+    group: row.group as MenuItem["group"],
+    price: row.price,
+    ...(row.discountPercent ? { discountPercent: row.discountPercent } : {}),
+    ...(row.discountedPrice ? { discountedPrice: row.discountedPrice } : {}),
+    stock: row.stock,
+    soldCount: row.soldCount,
+    featured: row.featured,
+    description: row.description,
+    ...(Array.isArray(row.servingOptions)
+      ? { servingOptions: row.servingOptions as string[] }
+      : {}),
+    imageUrl: row.imageUrl,
+  };
+}
+
+function mapDbRowToOrder(row: {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  status: string;
+  items: unknown;
+  itemCount: number;
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  totalAmount: number;
+  paymentMethod: string;
+  createdAtText: string;
+}): CompletedOrder {
+  return {
+    id: row.id,
+    orderNumber: row.orderNumber,
+    customerName: row.customerName,
+    status: (row.status as OrderStatusType) || "Preparing",
+    items: Array.isArray(row.items) ? (row.items as CompletedOrder["items"]) : [],
+    itemCount: row.itemCount,
+    subtotal: row.subtotal,
+    discountTotal: row.discountTotal,
+    taxTotal: row.taxTotal,
+    totalAmount: row.totalAmount,
+    paymentMethod:
+      (row.paymentMethod as CompletedOrder["paymentMethod"]) || "QRIS",
+    createdAt: row.createdAtText,
+  };
+}
+
+export async function readNeonDbOrFallback(): Promise<ServerPosDatabase> {
+  try {
+    const [menuRows, orderRows] = await Promise.all([
+      prisma.posMenuItem.findMany({
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      }),
+      prisma.posOrder.findMany({
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const result: ServerPosDatabase = {
+      menuItems: menuRows.map(mapDbRowToMenuItem),
+      recentOrders: orderRows.map(mapDbRowToOrder),
+      updatedAt: Date.now(),
+    };
+
+    writeLocalFallbackDb(result);
+    return result;
+  } catch {
+    return readLocalFallbackDb();
+  }
+}
+
+export function readLocalFallbackDb(): ServerPosDatabase {
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, "utf-8");
@@ -96,16 +131,16 @@ export function readServerDb(): ServerPosDatabase {
   }
 
   const initialDb: ServerPosDatabase = {
-    menuItems: INITIAL_MENU_ITEMS,
-    recentOrders: DEFAULT_RECENT_ORDERS,
+    menuItems: [],
+    recentOrders: [],
     updatedAt: Date.now(),
   };
 
-  writeServerDb(initialDb);
+  writeLocalFallbackDb(initialDb);
   return initialDb;
 }
 
-export function writeServerDb(data: ServerPosDatabase): ServerPosDatabase {
+export function writeLocalFallbackDb(data: ServerPosDatabase): ServerPosDatabase {
   const nextData: ServerPosDatabase = {
     ...data,
     updatedAt: Date.now(),
@@ -124,4 +159,3 @@ export function writeServerDb(data: ServerPosDatabase): ServerPosDatabase {
 
   return nextData;
 }
-

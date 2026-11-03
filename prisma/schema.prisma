@@ -3,18 +3,55 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model PosMenuItem {
+  id              String   @id
+  name            String
+  category        String
+  group           String
+  price           Int
+  discountPercent Int?
+  discountedPrice Int?
+  stock           Int      @default(0)
+  soldCount       Int      @default(0)
+  featured        Boolean  @default(false)
+  description     String
+  servingOptions  Json?
+  imageUrl        String
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model PosOrder {
+  id            String   @id
+  orderNumber   String
+  customerName  String
+  status        String   @default("Preparing")
+  items         Json
+  itemCount     Int
+  subtotal      Int
+  discountTotal Int      @default(0)
+  taxTotal      Int      @default(0)
+  totalAmount   Int
+  paymentMethod String
+  createdAtText String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Product {
   id                String      @id @default(cuid())
   name              String
-  category          String      // Main Course, Appetizer, Dessert, Side Dishes, Beverages, Kids
-  price             Int         // Original price in Rupiah
-  discountPercent   Int         @default(0) // e.g. 15 for 15%
+  category          String
+  price             Int
+  discountPercent   Int         @default(0)
   isSpecialDiscount Boolean     @default(false)
-  stock             Int         @default(0) // Available portions
+  stock             Int         @default(0)
   imageUrl          String
   isActive          Boolean     @default(true)
   createdAt         DateTime    @default(now())
@@ -28,12 +65,12 @@ model Order {
   orderNumber   String      @unique
   customerName  String
   personCount   Int         @default(1)
-  subtotal      Int         // Subtotal before discount (or sum of items)
+  subtotal      Int
   discountTotal Int         @default(0)
   taxTotal      Int         @default(0)
-  totalAmount   Int         // Final payable amount
-  paymentMethod String      @default("QRIS") // QRIS, TUNAI, E-WALLET
-  status        String      @default("COMPLETED") // COMPLETED, PROCESSING, CANCELLED
+  totalAmount   Int
+  paymentMethod String      @default("QRIS")
+  status        String      @default("COMPLETED")
   createdAt     DateTime    @default(now())
   items         OrderItem[]
 }
@@ -56,10 +93,9 @@ model StockLog {
   id            String   @id @default(cuid())
   productId     String
   product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  changeAmount  Int      // Negative for sales, Positive for restock
+  changeAmount  Int
   previousStock Int
   newStock      Int
-  reason        String   // e.g. "Penjualan #ORD-001", "Restock Harian Admin"
+  reason        String
   createdAt     DateTime @default(now())
 }
-
