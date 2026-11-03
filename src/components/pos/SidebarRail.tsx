@@ -2,6 +2,7 @@
 
 import React from "react";
 import {
+  LayoutGrid,
   Coffee,
   Wine,
   UtensilsCrossed,
@@ -29,6 +30,7 @@ export function SidebarRail({
     label: string;
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
+    { id: "All", label: "All", icon: LayoutGrid },
     { id: "Coffee", label: "Coffee", icon: Coffee },
     { id: "Beverages", label: "Beverages", icon: Wine },
     { id: "Food", label: "Food", icon: UtensilsCrossed },

@@ -100,7 +100,11 @@ export function ProductGrid() {
         return item.category === selectedCategory;
       }
 
-      return item.group === activeSidebarGroup;
+      if (activeSidebarGroup !== "All") {
+        return item.group === activeSidebarGroup;
+      }
+
+      return true;
     })
     .sort((a, b) => {
       const priceA = getEffectivePrice(a);

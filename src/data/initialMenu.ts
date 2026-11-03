@@ -24,6 +24,7 @@ export interface MenuItem {
 }
 
 export const SIDEBAR_GROUPS = [
+  { id: "All", label: "All" },
   { id: "Food", label: "Food" },
   { id: "Coffee", label: "Coffee" },
   { id: "Beverages", label: "Beverages" },

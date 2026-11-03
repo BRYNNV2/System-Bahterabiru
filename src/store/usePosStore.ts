@@ -139,7 +139,7 @@ export const usePosStore = create<PosState>()(
   persist(
     (set, get) => ({
       activeTab: "pos",
-      activeSidebarGroup: "Food",
+      activeSidebarGroup: "All",
       menuItems: [],
       cart: [],
       selectedCategory: "All Menu",
@@ -164,7 +164,12 @@ export const usePosStore = create<PosState>()(
           selectedCategory: "All Menu",
           activeTab: "pos",
         }),
-      setSelectedCategory: (category) => set({ selectedCategory: category }),
+      setSelectedCategory: (category) =>
+        set((state) => ({
+          selectedCategory: category,
+          activeSidebarGroup:
+            category === "All Menu" ? "All" : state.activeSidebarGroup,
+        })),
       setSearchQuery: (query) => set({ searchQuery: query }),
       setSortBy: (sortBy) => set({ sortBy }),
       setPaymentMethod: (paymentMethod) => set({ paymentMethod }),

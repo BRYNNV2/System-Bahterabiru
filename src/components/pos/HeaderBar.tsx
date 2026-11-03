@@ -5,6 +5,7 @@ import {
   Search,
   X,
   ArrowUpDown,
+  LayoutGrid,
   Coffee,
   Wine,
   UtensilsCrossed,
@@ -28,6 +29,7 @@ const MOBILE_GROUPS: {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }[] = [
+  { id: "All", label: "All", icon: LayoutGrid },
   { id: "Food", label: "Food", icon: UtensilsCrossed },
   { id: "Coffee", label: "Coffee", icon: Coffee },
   { id: "Beverages", label: "Beverages", icon: Wine },
