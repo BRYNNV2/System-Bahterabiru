@@ -110,15 +110,28 @@ interface PosState {
   completeCheckout: () => CompletedOrder | null;
 }
 
-async function sendSyncMutation(action: string, payload: unknown) {
+let pendingMutations = 0;
+
+async function sendSyncMutation(
+  action: string,
+  payload: unknown,
+  onSuccess?: (data: { menuItems?: MenuItem[]; recentOrders?: CompletedOrder[] }) => void
+) {
+  pendingMutations += 1;
   try {
-    await fetch("/api/pos-sync", {
+    const res = await fetch("/api/pos-sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, payload }),
     });
+    if (res.ok && pendingMutations === 1 && onSuccess) {
+      const data = await res.json();
+      onSuccess(data);
+    }
   } catch {
     // Fallback to local state if offline
+  } finally {
+    pendingMutations = Math.max(0, pendingMutations - 1);
   }
 }
 
@@ -315,9 +328,10 @@ export const usePosStore = create<PosState>()(
       },
 
       syncFromServer: async () => {
+        if (pendingMutations > 0) return;
         try {
           const res = await fetch("/api/pos-sync", { cache: "no-store" });
-          if (!res.ok) return;
+          if (!res.ok || pendingMutations > 0) return;
           const data = await res.json();
           if (
             data &&

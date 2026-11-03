@@ -184,12 +184,100 @@ export function AdminDashboard() {
   const [formPrice, setFormPrice] = useState<number>(25000);
   const [formStock, setFormStock] = useState<number>(20);
   const [formDesc, setFormDesc] = useState("");
-  const [formImage, setFormImage] = useState(PRESET_FOOD_IMAGES[0].url);
+  const [formImage, setFormImage] = useState("");
   const [formFeatured, setFormFeatured] = useState(false);
+  const [isConvertingWebp, setIsConvertingWebp] = useState(false);
+  const [isDragOverUpload, setIsDragOverUpload] = useState(false);
+  const [uploadedImageMeta, setUploadedImageMeta] = useState<{
+    fileName: string;
+    originalKb: number;
+    webpKb: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 2600);
+  };
+
+  // Automatic Client-Side Image -> WebP Compression & Resize
+  const handleUploadProductImage = (file?: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("Format tidak didukung. Pilih file gambar (JPG, PNG, WEBP).");
+      return;
+    }
+
+    setIsConvertingWebp(true);
+    const objectUrl = URL.createObjectURL(file);
+    const img = new window.Image();
+
+    img.onload = () => {
+      try {
+        const MAX_DIM = 720;
+        let targetW = img.naturalWidth || img.width || 600;
+        let targetH = img.naturalHeight || img.height || 600;
+
+        if (targetW > MAX_DIM || targetH > MAX_DIM) {
+          if (targetW > targetH) {
+            targetH = Math.round((targetH * MAX_DIM) / targetW);
+            targetW = MAX_DIM;
+          } else {
+            targetW = Math.round((targetW * MAX_DIM) / targetH);
+            targetH = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext("2d");
+
+        if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+          const webpDataUrl = canvas.toDataURL("image/webp", 0.78);
+
+          const originalKb =
+            Math.max(0.1, Math.round((file.size / 1024) * 10) / 10);
+          const base64Length =
+            webpDataUrl.length - (webpDataUrl.indexOf(",") + 1);
+          const webpBytes = (base64Length * 3) / 4;
+          const webpKb = Math.max(
+            0.1,
+            Math.round((webpBytes / 1024) * 10) / 10
+          );
+          const baseName = file.name.replace(/\.[^/.]+$/, "");
+
+          setFormImage(webpDataUrl);
+          setUploadedImageMeta({
+            fileName: `${baseName}.webp`,
+            originalKb,
+            webpKb,
+            width: targetW,
+            height: targetH,
+          });
+          showToast(
+            `Foto dikonversi ke WebP (${webpKb} KB) • Hemat & ringan!`
+          );
+        }
+      } catch {
+        showToast("Gagal memproses gambar. Coba pilih foto lain.");
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        setIsConvertingWebp(false);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      setIsConvertingWebp(false);
+      showToast("File gambar rusak atau tidak dapat dibaca.");
+    };
+
+    img.src = objectUrl;
   };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -214,7 +302,8 @@ export function AdminDashboard() {
     setFormDesc(
       "Hidangan spesial racikan dapur utama menggunakan bahan segar berkualitas tinggi."
     );
-    setFormImage(PRESET_FOOD_IMAGES[0].url);
+    setFormImage("");
+    setUploadedImageMeta(null);
     setFormFeatured(true);
     setIsCrudModalOpen(true);
   };
@@ -228,6 +317,7 @@ export function AdminDashboard() {
     setFormStock(item.stock);
     setFormDesc(item.description);
     setFormImage(item.imageUrl);
+    setUploadedImageMeta(null);
     setFormFeatured(Boolean(item.featured));
     setIsCrudModalOpen(true);
   };
@@ -235,6 +325,10 @@ export function AdminDashboard() {
   const handleSaveMenu = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) return;
+    if (!formImage.trim()) {
+      showToast("Silakan upload foto produk terlebih dahulu.");
+      return;
+    }
 
     if (editingItem) {
       updateMenuItem(editingItem.id, {
@@ -548,7 +642,9 @@ export function AdminDashboard() {
       if (!q) return true;
       return (
         ord.customerName.toLowerCase().includes(q) ||
-        ord.orderNumber.toLowerCase().includes(q)
+        ord.orderNumber.toLowerCase().includes(q) ||
+        ord.paymentMethod.toLowerCase().includes(q) ||
+        ord.items.some((i) => i.product.name.toLowerCase().includes(q))
       );
     })
     .sort((a, b) => {
@@ -2016,131 +2112,293 @@ export function AdminDashboard() {
           </main>
         ) : (
           /* ===================================================================
-              VIEW C: HALAMAN TRANSAKSI LENGKAP
+              VIEW C: HALAMAN TRANSAKSI LENGKAP (Table Layout — FinPay Blue & White)
              =================================================================== */
-          <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 pb-20 lg:pb-6 custom-scrollbar space-y-4 sm:space-y-5">
-            <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base sm:text-lg font-extrabold text-slate-900">
-                  Daftar Seluruh Transaksi ({filteredOrders.length})
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Kelola status pesanan dari Preparing, Ready, hingga Completed
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActivePage("dashboard")}
-                className="self-start sm:self-auto px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+          <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 pb-20 lg:pb-8 custom-scrollbar space-y-5">
+            {/* 1. Top 2 KPI Summary Boxes (Pendapatan Berhasil & Total Transaksi) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Box 1: Pendapatan Berhasil */}
+              <div
+                onClick={() => setIsFinanceModalOpen("income")}
+                title="Klik untuk melihat rincian pendapatan kasir"
+                className="group bg-white rounded-2xl p-5 border border-slate-200/80 hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
               >
-                ← Kembali ke Dashboard
-              </button>
+                <div>
+                  <span className="block text-xs font-medium text-slate-400 mb-1">
+                    Pendapatan Berhasil
+                  </span>
+                  <span className="text-xl sm:text-2xl font-extrabold text-[#2563EB] tabular-nums tracking-tight">
+                    {formatRupiah(liveOrdersRevenue)}
+                  </span>
+                </div>
+                <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 text-[#2563EB] group-hover:bg-[#2563EB] group-hover:text-white flex items-center justify-center transition-colors shrink-0">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Box 2: Total Transaksi */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center justify-between">
+                <div>
+                  <span className="block text-xs font-medium text-slate-400 mb-1">
+                    Total Transaksi
+                  </span>
+                  <span className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
+                    {recentOrders.length}
+                  </span>
+                </div>
+                <div className="w-11 h-11 rounded-xl bg-[#F8FAFC] border border-slate-200/80 text-slate-600 flex items-center justify-center shrink-0">
+                  <Receipt className="w-5 h-5" />
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-8">
-              {filteredOrders.map((order) => {
-                const currentStatus: OrderStatusType =
-                  order.status || "Preparing";
-                return (
-                  <div
-                    key={order.id}
-                    className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between space-y-4"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-slate-900">
-                              {order.customerName}
-                            </span>
-                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
-                              {order.orderNumber}
-                            </span>
-                          </div>
-                          <span className="block text-[11px] text-slate-400 mt-0.5">
-                            {order.createdAt} • {order.paymentMethod}
-                          </span>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            deleteOrder(order.id);
-                            showToast(
-                              `Order ${order.orderNumber} berhasil dihapus.`
-                            );
-                          }}
-                          className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      <div className="space-y-2 my-3">
-                        {order.items.map((line, i) => (
-                          <div
-                            key={i}
-                            className="flex items-center justify-between text-xs bg-[#F8FAFC] p-2.5 rounded-xl"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              <img
-                                src={line.product.imageUrl}
-                                alt={line.product.name}
-                                className="w-9 h-9 rounded-lg object-cover"
-                              />
-                              <div>
-                                <p className="font-semibold text-slate-900">
-                                  {line.product.name}
-                                </p>
-                                <span className="text-[10.5px] text-slate-400">
-                                  {line.quantity} pcs x{" "}
-                                  {formatRupiah(line.unitPrice)}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="font-bold text-slate-900 tabular-nums">
-                              {formatRupiah(line.lineTotal)}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-100 space-y-3">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">Total Bayar</span>
-                        <span className="text-sm font-extrabold text-[#2563EB] tabular-nums">
-                          {formatRupiah(order.totalAmount)}
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {(
-                          ["Preparing", "Ready", "Completed"] as OrderStatusType[]
-                        ).map((st) => (
-                          <button
-                            type="button"
-                            key={st}
-                            onClick={() => {
-                              updateOrderStatus(order.id, st);
-                              showToast(`Order ${order.orderNumber} -> ${st}`);
-                            }}
-                            className={`py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-                              currentStatus === st
-                                ? st === "Completed"
-                                  ? "bg-emerald-600 text-white"
-                                  : "bg-[#2563EB] text-white"
-                                : "bg-[#F8FAFC] text-slate-500 hover:bg-slate-100"
-                            }`}
-                          >
-                            {st}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+            {/* 2. Full-Width Transaction Table Container */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs overflow-hidden">
+              {/* Table Container Header: Title on Left, Search + Status Filter on Right */}
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 text-[#2563EB] flex items-center justify-center shrink-0">
+                    <Receipt className="w-4 h-4" />
                   </div>
-                );
-              })}
+                  <div>
+                    <h2 className="text-sm sm:text-base font-extrabold text-slate-900">
+                      Daftar Transaksi Pesanan
+                    </h2>
+                    <p className="text-[11px] text-slate-400">
+                      Kelola pesanan masuk dari pembeli secara real-time
+                    </p>
+                  </div>
+                </div>
+
+                {/* Search & Status Dropdown Controls */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5">
+                  <div className="relative flex-1 sm:w-56">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      value={globalSearch}
+                      onChange={(e) => setGlobalSearch(e.target.value)}
+                      placeholder="Cari nama/metode..."
+                      className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200/80 pl-8 pr-3 py-2 text-xs font-medium text-slate-700 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#2563EB] transition"
+                    />
+                  </div>
+
+                  <select
+                    value={txStatusFilter}
+                    onChange={(e) =>
+                      setTxStatusFilter(
+                        e.target.value as "ALL" | OrderStatusType
+                      )
+                    }
+                    className="rounded-xl bg-[#F8FAFC] border border-slate-200/80 px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:bg-white focus:border-[#2563EB] cursor-pointer"
+                  >
+                    <option value="ALL">Semua Status</option>
+                    <option value="Preparing">Pending (Preparing)</option>
+                    <option value="Ready">Siap (Ready)</option>
+                    <option value="Completed">Selesai (Completed)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Responsive Data Table */}
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse min-w-[760px]">
+                  <thead>
+                    <tr className="bg-[#F8FAFC] border-b border-slate-200/70 text-[11px] font-bold text-slate-500">
+                      <th className="py-3.5 px-5">Pembeli</th>
+                      <th className="py-3.5 px-4">Meja / Rincian Pesanan</th>
+                      <th className="py-3.5 px-4">Metode</th>
+                      <th
+                        onClick={() => {
+                          if (txSortField === "amount") {
+                            setTxSortAsc((p) => !p);
+                          } else {
+                            setTxSortField("amount");
+                            setTxSortAsc(false);
+                          }
+                        }}
+                        className="py-3.5 px-4 cursor-pointer hover:text-[#2563EB] select-none"
+                        title="Klik untuk urutkan berdasarkan Total Belanja"
+                      >
+                        Total Belanja ⇅
+                      </th>
+                      <th
+                        onClick={() => {
+                          if (txSortField === "date") {
+                            setTxSortAsc((p) => !p);
+                          } else {
+                            setTxSortField("date");
+                            setTxSortAsc(false);
+                          }
+                        }}
+                        className="py-3.5 px-4 cursor-pointer hover:text-[#2563EB] select-none"
+                        title="Klik untuk urutkan berdasarkan Tanggal"
+                      >
+                        Tanggal ⇅
+                      </th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-5 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {filteredOrders.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={7}
+                          className="py-14 px-6 text-center text-slate-400"
+                        >
+                          <div className="flex flex-col items-center justify-center gap-2">
+                            <div className="w-11 h-11 rounded-2xl bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-400">
+                              <Receipt className="w-5 h-5" />
+                            </div>
+                            <p className="text-xs font-bold text-slate-700">
+                              Belum ada data transaksi pesanan
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              Pesanan baru yang dibuat dari halaman pembeli akan langsung muncul di tabel ini.
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredOrders.map((order) => {
+                        const currentStatus: OrderStatusType =
+                          order.status || "Preparing";
+                        const itemsSummary = order.items
+                          .map((i) => `${i.quantity}x ${i.product.name}`)
+                          .join(", ");
+
+                        const statusConfig =
+                          currentStatus === "Completed"
+                            ? {
+                                label: "Selesai",
+                                bg: "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100",
+                                dot: "bg-emerald-500",
+                              }
+                            : currentStatus === "Ready"
+                            ? {
+                                label: "Siap Diambil",
+                                bg: "bg-blue-50 text-[#2563EB] border-blue-200 hover:bg-blue-100",
+                                dot: "bg-[#2563EB]",
+                              }
+                            : {
+                                label: "Pending",
+                                bg: "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100",
+                                dot: "bg-amber-500",
+                              };
+
+                        const nextStatus: OrderStatusType =
+                          currentStatus === "Preparing"
+                            ? "Ready"
+                            : currentStatus === "Ready"
+                            ? "Completed"
+                            : "Preparing";
+
+                        return (
+                          <tr
+                            key={order.id}
+                            onClick={() => setSelectedOrderDetail(order)}
+                            title="Klik baris untuk melihat detail struk pesanan"
+                            className="group hover:bg-blue-50/35 transition-colors cursor-pointer"
+                          >
+                            {/* 1. Pembeli & Order ID */}
+                            <td className="py-3.5 px-5">
+                              <p className="font-bold text-slate-900 group-hover:text-[#2563EB] transition-colors">
+                                {order.customerName}
+                              </p>
+                              <span className="block text-[10.5px] font-medium text-slate-400 mt-0.5 tabular-nums">
+                                {order.orderNumber} • {order.itemCount} Porsi
+                              </span>
+                            </td>
+
+                            {/* 2. Rincian Menu */}
+                            <td className="py-3.5 px-4 max-w-[260px]">
+                              <p
+                                className="text-slate-600 font-medium truncate"
+                                title={itemsSummary}
+                              >
+                                {itemsSummary || "-"}
+                              </p>
+                            </td>
+
+                            {/* 3. Metode Pembayaran */}
+                            <td className="py-3.5 px-4">
+                              <span className="font-semibold text-slate-700">
+                                {order.paymentMethod}
+                              </span>
+                            </td>
+
+                            {/* 4. Total Belanja */}
+                            <td className="py-3.5 px-4">
+                              <span className="font-extrabold text-slate-900 tabular-nums">
+                                {formatRupiah(order.totalAmount)}
+                              </span>
+                            </td>
+
+                            {/* 5. Tanggal */}
+                            <td className="py-3.5 px-4 text-slate-500 whitespace-nowrap">
+                              {order.createdAt}
+                            </td>
+
+                            {/* 6. Status Pill (Click to cycle status directly) */}
+                            <td
+                              className="py-3.5 px-4"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateOrderStatus(order.id, nextStatus);
+                                showToast(
+                                  `Status ${order.orderNumber} diubah ke ${nextStatus}`
+                                );
+                              }}
+                            >
+                              <span
+                                title="Klik badge untuk mengubah status pesanan"
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold transition ${statusConfig.bg}`}
+                              >
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`}
+                                />
+                                {statusConfig.label}
+                              </span>
+                            </td>
+
+                            {/* 7. Aksi (Detail Struk & Hapus) */}
+                            <td
+                              className="py-3.5 px-5 text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="inline-flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedOrderDetail(order)}
+                                  title="Lihat Struk & Ubah Status"
+                                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-[#2563EB] hover:bg-blue-50 flex items-center justify-center transition cursor-pointer"
+                                >
+                                  <MoreVertical className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    deleteOrder(order.id);
+                                    showToast(
+                                      `Transaksi ${order.orderNumber} telah dihapus.`
+                                    );
+                                  }}
+                                  title="Hapus Transaksi"
+                                  className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </main>
         )}
@@ -2310,31 +2568,135 @@ export function AdminDashboard() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  URL Foto Menu
-                </label>
-                <input
-                  type="url"
-                  value={formImage}
-                  onChange={(e) => setFormImage(e.target.value)}
-                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2 font-medium text-slate-800 focus:outline-none focus:bg-white focus:border-[#2563EB] mb-2"
-                />
-                <div className="flex flex-wrap gap-1.5">
-                  {PRESET_FOOD_IMAGES.map((preset) => (
-                    <button
-                      type="button"
-                      key={preset.label}
-                      onClick={() => setFormImage(preset.url)}
-                      className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border transition cursor-pointer ${
-                        formImage === preset.url
-                          ? "bg-blue-50 border-[#2563EB] text-[#2563EB]"
-                          : "bg-[#F8FAFC] border-slate-200 text-slate-500 hover:bg-slate-100"
-                      }`}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block font-bold text-slate-700">
+                    Upload Foto Produk
+                  </label>
+                  <span className="px-2 py-0.5 rounded-full bg-blue-50 text-[#2563EB] text-[10px] font-bold">
+                    Auto-Convert ke .WEBP Ringan
+                  </span>
                 </div>
+
+                {/* Hidden File Input */}
+                <input
+                  id="product-photo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const selected = e.target.files?.[0];
+                    if (selected) {
+                      handleUploadProductImage(selected);
+                    }
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+
+                {!formImage ? (
+                  <label
+                    htmlFor="product-photo-upload"
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragOverUpload(true);
+                    }}
+                    onDragLeave={() => setIsDragOverUpload(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragOverUpload(false);
+                      const droppedFile = e.dataTransfer.files?.[0];
+                      if (droppedFile) {
+                        handleUploadProductImage(droppedFile);
+                      }
+                    }}
+                    className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition cursor-pointer ${
+                      isDragOverUpload
+                        ? "border-[#2563EB] bg-blue-50/60"
+                        : "border-slate-300 bg-[#F8FAFC] hover:border-[#2563EB] hover:bg-blue-50/30"
+                    }`}
+                  >
+                    <div className="w-11 h-11 rounded-2xl bg-blue-100/80 text-[#2563EB] flex items-center justify-center">
+                      <Plus className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-extrabold text-slate-800">
+                        {isConvertingWebp
+                          ? "Mengompresi & mengubah ke format WebP..."
+                          : "Klik untuk pilih foto produk atau tarik ke sini"}
+                      </p>
+                      <p className="text-[10.5px] text-slate-400 mt-0.5">
+                        Mendukung JPG, PNG, JPEG, WEBP — otomatis diubah ke .webp agar hemat ukuran & cepat dimuat
+                      </p>
+                    </div>
+                  </label>
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-[#F8FAFC] p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={formImage}
+                        alt="Preview Produk"
+                        className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0 bg-white"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 text-[9.5px] font-extrabold uppercase">
+                            WEBP AKTIF
+                          </span>
+                          {uploadedImageMeta && (
+                            <span className="text-[10px] font-bold text-[#2563EB]">
+                              {uploadedImageMeta.webpKb} KB
+                              {uploadedImageMeta.originalKb >
+                                uploadedImageMeta.webpKb && (
+                                <span className="text-emerald-600 ml-1">
+                                  (Hemat{" "}
+                                  {Math.max(
+                                    1,
+                                    Math.round(
+                                      ((uploadedImageMeta.originalKb -
+                                        uploadedImageMeta.webpKb) /
+                                        uploadedImageMeta.originalKb) *
+                                        100
+                                    )
+                                  )}
+                                  % dari {uploadedImageMeta.originalKb} KB)
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-bold text-slate-800 truncate mt-1">
+                          {uploadedImageMeta
+                            ? uploadedImageMeta.fileName
+                            : "foto-produk.webp"}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {uploadedImageMeta
+                            ? `Resolusi optimal ${uploadedImageMeta.width}×${uploadedImageMeta.height}px`
+                            : "Tersimpan dalam format WebP terkompresi"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-1.5 shrink-0">
+                      <label
+                        htmlFor="product-photo-upload"
+                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-[#2563EB] border border-slate-200 hover:border-blue-300 text-[11px] font-bold transition cursor-pointer"
+                      >
+                        Ganti Foto
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormImage("");
+                          setUploadedImageMeta(null);
+                        }}
+                        className="p-1.5 rounded-xl bg-white hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200 transition cursor-pointer"
+                        title="Hapus Foto"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <label className="flex items-center gap-2.5 pt-1 cursor-pointer">
