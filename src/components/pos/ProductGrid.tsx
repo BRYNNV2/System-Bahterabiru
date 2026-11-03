@@ -94,18 +94,18 @@ export function ProductGrid() {
     });
 
   return (
-    <section className="mt-7 relative">
-      {/* Section Header matching exact user screenshot - elevated z-index so dropdown is always above product cards */}
-      <div className="relative z-40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+    <section className="mt-5 sm:mt-7 relative">
+      {/* Section Header */}
+      <div className="relative z-40 flex flex-wrap items-center justify-between gap-2.5 mb-3 sm:mb-4">
         {/* Title and Active Search indicator */}
-        <div className="flex items-center gap-3">
-          <h2 className="text-[17px] font-bold text-zinc-900 tracking-tight">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <h2 className="text-[15px] sm:text-[17px] font-bold text-zinc-900 tracking-tight">
             Select Menu
           </h2>
 
           {searchQuery && (
-            <div className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] text-[#FF5B35] px-2.5 py-0.5 rounded-full text-[11px] font-bold">
-              <span>Cari: &ldquo;{searchQuery}&rdquo;</span>
+            <div className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] text-[#EE5728] px-2 py-0.5 rounded-full text-[10.5px] font-bold">
+              <span>&ldquo;{searchQuery}&rdquo;</span>
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
@@ -119,16 +119,16 @@ export function ProductGrid() {
         </div>
 
         {/* Right Sort Controls (3 ITEMS | [NEWEST ▼] with Popover) */}
-        <div className="flex items-center gap-3.5 self-end sm:self-auto">
+        <div className="flex items-center gap-2 sm:gap-3.5">
           {/* Item Count */}
-          <span className="text-[11.5px] font-bold tracking-[0.16em] text-[#8E95A5] uppercase tabular-nums select-none">
+          <span className="text-[10.5px] sm:text-[11.5px] font-bold tracking-[0.12em] sm:tracking-[0.16em] text-[#8E95A5] uppercase tabular-nums select-none">
             {filteredItems.length} ITEMS
           </span>
 
           {/* Vertical Separator */}
-          <div className="h-4 w-[1px] bg-gray-200" />
+          <div className="h-3.5 sm:h-4 w-[1px] bg-gray-200" />
 
-          {/* Pill Button + Dropdown Popover matching screenshot */}
+          {/* Pill Button + Dropdown Popover */}
           <div ref={dropdownRef} className="relative z-50">
             <button
               type="button"
@@ -137,12 +137,12 @@ export function ProductGrid() {
                 setShowFilterPopover((prev) => !prev);
               }}
               aria-expanded={showFilterPopover}
-              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-gray-200/90 bg-white hover:border-zinc-800 active:scale-[0.98] text-[11px] font-black tracking-wider uppercase text-zinc-900 transition cursor-pointer shadow-sm select-none"
+              className="inline-flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border border-gray-200/90 bg-white hover:border-zinc-800 active:scale-[0.98] text-[10px] sm:text-[11px] font-black tracking-wider uppercase text-zinc-900 transition cursor-pointer shadow-sm select-none"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.2] shrink-0" />
-              <span>{getActiveSortLabel(sortBy)}</span>
+              <SlidersHorizontal className="w-3 h-3 sm:w-3.5 sm:h-3.5 stroke-[2.2] shrink-0" />
+              <span className="max-w-[90px] sm:max-w-none truncate">{getActiveSortLabel(sortBy)}</span>
               <span
-                className={`text-[#84CC16] text-[9px] transition-transform duration-200 ${
+                className={`text-[#84CC16] text-[8px] sm:text-[9px] transition-transform duration-200 ${
                   showFilterPopover ? "rotate-180" : ""
                 }`}
               >
@@ -153,7 +153,7 @@ export function ProductGrid() {
             {showFilterPopover && (
               <div
                 onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 top-full mt-2 w-[215px] bg-white rounded-[26px] shadow-[0_14px_44px_rgba(0,0,0,0.16)] border border-gray-100 p-2 z-50"
+                className="absolute right-0 top-full mt-2 w-[200px] sm:w-[215px] bg-white rounded-[24px] sm:rounded-[26px] shadow-[0_14px_44px_rgba(0,0,0,0.16)] border border-gray-100 p-2 z-50"
               >
                 {/* Option 1: NEWEST ARRIVALS */}
                 <button
@@ -162,16 +162,16 @@ export function ProductGrid() {
                     setSortBy("default");
                     setShowFilterPopover(false);
                   }}
-                  className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer ${
+                  className={`w-full text-left p-2.5 sm:p-3 rounded-[16px] sm:rounded-[18px] transition cursor-pointer ${
                     sortBy === "default"
                       ? "bg-[#0D1117] text-white"
                       : "text-zinc-800 hover:bg-gray-100"
                   }`}
                 >
-                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                  <span className="block text-[10px] sm:text-[11px] font-black tracking-wider uppercase leading-tight">
                     NEWEST
                   </span>
-                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                  <span className="block text-[10px] sm:text-[11px] font-black tracking-wider uppercase leading-tight">
                     ARRIVALS
                   </span>
                 </button>
@@ -183,16 +183,16 @@ export function ProductGrid() {
                     setSortBy("price-asc");
                     setShowFilterPopover(false);
                   }}
-                  className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
+                  className={`w-full text-left p-2.5 sm:p-3 rounded-[16px] sm:rounded-[18px] transition cursor-pointer mt-1 ${
                     sortBy === "price-asc"
                       ? "bg-[#0D1117] text-white"
                       : "text-zinc-800 hover:bg-gray-100"
                   }`}
                 >
-                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                  <span className="block text-[10px] sm:text-[11px] font-black tracking-wider uppercase leading-tight">
                     PRICE: LOW TO
                   </span>
-                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                  <span className="block text-[10px] sm:text-[11px] font-black tracking-wider uppercase leading-tight">
                     HIGH
                   </span>
                 </button>
@@ -204,16 +204,16 @@ export function ProductGrid() {
                     setSortBy("price-desc");
                     setShowFilterPopover(false);
                   }}
-                  className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
+                  className={`w-full text-left p-2.5 sm:p-3 rounded-[16px] sm:rounded-[18px] transition cursor-pointer mt-1 ${
                     sortBy === "price-desc"
                       ? "bg-[#0D1117] text-white"
                       : "text-zinc-800 hover:bg-gray-100"
                   }`}
                 >
-                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                  <span className="block text-[10px] sm:text-[11px] font-black tracking-wider uppercase leading-tight">
                     PRICE: HIGH TO
                   </span>
-                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                  <span className="block text-[10px] sm:text-[11px] font-black tracking-wider uppercase leading-tight">
                     LOW
                   </span>
                 </button>
@@ -223,7 +223,7 @@ export function ProductGrid() {
         </div>
       </div>
 
-      {/* 4 Columns Product Grid */}
+      {/* Responsive Columns Product Grid: 2 cols on mobile, 3 on md/tablet, up to 4 on large screens */}
       {filteredItems.length === 0 ? (
         <div className="py-16 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
           <div className="w-10 h-10 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-2 text-gray-400">
@@ -247,7 +247,7 @@ export function ProductGrid() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-2.5 sm:gap-4 pb-20 xl:pb-0">
           {filteredItems.map((item) => {
             const qtyInCart = getItemQuantity(item.id);
             const isOutOfStock = item.stock <= 0;
@@ -261,7 +261,7 @@ export function ProductGrid() {
                     addToCart(item.id);
                   }
                 }}
-                className={`group bg-white rounded-2xl p-3 border transition-all flex flex-col justify-between ${
+                className={`group bg-white rounded-2xl p-2.5 sm:p-3 border transition-all flex flex-col justify-between ${
                   qtyInCart > 0
                     ? "border-[#EE5728]/60 shadow-[0_6px_20px_rgba(238,87,40,0.08)]"
                     : "border-gray-200/70 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:border-[#EE5728]/40 hover:shadow-md"
@@ -281,14 +281,14 @@ export function ProductGrid() {
 
                     {/* Discount Badge */}
                     {item.discountPercent && (
-                      <div className="absolute top-2.5 left-2.5 bg-[#EE5728] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
+                      <div className="absolute top-2 left-2 bg-[#EE5728] text-white text-[9.5px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md shadow-xs">
                         {item.discountPercent}% Off
                       </div>
                     )}
 
                     {/* Selected Quantity Badge in top-right when in cart */}
                     {qtyInCart > 0 && (
-                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg bg-[#EE5728] text-white text-[11px] font-extrabold flex items-center justify-center shadow-sm">
+                      <div className="absolute top-2 right-2 w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-[#EE5728] text-white text-[10px] sm:text-[11px] font-extrabold flex items-center justify-center shadow-sm">
                         {qtyInCart}
                       </div>
                     )}
@@ -296,14 +296,14 @@ export function ProductGrid() {
 
                   {/* Title */}
                   <h3
-                    className="font-bold text-zinc-900 text-[13.5px] mt-2.5 truncate"
+                    className="font-bold text-zinc-900 text-[12.5px] sm:text-[13.5px] mt-2 sm:mt-2.5 truncate"
                     title={item.name}
                   >
                     {item.name}
                   </h3>
 
                   {/* Stock & Sold Info */}
-                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">
+                  <p className="text-[10px] sm:text-[11px] text-gray-400 font-medium mt-0.5">
                     <span
                       className={
                         item.stock === 0 ? "text-rose-500 font-semibold" : ""
@@ -316,13 +316,13 @@ export function ProductGrid() {
                 </div>
 
                 {/* Price Row & Action Controls */}
-                <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100">
-                  <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
-                    <span className="font-extrabold text-[#EE5728] text-[14px]">
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100 gap-1">
+                  <div className="flex items-baseline gap-1 flex-wrap min-w-0">
+                    <span className="font-extrabold text-[#EE5728] text-[12.5px] sm:text-[14px]">
                       {formatRupiah(finalPrice)}
                     </span>
                     {item.discountPercent && (
-                      <span className="text-[10.5px] text-gray-400 line-through font-medium">
+                      <span className="text-[9.5px] sm:text-[10.5px] text-gray-400 line-through font-medium">
                         {formatRupiah(item.price)}
                       </span>
                     )}
@@ -332,31 +332,31 @@ export function ProductGrid() {
                   {qtyInCart > 0 ? (
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 bg-[#FCEAE3] border border-[#EE5728]/40 px-1.5 py-0.5 rounded-xl ml-1 shrink-0"
+                      className="flex items-center gap-1 sm:gap-1.5 bg-[#FCEAE3] border border-[#EE5728]/40 px-1 sm:px-1.5 py-0.5 rounded-xl ml-1 shrink-0"
                     >
                       <button
                         type="button"
                         onClick={() => decrementFromCart(item.id)}
-                        className="w-5 h-5 rounded-lg bg-white hover:bg-gray-100 text-zinc-700 flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
+                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-white hover:bg-gray-100 text-zinc-700 flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
                         aria-label="Kurangi"
                         title={
                           qtyInCart === 1 ? "Hapus dari pesanan" : "Kurangi 1"
                         }
                       >
-                        <Minus className="w-3 h-3 stroke-[2.5]" />
+                        <Minus className="w-2.5 h-2.5 sm:w-3 sm:h-3 stroke-[2.5]" />
                       </button>
-                      <span className="text-xs font-black text-[#EE5728] min-w-[14px] text-center tabular-nums">
+                      <span className="text-[11px] sm:text-xs font-black text-[#EE5728] min-w-[12px] sm:min-w-[14px] text-center tabular-nums">
                         {qtyInCart}
                       </span>
                       <button
                         type="button"
                         onClick={() => addToCart(item.id)}
                         disabled={qtyInCart >= item.stock}
-                        className="w-5 h-5 rounded-lg bg-[#EE5728] hover:bg-[#d94b1f] disabled:opacity-30 text-white flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
+                        className="w-4 h-4 sm:w-5 sm:h-5 rounded-md bg-[#EE5728] hover:bg-[#d94b1f] disabled:opacity-30 text-white flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
                         aria-label="Tambah"
                         title="Tambah 1"
                       >
-                        <Plus className="w-3 h-3 stroke-[2.5]" />
+                        <Plus className="w-2.5 h-2.5 sm:w-3 sm:h-3 stroke-[2.5]" />
                       </button>
                     </div>
                   ) : (
@@ -367,10 +367,10 @@ export function ProductGrid() {
                         if (!isOutOfStock) addToCart(item.id);
                       }}
                       disabled={isOutOfStock}
-                      className="px-2.5 py-1 rounded-lg bg-[#EE5728] hover:bg-[#d94b1f] text-white disabled:bg-gray-200 disabled:text-gray-400 text-[10.5px] font-bold flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95 ml-1 shrink-0"
+                      className="px-2 sm:px-2.5 py-1 rounded-lg bg-[#EE5728] hover:bg-[#d94b1f] text-white disabled:bg-gray-200 disabled:text-gray-400 text-[10px] sm:text-[10.5px] font-bold flex items-center gap-0.5 sm:gap-1 transition cursor-pointer shadow-xs active:scale-95 ml-1 shrink-0"
                       title={isOutOfStock ? "Stok Habis" : "Tambah ke Pesanan"}
                     >
-                      <span>Order</span>
+                      <span className="hidden sm:inline">Order</span>
                       <Plus className="w-3 h-3 stroke-[2.5]" />
                     </button>
                   )}

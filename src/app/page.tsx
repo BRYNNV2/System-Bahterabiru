@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { Menu } from "lucide-react";
 import { SidebarRail } from "@/components/pos/SidebarRail";
 import { HeaderBar } from "@/components/pos/HeaderBar";
 import { CategoryCards } from "@/components/pos/CategoryCards";
@@ -12,7 +13,7 @@ import { RecentOrdersModal } from "@/components/pos/RecentOrdersModal";
 import { usePosStore } from "@/store/usePosStore";
 
 export default function PosTerminalPage() {
-  const { activeTab, setActiveTab } = usePosStore();
+  const { activeTab, setActiveTab, setIsMobileMenuOpen } = usePosStore();
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
   const [isRecentOrdersOpen, setIsRecentOrdersOpen] = useState(false);
 
@@ -24,8 +25,8 @@ export default function PosTerminalPage() {
       {/* Center Main Work Area */}
       {activeTab === "pos" ? (
         <>
-          <main className="flex-1 h-full overflow-y-auto px-5 lg:px-7 py-5 custom-scrollbar bg-[#F4F5F7]">
-            {/* Header Bar */}
+          <main className="flex-1 h-full overflow-y-auto px-3 sm:px-6 lg:px-7 py-3 sm:py-5 custom-scrollbar bg-[#F4F5F7]">
+            {/* Header Bar with Mobile Menu & Cart Trigger */}
             <HeaderBar />
 
             {/* Categories Cards */}
@@ -35,7 +36,7 @@ export default function PosTerminalPage() {
             <ProductGrid />
           </main>
 
-          {/* Right Panel: Invoice & Checkout (Full Height) */}
+          {/* Right Panel: Invoice & Checkout (Full Height on desktop, drawer on mobile) */}
           <DetailItemsSidebar
             onProcessTransaction={() => setIsTransactionOpen(true)}
           />
@@ -45,25 +46,35 @@ export default function PosTerminalPage() {
         <AdminDashboard />
       ) : activeTab === "feedback" ? (
         /* Customer Feedback View */
-        <div className="flex-1 h-full p-8 overflow-y-auto bg-[#F4F5F7]">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
-            <div>
-              <h1 className="text-2xl font-black text-zinc-900">
-                Ulasan & Feedback Pelanggan
-              </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Daftar penilaian kualitas makanan dan pelayanan kantin
-              </p>
+        <div className="flex-1 h-full p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F4F5F7]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200 mb-6">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Buka Menu"
+              >
+                <Menu className="w-5 h-5 stroke-[2]" />
+              </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-zinc-900">
+                  Ulasan & Feedback Pelanggan
+                </h1>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Daftar penilaian kualitas makanan dan pelayanan kantin
+                </p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setActiveTab("pos")}
-              className="px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
+              className="self-start sm:self-auto px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
             >
               Kembali ke Food Order
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               {
                 name: "Rizky Pratama",
@@ -106,20 +117,30 @@ export default function PosTerminalPage() {
         </div>
       ) : activeTab === "message" ? (
         /* Order Messages / Kitchen Notes View */
-        <div className="flex-1 h-full p-8 overflow-y-auto bg-[#F4F5F7]">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
-            <div>
-              <h1 className="text-2xl font-black text-zinc-900">
-                Pesan & Catatan Dapur
-              </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Komunikasi antrean pesanan antara kasir dan dapur kantin
-              </p>
+        <div className="flex-1 h-full p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F4F5F7]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200 mb-6">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Buka Menu"
+              >
+                <Menu className="w-5 h-5 stroke-[2]" />
+              </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-zinc-900">
+                  Pesan & Catatan Dapur
+                </h1>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Komunikasi antrean pesanan antara kasir dan dapur kantin
+                </p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setActiveTab("pos")}
-              className="px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
+              className="self-start sm:self-auto px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
             >
               Kembali ke Food Order
             </button>
@@ -156,20 +177,30 @@ export default function PosTerminalPage() {
         </div>
       ) : activeTab === "history" ? (
         /* Transaction History Screen */
-        <div className="flex-1 h-full p-8 overflow-y-auto bg-[#F4F5F7]">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
-            <div>
-              <h1 className="text-2xl font-black text-zinc-900">
-                Riwayat Transaksi Penjualan
-              </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Arsip seluruh pesanan kasir yang telah diselesaikan
-              </p>
+        <div className="flex-1 h-full p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F4F5F7]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200 mb-6">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Buka Menu"
+              >
+                <Menu className="w-5 h-5 stroke-[2]" />
+              </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-zinc-900">
+                  Riwayat Transaksi Penjualan
+                </h1>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Arsip seluruh pesanan kasir yang telah diselesaikan
+                </p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setActiveTab("pos")}
-              className="px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
+              className="self-start sm:self-auto px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
             >
               Kembali ke Food Order
             </button>
@@ -181,20 +212,30 @@ export default function PosTerminalPage() {
         </div>
       ) : (
         /* Customization / Settings View */
-        <div className="flex-1 h-full p-8 overflow-y-auto bg-[#F4F5F7]">
-          <div className="flex items-center justify-between pb-4 border-b border-gray-200 mb-6">
-            <div>
-              <h1 className="text-2xl font-black text-zinc-900">
-                Customization & Pengaturan POS
-              </h1>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Konfigurasi nama kantin, pajak layanan, dan preferensi kasir
-              </p>
+        <div className="flex-1 h-full p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F4F5F7]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-200 mb-6">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                aria-label="Buka Menu"
+              >
+                <Menu className="w-5 h-5 stroke-[2]" />
+              </button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-zinc-900">
+                  Customization & Pengaturan POS
+                </h1>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Konfigurasi nama kantin, pajak layanan, dan preferensi kasir
+                </p>
+              </div>
             </div>
             <button
               type="button"
               onClick={() => setActiveTab("pos")}
-              className="px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
+              className="self-start sm:self-auto px-4 py-2 rounded-xl bg-[#EE5728] text-white text-xs font-bold transition hover:bg-[#d94b1f] cursor-pointer"
             >
               Kembali ke Food Order
             </button>

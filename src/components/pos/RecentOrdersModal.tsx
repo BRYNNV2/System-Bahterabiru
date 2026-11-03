@@ -20,7 +20,7 @@ export function RecentOrdersModal({ isOpen, onClose }: RecentOrdersModalProps) {
       <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95">
         <div className="flex items-center justify-between pb-4 border-b border-gray-100">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#FFF4F0] text-[#FF5B35] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-[#FCEAE3] text-[#EE5728] flex items-center justify-center">
               <ReceiptText className="w-5 h-5" />
             </div>
             <div>

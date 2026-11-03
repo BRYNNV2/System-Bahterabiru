@@ -10,13 +10,19 @@ import {
   Plus,
   Minus,
   CheckCircle2,
+  Menu,
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { formatRupiah } from "@/data/initialMenu";
 
 export function AdminDashboard() {
-  const { menuItems, recentOrders, updateProductStock, setActiveTab } =
-    usePosStore();
+  const {
+    menuItems,
+    recentOrders,
+    updateProductStock,
+    setActiveTab,
+    setIsMobileMenuOpen,
+  } = usePosStore();
 
   const [activeSubTab, setActiveSubTab] = useState<"analytics" | "inventory">(
     "analytics"
@@ -40,16 +46,26 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="flex-1 p-6 sm:p-8 overflow-y-auto">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F4F5F7]">
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-100">
-        <div>
-          <h1 className="text-2xl font-black text-zinc-900 tracking-tight">
-            Admin Panel Kantin
-          </h1>
-          <p className="text-xs text-gray-400 font-medium mt-0.5">
-            Pemantauan Perkembangan Penjualan, Pemasukan & Manajemen Stok
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+            aria-label="Buka Menu"
+          >
+            <Menu className="w-5 h-5 stroke-[2]" />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">
+              Admin Panel Kantin
+            </h1>
+            <p className="text-xs text-gray-500 font-medium mt-0.5">
+              Pemantauan Perkembangan Penjualan, Pemasukan & Manajemen Stok
+            </p>
+          </div>
         </div>
 
         {/* Tab switch + Back to POS button */}

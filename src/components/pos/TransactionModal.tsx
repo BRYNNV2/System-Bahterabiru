@@ -67,7 +67,7 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-gray-100">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-[#FFF4F0] text-[#FF5B35] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-[#FCEAE3] text-[#EE5728] flex items-center justify-center">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <h3 className="text-base font-bold text-zinc-900">
@@ -94,7 +94,7 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
                     onClick={() => setPaymentMethod(opt)}
                     className={`py-2 px-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
                       paymentMethod === opt
-                        ? "bg-[#FFF4F0] border-[#FFCCBF] text-[#FF5B35]"
+                        ? "bg-[#FCEAE3] border-[#EE5728]/60 text-[#EE5728]"
                         : "bg-white border-gray-200 text-zinc-600 hover:border-gray-300"
                     }`}
                   >
@@ -127,7 +127,7 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
               <button
                 onClick={handleConfirmOrder}
                 disabled={isProcessing}
-                className="py-3 rounded-2xl bg-[#FF5B35] hover:bg-[#e64c27] text-white text-xs font-bold transition shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
+                className="py-3 rounded-2xl bg-[#EE5728] hover:bg-[#d94b1f] text-white text-xs font-bold transition shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
               >
                 {isProcessing ? "Memproses..." : "Selesaikan Bayar"}
               </button>
