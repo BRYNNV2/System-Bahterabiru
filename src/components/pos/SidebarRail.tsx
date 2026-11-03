@@ -12,16 +12,17 @@ import {
 import { usePosStore } from "@/store/usePosStore";
 import { SidebarGroupType } from "@/data/initialMenu";
 
-export function SidebarRail() {
-  const {
-    activeSidebarGroup,
-    setActiveSidebarGroup,
-    isSidebarOpen,
-    toggleSidebar,
-  } = usePosStore();
+interface SidebarRailProps {
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
+}
 
-  // Collapsible via the single hamburger icon in the top header
-  if (!isSidebarOpen) return null;
+export function SidebarRail({
+  isOpenMobile = false,
+  onCloseMobile,
+}: SidebarRailProps) {
+  const { activeSidebarGroup, setActiveSidebarGroup, isSidebarOpen } =
+    usePosStore();
 
   const menuGroups: {
     id: SidebarGroupType;
@@ -39,12 +40,20 @@ export function SidebarRail() {
   return (
     <>
       {/* Mobile Backdrop Overlay (< md) */}
-      <div
-        onClick={toggleSidebar}
-        className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-30 md:hidden"
-      />
+      {isOpenMobile && (
+        <div
+          onClick={onCloseMobile}
+          className="absolute inset-0 bg-black/40 backdrop-blur-[2px] z-30 md:hidden"
+        />
+      )}
 
-      <aside className="fixed md:static inset-y-0 left-0 top-14 md:top-0 w-[92px] sm:w-[100px] bg-white border-r border-zinc-100 py-5 px-2 flex flex-col items-center shrink-0 h-[calc(100dvh-3.5rem)] md:h-full overflow-y-auto custom-scrollbar select-none z-40 md:z-20 shadow-xl md:shadow-none">
+      <aside
+        className={`${
+          isOpenMobile ? "flex absolute inset-y-0 left-0 z-40 shadow-xl" : "hidden"
+        } ${
+          isSidebarOpen ? "md:flex md:static md:shadow-none" : "md:hidden"
+        } w-[92px] sm:w-[100px] bg-white border-r border-zinc-100 py-5 px-2 flex-col items-center shrink-0 h-full overflow-y-auto custom-scrollbar select-none z-20`}
+      >
         {/* Main Vertical Category Rail for Buyer Self-Ordering */}
         <nav className="flex flex-col items-center gap-3 w-full">
           {menuGroups.map((group) => {
@@ -57,9 +66,7 @@ export function SidebarRail() {
                 key={group.id}
                 onClick={() => {
                   setActiveSidebarGroup(group.id);
-                  if (typeof window !== "undefined" && window.innerWidth < 768) {
-                    toggleSidebar();
-                  }
+                  if (onCloseMobile) onCloseMobile();
                 }}
                 className={`w-[68px] h-[68px] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
                   isActive

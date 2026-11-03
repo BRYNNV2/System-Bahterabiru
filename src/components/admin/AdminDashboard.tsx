@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Home,
@@ -115,9 +115,14 @@ export function AdminDashboard() {
   const [loginError, setLoginError] = useState("");
 
   // Sidebar & Page Navigation State
+  const [isMounted, setIsMounted] = useState(false);
   const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<AdminPageTab>("dashboard");
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Timeframe & Chart State
   const [revenueTimeframe, setRevenueTimeframe] =
@@ -228,6 +233,10 @@ export function AdminDashboard() {
   // ============================================================================
   // 1. ADMIN LOGIN GATE (FinPay Royal Blue & White Style)
   // ============================================================================
+  if (!isMounted) {
+    return <div className="h-[100dvh] w-screen bg-[#F7F8FA]" />;
+  }
+
   if (!isAdminAuthenticated) {
     return (
       <div className="min-h-screen w-screen bg-[#F7F8FA] flex items-center justify-center p-4 font-sans select-none">
@@ -675,7 +684,7 @@ export function AdminDashboard() {
       {/* =====================================================================
           2. RIGHT MAIN CONTENT AREA (Top Header + Bento Grid)
          ===================================================================== */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
         {/* TOP HEADER BAR (Exact FinPay Header + Responsive Toggle) */}
         <header className="h-14 sm:h-16 bg-white border-b border-slate-200/80 px-3.5 sm:px-6 flex items-center justify-between shrink-0 z-10 gap-2">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -1820,7 +1829,7 @@ export function AdminDashboard() {
         )}
 
         {/* Mobile Bottom Navigation Bar (< lg) */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-4 gap-1 z-30">
+        <nav className="lg:hidden absolute bottom-0 inset-x-0 bg-white border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-4 gap-1 z-30">
           {[
             { id: "dashboard", label: "Dashboard", icon: Home },
             { id: "transactions", label: "Pesanan", icon: Receipt },

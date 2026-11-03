@@ -77,14 +77,14 @@ export function DetailItemsSidebar({
       {isOpenMobile && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 bg-black/45 backdrop-blur-[2px] z-40 lg:hidden"
+          className="absolute inset-0 bg-black/45 backdrop-blur-[2px] z-40 lg:hidden"
         />
       )}
 
       <aside
         className={`${
           isOpenMobile
-            ? "fixed inset-y-0 right-0 z-50 flex w-full max-w-[380px] shadow-2xl"
+            ? "absolute inset-y-0 right-0 z-50 flex w-full max-w-[380px] shadow-2xl"
             : "hidden lg:flex lg:w-[325px] xl:w-[355px]"
         } shrink-0 bg-white border-l border-zinc-100 p-4 sm:p-5 flex-col justify-between h-full overflow-hidden select-none z-10`}
       >

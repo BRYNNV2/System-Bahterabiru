@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Menu, Flame, ShoppingBag } from "lucide-react";
 import { SidebarRail } from "@/components/pos/SidebarRail";
 import { HeaderBar } from "@/components/pos/HeaderBar";
@@ -21,10 +21,28 @@ export default function PosTerminalPage() {
   } = usePosStore();
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleHamburgerClick = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsMobileSidebarOpen((prev) => !prev);
+    } else {
+      toggleSidebar();
+    }
+  };
 
   const isBackgroundBlurred = isModalBlurActive || isTransactionOpen;
 
-  // Calculate live cart count & total for mobile/tablet floating bar & header button
+  if (!isMounted) {
+    return <div className="h-[100dvh] w-screen bg-[#F7F7F8]" />;
+  }
+
+  // Calculate live cart count & total
   const totalCartItems = cart.reduce((sum, item) => sum + item.quantity, 0);
   const subTotal = cart.reduce((sum, item) => {
     const prod = menuItems.find((m) => m.id === item.productId);
@@ -33,8 +51,12 @@ export default function PosTerminalPage() {
   const finalTotal = subTotal + Math.round(subTotal * 0.1);
 
   return (
-    <div className="h-[100dvh] w-screen overflow-hidden bg-zinc-950 flex flex-col font-sans">
+    <div
+      suppressHydrationWarning
+      className="h-[100dvh] w-screen overflow-hidden bg-zinc-950 flex flex-col font-sans"
+    >
       <div
+        suppressHydrationWarning
         style={{
           filter: isBackgroundBlurred
             ? "blur(12px) brightness(0.86)"
@@ -51,7 +73,7 @@ export default function PosTerminalPage() {
           <div className="flex items-center gap-2.5 sm:gap-3">
             <button
               type="button"
-              onClick={toggleSidebar}
+              onClick={handleHamburgerClick}
               className="w-9 h-9 rounded-xl bg-[#F4F4F5] hover:bg-zinc-200/70 text-zinc-700 hover:text-zinc-950 flex items-center justify-center transition cursor-pointer active:scale-95"
               aria-label="Buka/Tutup Sidebar"
               title="Buka/Tutup Sidebar"
@@ -82,7 +104,7 @@ export default function PosTerminalPage() {
           >
             <ShoppingBag className="w-3.5 h-3.5" />
             <span>Pesanan</span>
-            {totalCartItems > 0 && (
+            {isMounted && totalCartItems > 0 && (
               <span className="px-1.5 py-0.5 rounded-full bg-white text-zinc-900 text-[10px] font-extrabold leading-none">
                 {totalCartItems}
               </span>
@@ -93,7 +115,10 @@ export default function PosTerminalPage() {
         {/* Main 3-Column Buyer Self-Ordering Workspace */}
         <div className="flex-1 flex min-h-0 overflow-hidden relative">
           {/* Left Vertical Icon Rail (Drawer on mobile, vertical rail on md+) */}
-          <SidebarRail />
+          <SidebarRail
+            isOpenMobile={isMobileSidebarOpen}
+            onCloseMobile={() => setIsMobileSidebarOpen(false)}
+          />
 
           {/* Center Main Catalog Area */}
           <main
@@ -122,8 +147,8 @@ export default function PosTerminalPage() {
           />
 
           {/* Floating Bottom Checkout Bar for Mobile & Tablet (< lg) when Cart has items */}
-          {totalCartItems > 0 && !isMobileCartOpen && (
-            <div className="lg:hidden fixed bottom-3.5 inset-x-3.5 sm:inset-x-6 z-30">
+          {isMounted && totalCartItems > 0 && !isMobileCartOpen && (
+            <div className="lg:hidden absolute bottom-3.5 inset-x-3.5 sm:inset-x-6 z-30">
               <button
                 type="button"
                 onClick={() => setIsMobileCartOpen(true)}
