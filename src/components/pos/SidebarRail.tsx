@@ -6,8 +6,6 @@ import {
   ConciergeBell,
   ThumbsUp,
   MessageSquareMore,
-  CalendarRange,
-  WalletCards,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -50,8 +48,6 @@ export function SidebarRail() {
     { id: "pos", label: "Food Order", icon: ConciergeBell },
     { id: "feedback", label: "Feedback", icon: ThumbsUp },
     { id: "message", label: "Message", icon: MessageSquareMore },
-    { id: "history", label: "Order History", icon: CalendarRange },
-    { id: "inventory", label: "Payment details", icon: WalletCards },
     { id: "settings", label: "Customization", icon: Settings },
   ];
 
