@@ -212,9 +212,7 @@ export function ProductGrid() {
                       {item.category}
                     </span>
                     <span className="text-[9.5px] sm:text-[10px] font-medium text-zinc-400 shrink-0">
-                      {isOutOfStock
-                        ? "Habis"
-                        : `Stok ${item.stock} • ${item.soldCount} Terjual`}
+                      {isOutOfStock ? "Habis" : `Stok ${item.stock} Pcs`}
                     </span>
                   </div>
                 </div>
@@ -301,37 +299,9 @@ export function ProductGrid() {
                 </h2>
 
                 {/* Price */}
-                <p className="text-xl font-extrabold text-zinc-900 mt-2 pb-4 border-b border-zinc-100 tabular-nums">
+                <p className="text-xl font-extrabold text-zinc-900 mt-2 pb-4 mb-4 border-b border-zinc-100 tabular-nums">
                   {formatRupiah(getEffectivePrice(quickViewItem))}
                 </p>
-
-                {/* Sales & Cart Status Info */}
-                <div className="grid grid-cols-3 gap-2 my-3.5 bg-[#F8F8FA] p-2.5 rounded-2xl border border-zinc-100 text-center">
-                  <div>
-                    <span className="block text-[10px] text-zinc-400 font-semibold uppercase">
-                      Stok Sisa
-                    </span>
-                    <span className="text-xs font-extrabold text-zinc-900">
-                      {quickViewItem.stock} Pcs
-                    </span>
-                  </div>
-                  <div className="border-x border-zinc-200/70">
-                    <span className="block text-[10px] text-zinc-400 font-semibold uppercase">
-                      Terjual
-                    </span>
-                    <span className="text-xs font-extrabold text-zinc-900">
-                      {quickViewItem.soldCount} Pcs
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block text-[10px] text-zinc-400 font-semibold uppercase">
-                      Dibeli Saat Ini
-                    </span>
-                    <span className="text-xs font-extrabold text-zinc-900">
-                      {getItemQuantity(quickViewItem.id)} Pcs
-                    </span>
-                  </div>
-                </div>
 
                 {/* Dish Description (Shown only when non-empty and not legacy kitchen placeholder on snacks) */}
                 {(() => {
