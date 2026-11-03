@@ -11,7 +11,6 @@ import {
   Minus,
   Pencil,
   Trash2,
-  Star,
   Lock,
   User,
   Eye,
@@ -19,12 +18,22 @@ import {
   LogOut,
   CheckCircle2,
   X,
-  Flame,
-  Truck,
   ExternalLink,
   TrendingUp,
-  PieChart,
+  Bell,
+  PanelLeft,
+  CreditCard,
   ArrowUpRight,
+  ArrowDownLeft,
+  Wallet,
+  SlidersHorizontal,
+  MoreVertical,
+  HelpCircle,
+  Settings,
+  Receipt,
+  BarChart2,
+  UtensilsCrossed,
+  Clock,
 } from "lucide-react";
 import { usePosStore, OrderStatusType } from "@/store/usePosStore";
 import {
@@ -61,8 +70,28 @@ const PRESET_FOOD_IMAGES = [
   },
 ];
 
-type AdminPageTab = "dashboard" | "crud" | "orders";
+type AdminPageTab = "dashboard" | "transactions" | "analytics" | "crud";
 type RevenueTimeframe = "daily" | "weekly" | "monthly";
+
+// Helper component for the signature FinPay striped progress bar
+function StripedProgressBar({ percentage }: { percentage: number }) {
+  const clamped = Math.max(5, Math.min(100, percentage));
+  return (
+    <div className="w-full h-2.5 flex items-center gap-1 overflow-hidden">
+      <div
+        style={{ width: `${clamped}%` }}
+        className="h-full bg-[#2563EB] rounded-full transition-all duration-500 shrink-0"
+      />
+      <div
+        className="flex-1 h-full rounded-r-full"
+        style={{
+          backgroundImage:
+            "repeating-linear-gradient(90deg, #93C5FD 0px, #93C5FD 2px, transparent 2px, transparent 5px)",
+        }}
+      />
+    </div>
+  );
+}
 
 export function AdminDashboard() {
   const {
@@ -79,21 +108,23 @@ export function AdminDashboard() {
     deleteOrder,
   } = usePosStore();
 
-  // Login Form State
+  // Login State
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
 
-  // Separate Admin Pages State
+  // Sidebar & Page Navigation State
+  const [isAdminSidebarOpen, setIsAdminSidebarOpen] = useState(true);
   const [activePage, setActivePage] = useState<AdminPageTab>("dashboard");
 
-  // Revenue Stream Timeframe State (Per Hari, Minggu, Bulan)
+  // Timeframe & Chart State
   const [revenueTimeframe, setRevenueTimeframe] =
-    useState<RevenueTimeframe>("daily");
-  const [selectedBarIndex, setSelectedBarIndex] = useState<number>(4);
+    useState<RevenueTimeframe>("monthly");
+  const [selectedBarIndex, setSelectedBarIndex] = useState<number>(5); // Jun default
+  const [statsSubTab, setStatsSubTab] = useState<"income" | "sold">("income");
 
-  // Search & Filter States
+  // Search & Filter State
   const [globalSearch, setGlobalSearch] = useState("");
   const [crudCategoryFilter, setCrudCategoryFilter] = useState<string>("All");
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -194,24 +225,24 @@ export function AdminDashboard() {
   };
 
   // ============================================================================
-  // 1. CLEAN ADMIN LOGIN GATE (Strict White + Zinc + #FF6B2C Palette)
+  // 1. ADMIN LOGIN GATE (FinPay Royal Blue & White Style)
   // ============================================================================
   if (!isAdminAuthenticated) {
     return (
-      <div className="min-h-screen w-screen bg-[#F8F9FB] flex items-center justify-center p-4 font-sans select-none">
-        <div className="max-w-md w-full bg-white rounded-[28px] p-8 sm:p-10 shadow-[0_12px_40px_rgba(0,0,0,0.04)] border border-gray-100">
+      <div className="min-h-screen w-screen bg-[#F7F8FA] flex items-center justify-center p-4 font-sans select-none">
+        <div className="max-w-md w-full bg-white rounded-3xl p-8 sm:p-10 shadow-[0_12px_40px_rgba(15,23,42,0.06)] border border-slate-200/80">
           <div className="flex flex-col items-center text-center mb-7">
-            <div className="w-12 h-12 rounded-2xl bg-[#FF6B2C] text-white flex items-center justify-center shadow-sm mb-4">
-              <Flame className="w-6 h-6 fill-white" />
+            <div className="w-12 h-12 rounded-2xl bg-[#2563EB] text-white flex items-center justify-center shadow-[0_8px_20px_rgba(37,99,235,0.3)] mb-4">
+              <div className="w-5 h-5 rounded-full border-[3px] border-white" />
             </div>
-            <span className="px-3 py-1 rounded-full bg-[#FFF5EF] text-[#FF6B2C] text-[10px] font-bold uppercase tracking-widest mb-2">
-              Coca coffeetalk • Admin
+            <span className="px-3 py-1 rounded-full bg-blue-50 text-[#2563EB] text-[10px] font-bold uppercase tracking-widest mb-2">
+              CocaPay POS • Admin Portal
             </span>
-            <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">
-              Masuk ke Panel Admin
+            <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+              Welcome back, Admin
             </h1>
-            <p className="text-xs text-zinc-400 mt-1">
-              Kelola penjualan, aliran pendapatan, dan katalog menu
+            <p className="text-xs text-slate-400 mt-1">
+              Masuk untuk mengakses dashboard statistik dan manajemen CRUD menu
             </p>
           </div>
 
@@ -223,40 +254,40 @@ export function AdminDashboard() {
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div>
-              <label className="block text-[11px] font-bold text-zinc-700 mb-1.5">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
                 Username
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="admin"
                   required
-                  className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200/80 pl-11 pr-4 py-3 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-[#FF6B2C] transition"
+                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 pl-11 pr-4 py-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#2563EB] transition"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-zinc-700 mb-1.5">
+              <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
                 Password
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-zinc-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200/80 pl-11 pr-11 py-3 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:bg-white focus:border-[#FF6B2C] transition"
+                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 pl-11 pr-11 py-3 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:bg-white focus:border-[#2563EB] transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 cursor-pointer"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -268,9 +299,9 @@ export function AdminDashboard() {
             </div>
 
             <div className="flex items-center justify-between pt-1">
-              <span className="text-[11px] text-zinc-400">
-                Akses Demo: <strong className="text-zinc-700">admin</strong> /{" "}
-                <strong className="text-zinc-700">admin123</strong>
+              <span className="text-[11px] text-slate-400">
+                Demo: <strong className="text-slate-700">admin</strong> /{" "}
+                <strong className="text-slate-700">admin123</strong>
               </span>
               <button
                 type="button"
@@ -279,7 +310,7 @@ export function AdminDashboard() {
                   setPassword("admin123");
                   setLoginError("");
                 }}
-                className="text-[11px] font-bold text-[#FF6B2C] hover:underline cursor-pointer"
+                className="text-[11px] font-bold text-[#2563EB] hover:underline cursor-pointer"
               >
                 Isi Otomatis
               </button>
@@ -287,9 +318,9 @@ export function AdminDashboard() {
 
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl bg-[#FF6B2C] hover:bg-[#e85d20] text-white font-bold text-xs transition cursor-pointer active:scale-[0.99] mt-2 shadow-sm"
+              className="w-full py-3.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer active:scale-[0.99] mt-2 shadow-[0_8px_20px_rgba(37,99,235,0.25)]"
             >
-              Masuk Dashboard
+              Sign In to Dashboard
             </button>
           </form>
         </div>
@@ -298,141 +329,138 @@ export function AdminDashboard() {
   }
 
   // ============================================================================
-  // 2. DATA CALCULATIONS
+  // 2. DATA & ANALYTICS CALCULATIONS
   // ============================================================================
-  const preparingCount =
-    recentOrders.filter((o) => !o.status || o.status === "Preparing").length + 7;
-  const outForDeliveryCount =
-    recentOrders.filter((o) => o.status === "Ready").length + 12;
-  const deliveredCount =
-    recentOrders.filter((o) => o.status === "Completed").length + 27;
-
   const liveOrdersRevenue = recentOrders.reduce((s, o) => s + o.totalAmount, 0);
   const totalSoldUnits = menuItems.reduce((s, m) => s + m.soldCount, 0);
 
+  const totalIncome = 10450000 + liveOrdersRevenue;
+  const totalExpenses = 4200000;
+  const totalNetProfit = totalIncome - totalExpenses;
+
+  // Bidirectional Bar Chart Datasets (Per Hari, Minggu, Bulan)
   const REVENUE_DATASETS: Record<
     RevenueTimeframe,
     {
-      title: string;
-      subtitle: string;
-      growth: string;
-      totalRevenue: number;
-      bars: { label: string; revenue: number; orders: number; pct: number }[];
+      label: string;
+      balance: number;
+      bars: {
+        label: string;
+        income: number;
+        expense: number;
+        inPct: number;
+        exPct: number;
+      }[];
     }
   > = {
     daily: {
-      title: "Aliran Pendapatan Harian",
-      subtitle: "Pemasukan 7 hari terakhir",
-      growth: "+14.8%",
-      totalRevenue: 8450000 + liveOrdersRevenue,
+      label: "Per Hari (7 Hari)",
+      balance: 8450000 + liveOrdersRevenue,
       bars: [
-        { label: "Sen", revenue: 980000, orders: 28, pct: 55 },
-        { label: "Sel", revenue: 1120000, orders: 32, pct: 64 },
-        { label: "Rab", revenue: 1050000, orders: 30, pct: 60 },
-        { label: "Kam", revenue: 1290000, orders: 37, pct: 74 },
+        { label: "Sen", income: 1450000, expense: 520000, inPct: 68, exPct: 45 },
+        { label: "Sel", income: 1220000, expense: 610000, inPct: 55, exPct: 58 },
+        { label: "Rab", income: 1380000, expense: 490000, inPct: 64, exPct: 48 },
+        { label: "Kam", income: 1690000, expense: 440000, inPct: 82, exPct: 38 },
         {
           label: "Jum",
-          revenue: 1580000 + liveOrdersRevenue,
-          orders: 45 + recentOrders.length,
-          pct: 92,
+          income: 1920000 + liveOrdersRevenue,
+          expense: 580000,
+          inPct: 92,
+          exPct: 50,
         },
-        { label: "Sab", revenue: 1340000, orders: 39, pct: 78 },
-        { label: "Min", revenue: 1090000, orders: 31, pct: 62 },
+        { label: "Sab", income: 1540000, expense: 510000, inPct: 75, exPct: 44 },
+        { label: "Min", income: 1250000, expense: 450000, inPct: 58, exPct: 40 },
       ],
     },
     weekly: {
-      title: "Aliran Pendapatan Mingguan",
-      subtitle: "Tren omzet 8 minggu terakhir",
-      growth: "+21.4%",
-      totalRevenue: 34800000 + liveOrdersRevenue,
+      label: "Per Minggu (8 Mgg)",
+      balance: 19800000 + liveOrdersRevenue,
       bars: [
-        { label: "Mgg 1", revenue: 3650000, orders: 96, pct: 52 },
-        { label: "Mgg 2", revenue: 4120000, orders: 108, pct: 61 },
-        { label: "Mgg 3", revenue: 3890000, orders: 102, pct: 57 },
-        { label: "Mgg 4", revenue: 4680000, orders: 124, pct: 71 },
-        { label: "Mgg 5", revenue: 4950000, orders: 131, pct: 76 },
-        { label: "Mgg 6", revenue: 4420000, orders: 118, pct: 66 },
-        { label: "Mgg 7", revenue: 5250000, orders: 142, pct: 83 },
+        { label: "Mgg 1", income: 3800000, expense: 1400000, inPct: 62, exPct: 46 },
+        { label: "Mgg 2", income: 3400000, expense: 1650000, inPct: 54, exPct: 58 },
+        { label: "Mgg 3", income: 4100000, expense: 1500000, inPct: 68, exPct: 50 },
+        { label: "Mgg 4", income: 4750000, expense: 1320000, inPct: 80, exPct: 42 },
+        { label: "Mgg 5", income: 3950000, expense: 1280000, inPct: 65, exPct: 40 },
+        { label: "Mgg 6", income: 4500000, expense: 1420000, inPct: 76, exPct: 45 },
+        { label: "Mgg 7", income: 4900000, expense: 1600000, inPct: 84, exPct: 52 },
         {
           label: "Mgg 8",
-          revenue: 5840000 + liveOrdersRevenue,
-          orders: 156 + recentOrders.length,
-          pct: 94,
+          income: 5400000 + liveOrdersRevenue,
+          expense: 1480000,
+          inPct: 94,
+          exPct: 48,
         },
       ],
     },
     monthly: {
-      title: "Aliran Pendapatan Bulanan",
-      subtitle: "Rekapitulasi performa tahunan (Jan – Des)",
-      growth: "+38.1%",
-      totalRevenue: 186400000 + liveOrdersRevenue,
+      label: "Bulanan (Tahun Ini)",
+      balance: 34970000 + liveOrdersRevenue,
       bars: [
-        { label: "Jan", revenue: 11200000, orders: 265, pct: 46 },
-        { label: "Feb", revenue: 12800000, orders: 302, pct: 54 },
-        { label: "Mar", revenue: 10900000, orders: 254, pct: 43 },
-        { label: "Apr", revenue: 15600000, orders: 368, pct: 68 },
-        { label: "Mei", revenue: 14200000, orders: 335, pct: 61 },
+        { label: "Jan", income: 6200000, expense: 3100000, inPct: 72, exPct: 55 },
+        { label: "Feb", income: 4400000, expense: 3800000, inPct: 48, exPct: 72 },
+        { label: "Mar", income: 5300000, expense: 3400000, inPct: 62, exPct: 60 },
+        { label: "Apr", income: 7100000, expense: 2900000, inPct: 84, exPct: 46 },
+        { label: "May", income: 4800000, expense: 2500000, inPct: 54, exPct: 38 },
         {
           label: "Jun",
-          revenue: 19400000 + liveOrdersRevenue,
-          orders: 452 + recentOrders.length,
-          pct: 88,
+          income: 7000000 + liveOrdersRevenue,
+          expense: 4000000,
+          inPct: 82,
+          exPct: 48,
         },
-        { label: "Jul", revenue: 15800000, orders: 374, pct: 70 },
-        { label: "Agu", revenue: 16500000, orders: 390, pct: 73 },
-        { label: "Sep", revenue: 17900000, orders: 418, pct: 80 },
-        { label: "Okt", revenue: 15100000, orders: 356, pct: 65 },
-        { label: "Nov", revenue: 18900000, orders: 441, pct: 85 },
-        { label: "Des", revenue: 21100000, orders: 495, pct: 95 },
+        { label: "Jul", income: 4600000, expense: 3500000, inPct: 50, exPct: 62 },
+        { label: "Aug", income: 5500000, expense: 3100000, inPct: 64, exPct: 52 },
+        { label: "Sep", income: 7200000, expense: 3000000, inPct: 86, exPct: 50 },
+        { label: "Oct", income: 5100000, expense: 2900000, inPct: 58, exPct: 48 },
+        { label: "Nov", income: 4200000, expense: 3700000, inPct: 45, exPct: 68 },
+        { label: "Dec", income: 5000000, expense: 2800000, inPct: 56, exPct: 44 },
       ],
     },
   };
 
-  const currentRevenueData = REVENUE_DATASETS[revenueTimeframe];
-  const safeSelectedBar =
-    selectedBarIndex < currentRevenueData.bars.length ? selectedBarIndex : 0;
-  const activeBarPoint = currentRevenueData.bars[safeSelectedBar];
+  const currentDataset = REVENUE_DATASETS[revenueTimeframe];
+  const safeBarIdx =
+    selectedBarIndex < currentDataset.bars.length ? selectedBarIndex : 0;
+  const activePoint = currentDataset.bars[safeBarIdx];
 
-  // Product Category Breakdown
-  const categoryStatsMap = new Map<
+  // Category Statistics for Donut Chart
+  const categoryMap = new Map<
     string,
-    { category: string; itemCount: number; sold: number; revenue: number }
+    { category: string; sold: number; revenue: number }
   >();
   menuItems.forEach((item) => {
-    const existing = categoryStatsMap.get(item.category) || {
+    const prev = categoryMap.get(item.category) || {
       category: item.category,
-      itemCount: 0,
       sold: 0,
       revenue: 0,
     };
-    existing.itemCount += 1;
-    existing.sold += item.soldCount;
-    existing.revenue += item.soldCount * getEffectivePrice(item);
-    categoryStatsMap.set(item.category, existing);
+    prev.sold += item.soldCount;
+    prev.revenue += item.soldCount * getEffectivePrice(item);
+    categoryMap.set(item.category, prev);
   });
 
-  const categoryBreakdown = Array.from(categoryStatsMap.values()).sort(
-    (a, b) => b.revenue - a.revenue
-  );
-  const maxCategoryRevenue = Math.max(
+  const sortedCategories = Array.from(categoryMap.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+  const totalCategoryRevenue = Math.max(
     1,
-    ...categoryBreakdown.map((c) => c.revenue)
+    sortedCategories.reduce((s, c) => s + c.revenue, 0)
   );
 
-  // Popular Items
-  const popularItemsList = [...menuItems]
-    .filter((item) => {
-      const q = globalSearch.toLowerCase().trim();
-      if (!q) return true;
-      return (
-        item.name.toLowerCase().includes(q) ||
-        item.category.toLowerCase().includes(q)
-      );
-    })
-    .sort((a, b) => b.soldCount - a.soldCount)
-    .slice(0, 8);
+  const DONUT_COLORS = [
+    "#1D4ED8", // Deep Royal Blue
+    "#93C5FD", // Soft Sky Blue
+    "#C4B5FD", // Soft Lavender
+    "#BAE6FD", // Ice Blue
+    "#3B82F6", // Bright Blue
+  ];
 
-  // CRUD Filtered Items
+  // Top 3 Popular Items for Left Column "Popular Items" Progress Cards
+  const topPopularItems = [...menuItems]
+    .sort((a, b) => b.soldCount - a.soldCount)
+    .slice(0, 3);
+
+  // Filtered Lists for Search & CRUD
   const crudFilteredItems = menuItems.filter((item) => {
     if (
       crudCategoryFilter !== "All" &&
@@ -459,664 +487,1002 @@ export function AdminDashboard() {
     );
   });
 
+  // Calculate SVG Donut stroke-dasharray segments
+  let cumulativePercent = 0;
+  const donutSegments = sortedCategories.map((cat, idx) => {
+    const pct = Math.round((cat.revenue / totalCategoryRevenue) * 100);
+    const strokeDasharray = `${pct} ${100 - pct}`;
+    const strokeDashoffset = 100 - cumulativePercent;
+    cumulativePercent += pct;
+    return {
+      ...cat,
+      pct,
+      color: DONUT_COLORS[idx % DONUT_COLORS.length],
+      strokeDasharray,
+      strokeDashoffset,
+    };
+  });
+
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#F8F9FB] flex flex-col font-sans select-none text-zinc-900">
+    <div className="h-screen w-screen overflow-hidden bg-[#F7F8FA] flex font-sans select-none text-slate-900">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-5 right-5 z-[120] bg-zinc-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-semibold">
-          <CheckCircle2 className="w-4 h-4 text-[#FF6B2C]" />
+        <div className="fixed bottom-5 right-5 z-[120] bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-semibold">
+          <CheckCircle2 className="w-4 h-4 text-[#3B82F6]" />
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* TOP NAVIGATION HEADER (Clean White + Zinc + Single Orange Accent) */}
-      <header className="h-15 bg-white border-b border-gray-100 px-6 flex items-center justify-between shrink-0 z-30">
-        {/* Left: Brand */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-[#FF6B2C] text-white flex items-center justify-center">
-            <Flame className="w-4 h-4 fill-white" />
-          </div>
-          <span className="font-extrabold text-[15px] text-zinc-900 tracking-tight">
-            Coca <span className="font-semibold text-zinc-500">admin</span>
-          </span>
-        </div>
+      {/* =====================================================================
+          1. LEFT SIDEBAR (Exact FinPay Sidebar Layout)
+         ===================================================================== */}
+      {isAdminSidebarOpen && (
+        <aside className="w-[230px] lg:w-[242px] bg-white border-r border-slate-200/80 px-4 py-5 flex flex-col justify-between shrink-0 h-full overflow-y-auto custom-scrollbar z-20">
+          <div>
+            {/* Brand Logo + Collapse Button */}
+            <div className="flex items-center justify-between px-2 mb-7">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#2563EB] flex items-center justify-center shadow-[0_4px_12px_rgba(37,99,235,0.3)]">
+                  <div className="w-3.5 h-3.5 rounded-full border-[2.5px] border-white" />
+                </div>
+                <span className="text-[18px] font-extrabold text-slate-900 tracking-tight">
+                  CocaPay
+                </span>
+              </div>
 
-        {/* Center: Clean Minimalist Page Switcher */}
-        <nav className="flex items-center gap-1 bg-[#F8F9FB] p-1 rounded-full border border-gray-200/60">
-          <button
-            type="button"
-            onClick={() => setActivePage("dashboard")}
-            className={`px-4 py-1.5 rounded-full text-xs flex items-center gap-2 transition cursor-pointer ${
-              activePage === "dashboard"
-                ? "bg-white text-zinc-900 font-bold shadow-2xs"
-                : "text-zinc-500 hover:text-zinc-900 font-medium"
-            }`}
-          >
-            <Home className="w-3.5 h-3.5" />
-            <span>Dashboard Utama</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => setIsAdminSidebarOpen(false)}
+                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition cursor-pointer"
+                title="Tutup Sidebar"
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setActivePage("crud")}
-            className={`px-4 py-1.5 rounded-full text-xs flex items-center gap-2 transition cursor-pointer ${
-              activePage === "crud"
-                ? "bg-white text-zinc-900 font-bold shadow-2xs"
-                : "text-zinc-500 hover:text-zinc-900 font-medium"
-            }`}
-          >
-            <FolderKanban className="w-3.5 h-3.5" />
-            <span>Kelola Menu (CRUD)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActivePage("orders")}
-            className={`px-4 py-1.5 rounded-full text-xs flex items-center gap-2 transition cursor-pointer ${
-              activePage === "orders"
-                ? "bg-white text-zinc-900 font-bold shadow-2xs"
-                : "text-zinc-500 hover:text-zinc-900 font-medium"
-            }`}
-          >
-            <Package className="w-3.5 h-3.5" />
-            <span>Pesanan ({recentOrders.length})</span>
-          </button>
-        </nav>
-
-        {/* Right: Buyer Store Link & Logout */}
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            href="/"
-            className="px-3.5 py-1.5 rounded-full bg-[#F8F9FB] hover:bg-gray-100 text-zinc-700 text-xs font-semibold flex items-center gap-1.5 border border-gray-200/60 transition"
-          >
-            <ExternalLink className="w-3.5 h-3.5 text-zinc-400" />
-            <span className="hidden md:inline">Katalog Pembeli</span>
-          </Link>
-
-          <button
-            type="button"
-            onClick={logoutAdmin}
-            className="w-8 h-8 rounded-full bg-[#F8F9FB] hover:bg-gray-100 text-zinc-500 hover:text-zinc-900 flex items-center justify-center border border-gray-200/60 transition cursor-pointer"
-            title="Logout Admin"
-            aria-label="Logout Admin"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </header>
-
-      {/* MAIN BODY */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        {/* LEFT VERTICAL ICON RAIL */}
-        <aside className="w-16 sm:w-[70px] bg-white border-r border-gray-100 py-5 flex flex-col items-center justify-between shrink-0 z-20">
-          <div className="flex flex-col items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setActivePage("dashboard")}
-              title="Dashboard Utama"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                activePage === "dashboard"
-                  ? "bg-[#FF6B2C] text-white shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-800 hover:bg-[#F8F9FB]"
-              }`}
-            >
-              <Home className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActivePage("crud")}
-              title="Kelola Menu (CRUD)"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                activePage === "crud"
-                  ? "bg-[#FF6B2C] text-white shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-800 hover:bg-[#F8F9FB]"
-              }`}
-            >
-              <FolderKanban className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActivePage("orders")}
-              title="Pesanan"
-              className={`w-10 h-10 rounded-xl flex items-center justify-center transition cursor-pointer ${
-                activePage === "orders"
-                  ? "bg-[#FF6B2C] text-white shadow-xs"
-                  : "text-zinc-400 hover:text-zinc-800 hover:bg-[#F8F9FB]"
-              }`}
-            >
-              <Package className="w-4 h-4" />
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActivePage("crud");
-              openCreateModal();
-            }}
-            title="Tambah Menu Baru"
-            className="w-9 h-9 rounded-xl bg-[#FFF5EF] text-[#FF6B2C] hover:bg-[#FF6B2C] hover:text-white flex items-center justify-center transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </aside>
-
-        {/* ===================================================================
-            PAGE 1: HALAMAN UTAMA DASHBOARD (Clean Monochrome + Single Orange Accent)
-           =================================================================== */}
-        {activePage === "dashboard" && (
-          <>
-            <main className="flex-1 min-w-0 h-full overflow-y-auto px-5 sm:px-7 py-5 custom-scrollbar space-y-5">
-              {/* Top Search & Action Bar */}
-              <div className="bg-white rounded-2xl px-4 py-2.5 border border-gray-100 flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 flex-1 min-w-[220px]">
-                  <Search className="w-4 h-4 text-zinc-400" />
-                  <input
-                    type="text"
-                    value={globalSearch}
-                    onChange={(e) => setGlobalSearch(e.target.value)}
-                    placeholder="Cari menu, kategori, atau ID pesanan..."
-                    className="w-full bg-transparent text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none py-1"
-                  />
-                  {globalSearch && (
+            {/* MAIN MENU */}
+            <div className="mb-6">
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
+                MAIN MENU
+              </span>
+              <nav className="space-y-1">
+                {[
+                  { id: "dashboard", label: "Dashboard", icon: Home },
+                  { id: "transactions", label: "Transaction", icon: Receipt },
+                  { id: "analytics", label: "Analytics", icon: BarChart2 },
+                  {
+                    id: "crud",
+                    label: "Menu CRUD & Stok",
+                    icon: UtensilsCrossed,
+                  },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activePage === item.id;
+                  return (
                     <button
                       type="button"
-                      onClick={() => setGlobalSearch("")}
-                      className="text-zinc-400 hover:text-zinc-700 cursor-pointer"
+                      key={item.id}
+                      onClick={() => setActivePage(item.id as AdminPageTab)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${
+                        isActive
+                          ? "bg-[#F1F5F9] text-[#2563EB] font-bold"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                      }`}
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <Icon
+                        className={`w-4 h-4 ${
+                          isActive ? "text-[#2563EB]" : "text-slate-400"
+                        }`}
+                      />
+                      <span>{item.label}</span>
                     </button>
-                  )}
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* OTHER */}
+            <div>
+              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider px-3 mb-2">
+                OTHER
+              </span>
+              <nav className="space-y-1">
+                <button
+                  type="button"
+                  onClick={() => setActivePage("crud")}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition cursor-pointer"
+                >
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  <span>Settings & Katalog</span>
+                </button>
+
+                <Link
+                  href="/"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition"
+                >
+                  <HelpCircle className="w-4 h-4 text-slate-400" />
+                  <span>Halaman Pembeli (POS)</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={logoutAdmin}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-rose-50 hover:text-rose-600 font-medium transition cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 text-slate-400" />
+                  <span>Sign Out</span>
+                </button>
+              </nav>
+            </div>
+          </div>
+
+          {/* Bottom Action Card (FinPay Bottom Card Style) */}
+          <div className="mt-6 pt-2">
+            <div className="bg-[#F8FAFC] rounded-2xl p-4 border border-slate-200/70">
+              <div className="flex items-center justify-between mb-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-bold">
+                  POS Pro
+                </span>
+                <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+              </div>
+              <p className="text-xs font-bold text-slate-800">
+                Update Menu Baru!
+              </p>
+              <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                Tambah varian makanan atau atur stok kantin
+              </p>
+              <button
+                type="button"
+                onClick={openCreateModal}
+                className="w-full mt-3 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shadow-xs"
+              >
+                + Tambah Menu
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* =====================================================================
+          2. RIGHT MAIN CONTENT AREA (Top Header + Bento Grid)
+         ===================================================================== */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* TOP HEADER BAR (Exact FinPay Header) */}
+        <header className="h-16 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between shrink-0 z-10">
+          <div className="flex items-center gap-3">
+            {!isAdminSidebarOpen && (
+              <button
+                type="button"
+                onClick={() => setIsAdminSidebarOpen(true)}
+                className="w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition cursor-pointer"
+                title="Buka Sidebar"
+              >
+                <PanelLeft className="w-4 h-4" />
+              </button>
+            )}
+            <h1 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+              Hey Admin, Welcome back! 👋🏻
+            </h1>
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Search Box with ⌘K badge */}
+            <div className="relative hidden sm:flex items-center bg-[#F8FAFC] border border-slate-200/80 rounded-xl px-3 py-1.5 w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
+              <input
+                type="text"
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                placeholder="Search"
+                className="w-full bg-transparent text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none"
+              />
+              {globalSearch ? (
+                <button
+                  type="button"
+                  onClick={() => setGlobalSearch("")}
+                  className="text-slate-400 hover:text-slate-700 cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              ) : (
+                <span className="text-[10px] font-semibold text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200/70 shrink-0">
+                  ⌘ K
+                </span>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                showToast(`${recentOrders.length} transaksi tercatat hari ini.`)
+              }
+              className="w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition cursor-pointer relative"
+              title="Notifikasi Pesanan"
+            >
+              <Bell className="w-4 h-4" />
+              <span className="w-2 h-2 rounded-full bg-[#2563EB] absolute top-2 right-2" />
+            </button>
+          </div>
+        </header>
+
+        {/* ===================================================================
+            VIEW A: HALAMAN UTAMA DASHBOARD (Exact FinPay 3-Column Bento Grid)
+           =================================================================== */}
+        {activePage === "dashboard" || activePage === "analytics" ? (
+          <main className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 max-w-[1600px] mx-auto">
+              {/* -------------------------------------------------------------
+                  COLUMN 1 (LEFT — 3 cols): Blue POS Card + 4 Quick Actions + Target Harian + Popular Items
+                 ------------------------------------------------------------- */}
+              <div className="xl:col-span-3 space-y-5">
+                {/* 1. Royal Blue POS Terminal Card */}
+                <div className="bg-gradient-to-br from-[#2563EB] to-[#1D4ED8] rounded-2xl p-5 text-white shadow-[0_10px_25px_rgba(37,99,235,0.22)] relative overflow-hidden">
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="w-9 h-7 rounded-md bg-white/20 border border-white/30 flex items-center justify-center">
+                      <CreditCard className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+                      <div className="w-3.5 h-3.5 rounded-full bg-white" />
+                    </div>
+                  </div>
+
+                  <span className="block text-[10px] text-blue-200 font-medium">
+                    Terminal Kasir ID
+                  </span>
+                  <p className="text-sm font-bold tracking-wider mt-0.5 font-mono">
+                    2243 9830 6500 9982
+                  </p>
+
+                  <div className="flex items-end justify-between mt-5 pt-2">
+                    <div>
+                      <span className="block text-[10px] text-blue-200 font-medium">
+                        Saldo Kasir Aktif
+                      </span>
+                      <span className="text-lg font-extrabold tabular-nums">
+                        {formatRupiah(totalIncome)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 text-right">
+                      <div>
+                        <span className="block text-[9px] text-blue-200 uppercase">
+                          SHIFT
+                        </span>
+                        <span className="text-[11px] font-bold">01/26</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] text-blue-200 uppercase">
+                          POS
+                        </span>
+                        <span className="text-[11px] font-bold">AKTIF</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2.5">
-                  <span className="px-3 py-1 rounded-full bg-[#F8F9FB] border border-gray-200/60 text-zinc-600 text-[11px] font-semibold">
-                    Total Terjual:{" "}
-                    <strong className="text-zinc-900">{totalSoldUnits} pcs</strong>
-                  </span>
+                {/* 2. 4 Quick Action Buttons Row */}
+                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 grid grid-cols-4 gap-2 text-center">
+                  <button
+                    type="button"
+                    onClick={openCreateModal}
+                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                      <Plus className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-600">
+                      Add Menu
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setActivePage("crud")}
-                    className="px-3.5 py-1.5 rounded-full bg-zinc-900 hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition cursor-pointer"
                   >
-                    <span>Kelola Menu</span>
-                    <ArrowUpRight className="w-3.5 h-3.5" />
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                      <FolderKanban className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-600">
+                      CRUD Stok
+                    </span>
                   </button>
-                </div>
-              </div>
 
-              {/* 3 Clean Status Cards Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-3xl font-extrabold text-zinc-900 tracking-tight tabular-nums">
-                      {String(preparingCount).padStart(2, "0")}
-                    </span>
-                    <p className="text-xs font-medium text-zinc-400 mt-1">
-                      Preparing (Diproses)
-                    </p>
-                    <span className="inline-block mt-2.5 px-2 py-0.5 rounded-md bg-[#FFF5EF] text-[#FF6B2C] text-[10px] font-bold">
-                      +12.5% hari ini
-                    </span>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-[#FFF5EF] text-[#FF6B2C] flex items-center justify-center">
-                    <Flame className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-3xl font-extrabold text-zinc-900 tracking-tight tabular-nums">
-                      {String(outForDeliveryCount).padStart(2, "0")}
-                    </span>
-                    <p className="text-xs font-medium text-zinc-400 mt-1">
-                      Ready / Siap Saji
-                    </p>
-                    <span className="inline-block mt-2.5 px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-600 text-[10px] font-bold">
-                      +8.2% hari ini
-                    </span>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-[#F8F9FB] text-zinc-700 border border-gray-200/60 flex items-center justify-center">
-                    <Truck className="w-5 h-5" />
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-3xl font-extrabold text-zinc-900 tracking-tight tabular-nums">
-                      {String(deliveredCount).padStart(2, "0")}
-                    </span>
-                    <p className="text-xs font-medium text-zinc-400 mt-1">
-                      Completed / Selesai
-                    </p>
-                    <span className="inline-block mt-2.5 px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 text-[10px] font-bold">
-                      +38.1% bulan ini
-                    </span>
-                  </div>
-                  <div className="w-12 h-12 rounded-2xl bg-[#F8F9FB] text-zinc-700 border border-gray-200/60 flex items-center justify-center">
-                    <Package className="w-5 h-5" />
-                  </div>
-                </div>
-              </div>
-
-              {/* ALIRAN PENDAPATAN (HARI / MINGGU / BULAN) + KATEGORI PRODUK */}
-              <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-                {/* Left (7 cols): Aliran Pendapatan Full Visual */}
-                <div className="xl:col-span-7 bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 flex flex-col justify-between">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-[#FF6B2C]" />
-                        <h3 className="text-sm font-bold text-zinc-900">
-                          {currentRevenueData.title}
-                        </h3>
-                      </div>
-                      <p className="text-xs text-zinc-400 mt-0.5">
-                        {currentRevenueData.subtitle} •{" "}
-                        <span className="text-emerald-600 font-semibold">
-                          {currentRevenueData.growth}
-                        </span>
-                      </p>
-                    </div>
-
-                    {/* Timeframe Switcher: Per Hari | Per Minggu | Per Bulan */}
-                    <div className="flex items-center bg-[#F8F9FB] p-1 rounded-full border border-gray-200/60 self-start">
-                      {[
-                        { id: "daily", label: "Per Hari" },
-                        { id: "weekly", label: "Per Minggu" },
-                        { id: "monthly", label: "Per Bulan" },
-                      ].map((tf) => {
-                        const isAct = revenueTimeframe === tf.id;
-                        return (
-                          <button
-                            type="button"
-                            key={tf.id}
-                            onClick={() => {
-                              setRevenueTimeframe(tf.id as RevenueTimeframe);
-                              setSelectedBarIndex(4);
-                            }}
-                            className={`px-3 py-1 rounded-full text-[11px] transition cursor-pointer ${
-                              isAct
-                                ? "bg-zinc-900 text-white font-semibold"
-                                : "text-zinc-500 hover:text-zinc-900 font-medium"
-                            }`}
-                          >
-                            {tf.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Clean KPI Summary Strip */}
-                  <div className="grid grid-cols-3 gap-3 my-4 bg-[#F8F9FB] p-3.5 rounded-xl border border-gray-100">
-                    <div>
-                      <span className="block text-[10px] font-semibold text-zinc-400 uppercase">
-                        Total Pendapatan
-                      </span>
-                      <span className="text-sm sm:text-base font-extrabold text-zinc-900 tabular-nums mt-0.5 block">
-                        {formatRupiah(currentRevenueData.totalRevenue)}
-                      </span>
-                    </div>
-
-                    <div className="border-x border-gray-200/70 px-3">
-                      <span className="block text-[10px] font-semibold text-zinc-400 uppercase">
-                        Periode ({activeBarPoint.label})
-                      </span>
-                      <span className="text-sm sm:text-base font-extrabold text-[#FF6B2C] tabular-nums mt-0.5 block">
-                        {formatRupiah(activeBarPoint.revenue)}
-                      </span>
-                    </div>
-
-                    <div className="pl-1">
-                      <span className="block text-[10px] font-semibold text-zinc-400 uppercase">
-                        Transaksi
-                      </span>
-                      <span className="text-sm sm:text-base font-extrabold text-zinc-900 tabular-nums mt-0.5 block">
-                        {activeBarPoint.orders} Order
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Minimalist Bar Chart (Only #FF6B2C for active bar & soft zinc for others) */}
-                  <div
-                    className="grid gap-2 items-end h-44 pt-4 px-1"
-                    style={{
-                      gridTemplateColumns: `repeat(${currentRevenueData.bars.length}, minmax(0, 1fr))`,
-                    }}
+                  <button
+                    type="button"
+                    onClick={() => setActivePage("transactions")}
+                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition cursor-pointer"
                   >
-                    {currentRevenueData.bars.map((bar, idx) => {
-                      const isSelected = idx === safeSelectedBar;
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                      <Receipt className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-600">
+                      Pesanan
+                    </span>
+                  </button>
+
+                  <Link
+                    href="/"
+                    className="flex flex-col items-center gap-1.5 py-1.5 rounded-xl hover:bg-slate-50 transition"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                      <ExternalLink className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-600">
+                      Buka POS
+                    </span>
+                  </Link>
+                </div>
+
+                {/* 3. Daily Target Card (with FinPay Striped Progress Bar) */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-900">
+                      Target Omzet Harian
+                    </h3>
+                    <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                  </div>
+
+                  <StripedProgressBar percentage={76} />
+
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-slate-500">
+                      <strong className="text-slate-900">Rp 1.520.000</strong> •
+                      76%
+                    </span>
+                    <span className="font-bold text-slate-900">
+                      Rp 2.000.000
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. Popular Items Card (Adapted from "Saving Plans" in FinPay) */}
+                <div className="bg-white rounded-2xl p-4 border border-slate-200/80 space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-xs font-bold text-slate-900">
+                      Popular Items
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setActivePage("crud")}
+                      className="text-[11px] font-bold text-slate-600 hover:text-[#2563EB] cursor-pointer"
+                    >
+                      + Kelola Menu
+                    </button>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] text-slate-400">
+                      Total Unit Terjual
+                    </span>
+                    <span className="text-lg font-extrabold text-slate-900 tabular-nums">
+                      {totalSoldUnits} Pcs
+                    </span>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {topPopularItems.map((item) => {
+                      const totalCap = Math.max(
+                        1,
+                        item.soldCount + item.stock
+                      );
+                      const soldPct = Math.round(
+                        (item.soldCount / totalCap) * 100
+                      );
+
                       return (
                         <div
-                          key={bar.label}
-                          onClick={() => setSelectedBarIndex(idx)}
-                          className="flex flex-col items-center gap-2 h-full justify-end cursor-pointer group"
+                          key={item.id}
+                          onClick={() => openEditModal(item)}
+                          className="p-3 rounded-xl border border-slate-200/70 hover:border-blue-300 transition cursor-pointer space-y-2"
                         >
-                          <span
-                            className={`text-[9.5px] font-bold transition-opacity ${
-                              isSelected
-                                ? "text-[#FF6B2C] opacity-100"
-                                : "text-zinc-400 opacity-0 group-hover:opacity-100"
-                            }`}
-                          >
-                            {bar.orders}x
-                          </span>
-
-                          <div className="w-full max-w-[24px] h-full bg-[#F1F3F6] rounded-full flex items-end overflow-hidden p-[2px]">
-                            <div
-                              style={{ height: `${bar.pct}%` }}
-                              className={`w-full rounded-full transition-all duration-300 ${
-                                isSelected
-                                  ? "bg-[#FF6B2C]"
-                                  : "bg-zinc-300 group-hover:bg-zinc-400"
-                              }`}
-                            />
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-6 h-6 rounded-md object-cover shrink-0"
+                              />
+                              <span className="text-xs font-bold text-slate-800 truncate">
+                                {item.name}
+                              </span>
+                            </div>
+                            <MoreVertical className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                           </div>
 
-                          <span
-                            className={`text-[10px] font-semibold truncate ${
-                              isSelected ? "text-zinc-900 font-bold" : "text-zinc-400"
-                            }`}
-                          >
-                            {bar.label}
-                          </span>
+                          <StripedProgressBar percentage={soldPct} />
+
+                          <div className="flex items-center justify-between text-[10.5px]">
+                            <span className="text-slate-500">
+                              <strong className="text-slate-800">
+                                {item.soldCount} Terjual
+                              </strong>{" "}
+                              • {soldPct}%
+                            </span>
+                            <span className="font-bold text-slate-800">
+                              {formatRupiah(getEffectivePrice(item))}
+                            </span>
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
+              </div>
 
-                {/* Right (5 cols): Kategori Produk (Clean Uniform Progress Bars) */}
-                <div className="xl:col-span-5 bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-                      <div className="flex items-center gap-2">
-                        <PieChart className="w-4 h-4 text-[#FF6B2C]" />
-                        <div>
-                          <h3 className="text-sm font-bold text-zinc-900">
-                            Kategori Produk
-                          </h3>
-                          <p className="text-xs text-zinc-400">
-                            Distribusi penjualan per kategori
-                          </p>
-                        </div>
+              {/* -------------------------------------------------------------
+                  COLUMN 2 (CENTER — 6 cols): 3 KPI Cards + Money Statistics Bidirectional Chart + Recent Transaction Table
+                 ------------------------------------------------------------- */}
+              <div className="xl:col-span-6 space-y-5">
+                {/* 1. Top 3 KPI Cards: Total Income, Total Expenses, Net Profit */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Total Income */}
+                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                        <ArrowDownLeft className="w-4 h-4 text-[#2563EB]" />
                       </div>
-                      <span className="px-2.5 py-1 rounded-full bg-[#F8F9FB] border border-gray-200/60 text-zinc-600 text-[10.5px] font-semibold">
-                        {categoryBreakdown.length} Kategori
+                      <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-slate-400 font-medium">
+                        Total Pendapatan
+                      </span>
+                      <span className="text-lg font-extrabold text-slate-900 tabular-nums mt-0.5 block">
+                        {formatRupiah(totalIncome)}
+                      </span>
+                      <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold">
+                        +Rp 1,5 Jt (26%)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Total Expenses */}
+                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                        <ArrowUpRight className="w-4 h-4 text-rose-500" />
+                      </div>
+                      <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-slate-400 font-medium">
+                        Biaya Operasional
+                      </span>
+                      <span className="text-lg font-extrabold text-slate-900 tabular-nums mt-0.5 block">
+                        {formatRupiah(totalExpenses)}
+                      </span>
+                      <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-rose-50 text-rose-500 text-[10px] font-bold">
+                        -Rp 650 Rb (15%)
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Total Net Profit */}
+                  <div className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col justify-between">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200/70 flex items-center justify-center text-slate-700">
+                        <Wallet className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
+                    <div>
+                      <span className="block text-[11px] text-slate-400 font-medium">
+                        Laba Bersih
+                      </span>
+                      <span className="text-lg font-extrabold text-slate-900 tabular-nums mt-0.5 block">
+                        {formatRupiah(totalNetProfit)}
+                      </span>
+                      <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold">
+                        +Rp 2,1 Jt (70%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Aliran Pendapatan (Money Statistics Bidirectional Bar Chart: Per Hari / Minggu / Bulan) */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Aliran Pendapatan (Money Statistics)
+                    </h3>
+
+                    {/* Per Hari | Per Minggu | Per Bulan Switcher */}
+                    <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-xl border border-slate-200/70">
+                      {[
+                        { id: "daily", label: "Per Hari" },
+                        { id: "weekly", label: "Per Minggu" },
+                        { id: "monthly", label: "Per Bulan" },
+                      ].map((tf) => (
+                        <button
+                          type="button"
+                          key={tf.id}
+                          onClick={() => {
+                            setRevenueTimeframe(tf.id as RevenueTimeframe);
+                            setSelectedBarIndex(4);
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                            revenueTimeframe === tf.id
+                              ? "bg-white text-[#2563EB] shadow-2xs"
+                              : "text-slate-500 hover:text-slate-800"
+                          }`}
+                        >
+                          {tf.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Balance + Legend + Floating Tooltip */}
+                  <div className="flex flex-wrap items-end justify-between gap-4 mb-5 relative">
+                    <div>
+                      <span className="block text-[10px] text-slate-400">
+                        Total Omzet ({currentDataset.label})
+                      </span>
+                      <span className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums">
+                        {formatRupiah(currentDataset.balance)}
                       </span>
                     </div>
 
-                    <div className="space-y-3.5 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
-                      {categoryBreakdown.map((cat, i) => {
-                        const widthPct = Math.max(
-                          12,
-                          Math.round((cat.revenue / maxCategoryRevenue) * 100)
-                        );
+                    {/* Floating Callout Card matching FinPay Jun 2025 tooltip */}
+                    <div className="bg-white rounded-xl px-3.5 py-2 border border-slate-200/90 shadow-md text-[11px]">
+                      <span className="block font-bold text-slate-400 text-[10px] mb-0.5">
+                        Sorotan: {activePoint.label}
+                      </span>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-slate-500">Pendapatan</span>
+                        <strong className="text-slate-900 tabular-nums">
+                          {formatRupiah(activePoint.income)}
+                        </strong>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <span className="text-slate-500">Modal</span>
+                        <strong className="text-slate-900 tabular-nums">
+                          {formatRupiah(activePoint.expense)}
+                        </strong>
+                      </div>
+                    </div>
 
-                        return (
-                          <div key={cat.category} className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-zinc-800">
-                                  {cat.category}
-                                </span>
-                                <span className="text-[11px] text-zinc-400">
-                                  {cat.itemCount} menu • {cat.sold} terjual
-                                </span>
-                              </div>
-                              <span className="font-bold text-zinc-900 tabular-nums">
-                                {formatRupiah(cat.revenue)}
-                              </span>
-                            </div>
-
-                            <div className="w-full h-2 rounded-full bg-[#F1F3F6] overflow-hidden">
-                              <div
-                                style={{ width: `${widthPct}%` }}
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  i === 0 ? "bg-[#FF6B2C]" : "bg-zinc-800"
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
+                    {/* Legend */}
+                    <div className="flex items-center gap-4 text-xs font-semibold">
+                      <span className="flex items-center gap-1.5 text-slate-700">
+                        <span className="w-2.5 h-2.5 rounded-xs bg-[#2563EB] inline-block" />
+                        Pendapatan
+                      </span>
+                      <span className="flex items-center gap-1.5 text-slate-700">
+                        <span className="w-2.5 h-2.5 rounded-xs bg-[#93C5FD] inline-block" />
+                        Modal
+                      </span>
                     </div>
                   </div>
 
-                  <div className="pt-3 mt-3 border-t border-gray-100 flex items-center justify-between text-xs">
-                    <span className="text-zinc-400">
-                      Atur produk & kategori di halaman CRUD
+                  {/* Bidirectional Positive/Negative Bar Chart matching FinPay */}
+                  <div className="flex gap-3">
+                    {/* Left Y-Axis Labels */}
+                    <div className="flex flex-col justify-between text-[10px] font-semibold text-slate-400 py-1 pb-6 shrink-0">
+                      <span>8 Jt</span>
+                      <span>4 Jt</span>
+                      <span>0</span>
+                      <span>-4 Jt</span>
+                      <span>-8 Jt</span>
+                    </div>
+
+                    {/* Bars Grid */}
+                    <div className="flex-1">
+                      <div
+                        className="grid gap-2 h-44 items-center relative"
+                        style={{
+                          gridTemplateColumns: `repeat(${currentDataset.bars.length}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {/* Horizontal Dashed Grid Lines */}
+                        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+                          <div className="border-b border-dashed border-slate-100" />
+                          <div className="border-b border-dashed border-slate-100" />
+                          <div className="border-b border-slate-200/80" />
+                          <div className="border-b border-dashed border-slate-100" />
+                          <div className="border-b border-dashed border-slate-100" />
+                        </div>
+
+                        {currentDataset.bars.map((bar, idx) => {
+                          const isSelected = idx === safeBarIdx;
+                          return (
+                            <div
+                              key={bar.label}
+                              onClick={() => setSelectedBarIndex(idx)}
+                              className="h-full flex flex-col items-center justify-center relative z-10 cursor-pointer group"
+                            >
+                              {/* Top Half (Positive Income Bar in Royal Blue #2563EB) */}
+                              <div className="w-full h-1/2 flex items-end justify-center pb-[1px]">
+                                <div
+                                  style={{ height: `${bar.inPct}%` }}
+                                  className={`w-full max-w-[20px] rounded-t-md transition-all duration-300 ${
+                                    isSelected
+                                      ? "bg-[#1D4ED8] ring-2 ring-blue-200"
+                                      : "bg-[#2563EB] group-hover:bg-[#1D4ED8]"
+                                  }`}
+                                />
+                              </div>
+
+                              {/* Bottom Half (Negative Expense Bar in Soft Sky Blue #93C5FD) */}
+                              <div className="w-full h-1/2 flex items-start justify-center pt-[1px]">
+                                <div
+                                  style={{ height: `${bar.exPct}%` }}
+                                  className={`w-full max-w-[20px] rounded-b-md transition-all duration-300 ${
+                                    isSelected
+                                      ? "bg-[#60A5FA]"
+                                      : "bg-[#93C5FD] group-hover:bg-[#60A5FA]"
+                                  }`}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* X-Axis Labels */}
+                      <div
+                        className="grid gap-2 mt-2 text-center"
+                        style={{
+                          gridTemplateColumns: `repeat(${currentDataset.bars.length}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {currentDataset.bars.map((bar, idx) => (
+                          <span
+                            key={bar.label}
+                            className={`text-[10px] font-semibold ${
+                              idx === safeBarIdx
+                                ? "text-[#2563EB] font-bold"
+                                : "text-slate-400"
+                            }`}
+                          >
+                            {bar.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Recent Transaction Table (Pesanan Terbaru) */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Recent Transaction (Pesanan Terbaru)
+                    </h3>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setActivePage("transactions")}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200/80 text-[11px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                      >
+                        Minggu Ini ▾
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActivePage("transactions")}
+                        className="w-8 h-8 rounded-lg border border-slate-200/80 flex items-center justify-center text-slate-600 hover:bg-slate-50 cursor-pointer"
+                        title="Lihat Semua Transaksi"
+                      >
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-[#F8FAFC] text-[10.5px] font-semibold text-slate-400 border-y border-slate-200/70">
+                          <th className="py-2.5 px-3">Menu & Pelanggan ⇅</th>
+                          <th className="py-2.5 px-3">Waktu ⇅</th>
+                          <th className="py-2.5 px-3">Nominal ⇅</th>
+                          <th className="py-2.5 px-3">Metode ⇅</th>
+                          <th className="py-2.5 px-3 text-right">Status ⇅</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs">
+                        {filteredOrders.map((ord) => {
+                          const currentStatus: OrderStatusType =
+                            ord.status || "Preparing";
+                          const nextStatus: OrderStatusType =
+                            currentStatus === "Preparing"
+                              ? "Ready"
+                              : currentStatus === "Ready"
+                              ? "Completed"
+                              : "Preparing";
+                          const firstItem =
+                            ord.items[0]?.product.name || "Pesanan Menu";
+
+                          return (
+                            <tr
+                              key={ord.id}
+                              className="hover:bg-slate-50/80 transition"
+                            >
+                              <td className="py-3 px-3">
+                                <p className="font-bold text-slate-900">
+                                  {firstItem}
+                                  {ord.items.length > 1
+                                    ? ` +${ord.items.length - 1} lainnya`
+                                    : ""}
+                                </p>
+                                <span className="text-[10.5px] text-slate-400">
+                                  {ord.customerName} ({ord.orderNumber})
+                                </span>
+                              </td>
+                              <td className="py-3 px-3">
+                                <p className="font-semibold text-slate-800">
+                                  2026-11-03
+                                </p>
+                                <span className="text-[10.5px] text-slate-400">
+                                  {ord.createdAt}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 font-extrabold text-slate-900 tabular-nums">
+                                {formatRupiah(ord.totalAmount)}
+                              </td>
+                              <td className="py-3 px-3 text-slate-500 text-[11px]">
+                                Pembayaran {ord.paymentMethod}
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    updateOrderStatus(ord.id, nextStatus);
+                                    showToast(
+                                      `Status ${ord.orderNumber} -> ${nextStatus}`
+                                    );
+                                  }}
+                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer ${
+                                    currentStatus === "Completed"
+                                      ? "bg-emerald-50 text-emerald-600"
+                                      : currentStatus === "Ready"
+                                      ? "bg-blue-50 text-[#2563EB]"
+                                      : "bg-amber-50 text-amber-600"
+                                  }`}
+                                >
+                                  {currentStatus === "Completed"
+                                    ? "Successful"
+                                    : currentStatus}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* -------------------------------------------------------------
+                  COLUMN 3 (RIGHT — 3 cols): Statistics Donut Chart (Kategori Produk) + Recent Activity Timeline
+                 ------------------------------------------------------------- */}
+              <div className="xl:col-span-3 space-y-5">
+                {/* 1. Statistics Donut Chart Card (Kategori Produk) */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Statistics (Kategori)
+                    </h3>
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      Bulan Ini ▾
                     </span>
+                  </div>
+
+                  {/* Sub-tabs matching FinPay Statistics card */}
+                  <div className="grid grid-cols-2 border-b border-slate-100 text-[11px] mb-5">
                     <button
                       type="button"
-                      onClick={() => setActivePage("crud")}
-                      className="text-[#FF6B2C] font-bold hover:underline cursor-pointer"
+                      onClick={() => setStatsSubTab("income")}
+                      className={`pb-2 font-bold transition cursor-pointer ${
+                        statsSubTab === "income"
+                          ? "text-slate-900 border-b-2 border-[#2563EB]"
+                          : "text-slate-400"
+                      }`}
                     >
-                      Buka CRUD ➔
+                      Omzet • Rp 10,4 Jt
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStatsSubTab("sold")}
+                      className={`pb-2 font-bold transition cursor-pointer ${
+                        statsSubTab === "sold"
+                          ? "text-slate-900 border-b-2 border-[#2563EB]"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      Terjual • {totalSoldUnits} Pcs
                     </button>
                   </div>
-                </div>
-              </div>
 
-              {/* POPULAR ITEMS SHOWCASE */}
-              <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-5">
-                  <div>
-                    <h3 className="text-sm font-bold text-zinc-900">
-                      Popular Items (Menu Terlaris)
+                  {/* Multi-Segment SVG Donut Chart */}
+                  <div className="relative w-44 h-44 mx-auto my-4 flex items-center justify-center">
+                    <svg
+                      viewBox="0 0 36 36"
+                      className="w-full h-full -rotate-90"
+                    >
+                      <circle
+                        cx="18"
+                        cy="18"
+                        r="15.915"
+                        fill="transparent"
+                        stroke="#F1F5F9"
+                        strokeWidth="4.2"
+                      />
+                      {donutSegments.map((seg) => (
+                        <circle
+                          key={seg.category}
+                          cx="18"
+                          cy="18"
+                          r="15.915"
+                          fill="transparent"
+                          stroke={seg.color}
+                          strokeWidth="4.2"
+                          strokeDasharray={seg.strokeDasharray}
+                          strokeDashoffset={seg.strokeDashoffset}
+                          strokeLinecap="butt"
+                        />
+                      ))}
+                    </svg>
+
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {statsSubTab === "income"
+                          ? "Total Kategori"
+                          : "Unit Terjual"}
+                      </span>
+                      <span className="text-base font-extrabold text-slate-900 tabular-nums mt-0.5">
+                        {statsSubTab === "income"
+                          ? formatRupiah(totalCategoryRevenue)
+                          : `${totalSoldUnits} Pcs`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Category Legend List */}
+                  <div className="space-y-3 mt-5">
+                    {donutSegments.map((seg) => (
+                      <div
+                        key={seg.category}
+                        className="flex items-center justify-between text-xs"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span
+                            style={{ backgroundColor: seg.color }}
+                            className="w-3.5 h-3.5 rounded-md inline-block shrink-0"
+                          />
+                          <span className="font-semibold text-slate-700">
+                            {seg.category}{" "}
+                            <span className="text-slate-400 font-normal">
+                              • {seg.pct}%
+                            </span>
+                          </span>
+                        </div>
+                        <span className="font-bold text-slate-900 tabular-nums">
+                          {statsSubTab === "income"
+                            ? formatRupiah(seg.revenue)
+                            : `${seg.sold} Pcs`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Recent Activity Timeline Card */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-200/80">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Recent Activity
                     </h3>
-                    <p className="text-xs text-zinc-400">
-                      Menu dengan tingkat pemesanan tertinggi
-                    </p>
+                    <MoreVertical className="w-3.5 h-3.5 text-slate-400" />
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setActivePage("crud")}
-                    className="self-start sm:self-auto px-4 py-1.5 rounded-full bg-[#FFF5EF] text-[#FF6B2C] hover:bg-[#FF6B2C] hover:text-white text-xs font-bold transition cursor-pointer"
-                  >
-                    Edit Katalog Menu ➔
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {popularItemsList.map((item, rankIdx) => {
-                    const effectivePrice = getEffectivePrice(item);
-                    const itemRevenue = item.soldCount * effectivePrice;
-
-                    return (
-                      <div
-                        key={item.id}
-                        className="bg-[#F8F9FB] hover:bg-white rounded-2xl p-3.5 border border-gray-100 hover:border-gray-200/80 transition flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-white mb-3">
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                            <span className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-white/95 text-zinc-900 text-[10px] font-bold flex items-center gap-1 shadow-2xs">
-                              <Star className="w-3 h-3 fill-[#FF6B2C] text-[#FF6B2C]" />
-                              4.{9 - (rankIdx % 2)}
-                            </span>
-                          </div>
-
-                          <h4 className="font-bold text-zinc-900 text-xs sm:text-[13px] truncate">
-                            {item.name}
-                          </h4>
-                          <span className="block text-[10.5px] text-zinc-400 mt-0.5">
-                            {item.category} • {item.soldCount} terjual
-                          </span>
-                        </div>
-
-                        <div className="mt-3 pt-2.5 border-t border-gray-200/60 flex items-center justify-between text-xs">
-                          <span className="font-bold text-zinc-900 tabular-nums">
-                            {formatRupiah(effectivePrice)}
-                          </span>
-                          <span className="font-bold text-[#FF6B2C] tabular-nums">
-                            {formatRupiah(itemRevenue)}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </main>
-
-            {/* RIGHT PANEL: PESANAN TERBARU (RECENT ORDERS) */}
-            <aside className="w-[320px] xl:w-[355px] bg-white border-l border-gray-100 p-5 flex flex-col gap-4 shrink-0 h-full overflow-y-auto custom-scrollbar">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-bold text-zinc-900">
-                    Pesanan Terbaru
-                  </h3>
-                  <p className="text-[11px] text-zinc-400">
-                    Antrean transaksi pembeli
-                  </p>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-[#F8F9FB] border border-gray-200/60 text-zinc-700 text-[10.5px] font-bold">
-                  {filteredOrders.length} Order
-                </span>
-              </div>
-
-              <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                {filteredOrders.length === 0 ? (
-                  <div className="text-center py-12 text-xs text-zinc-400">
-                    Belum ada pesanan terbaru.
-                  </div>
-                ) : (
-                  filteredOrders.map((order) => {
-                    const currentStatus: OrderStatusType =
-                      order.status || "Preparing";
-                    const nextStatus: OrderStatusType =
-                      currentStatus === "Preparing"
-                        ? "Ready"
-                        : currentStatus === "Ready"
-                        ? "Completed"
-                        : "Preparing";
-
-                    return (
-                      <div
-                        key={order.id}
-                        className="rounded-2xl bg-[#F8F9FB] p-3.5 border border-gray-100 space-y-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-xs text-zinc-900 truncate">
-                                {order.customerName}
-                              </span>
-                              <span className="px-1.5 py-0.5 rounded bg-zinc-200/70 text-zinc-700 text-[9.5px] font-bold shrink-0">
-                                {order.orderNumber}
-                              </span>
-                            </div>
-                            <span className="block text-[10px] text-zinc-400 mt-0.5">
-                              {order.createdAt} • {order.paymentMethod}
-                            </span>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              updateOrderStatus(order.id, nextStatus);
-                              showToast(
-                                `Status order ${order.orderNumber} -> ${nextStatus}`
-                              );
-                            }}
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition cursor-pointer shrink-0 ${
-                              currentStatus === "Completed"
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                : currentStatus === "Ready"
-                                ? "bg-zinc-900 text-white"
-                                : "bg-[#FFF5EF] text-[#FF6B2C] border border-[#FF6B2C]/30"
-                            }`}
-                            title="Klik untuk ubah status pesanan"
+                  <div className="space-y-4">
+                    <div>
+                      <span className="block text-xs font-bold text-slate-900 mb-3">
+                        Today
+                      </span>
+                      <div className="space-y-3.5 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
+                        {[
+                          {
+                            title: `Order baru ${recentOrders[0]?.orderNumber || "#F8371"} diterima`,
+                            time: "14:05",
+                          },
+                          {
+                            title: "Sinkronisasi stok katalog menu aktif",
+                            time: "13:30",
+                          },
+                          {
+                            title: "Admin masuk ke portal manajemen",
+                            time: "12:45",
+                          },
+                        ].map((act, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-3 relative z-10"
                           >
-                            {currentStatus}
-                          </button>
-                        </div>
-
-                        <div className="space-y-1.5 pt-2 border-t border-gray-200/60">
-                          {order.items.map((line, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between gap-2 bg-white p-2 rounded-xl border border-gray-100"
-                            >
-                              <div className="flex items-center gap-2 min-w-0">
-                                <img
-                                  src={line.product.imageUrl}
-                                  alt={line.product.name}
-                                  className="w-8 h-8 rounded-lg object-cover shrink-0 bg-gray-100"
-                                />
-                                <div className="min-w-0">
-                                  <p className="font-semibold text-xs text-zinc-900 truncate">
-                                    {line.product.name}
-                                  </p>
-                                  <span className="text-[10px] text-zinc-400">
-                                    {line.quantity}x
-                                  </span>
-                                </div>
-                              </div>
-                              <span className="font-bold text-xs text-zinc-900 tabular-nums shrink-0">
-                                {formatRupiah(line.lineTotal)}
+                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200 flex items-center justify-center shrink-0">
+                              <Clock className="w-3.5 h-3.5 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800 leading-snug">
+                                {act.title}
+                              </p>
+                              <span className="text-[10px] text-slate-400">
+                                {act.time}
                               </span>
                             </div>
-                          ))}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1 text-xs">
-                          <span className="text-zinc-400">Total</span>
-                          <span className="font-extrabold text-[#FF6B2C] tabular-nums">
-                            {formatRupiah(order.totalAmount)}
-                          </span>
-                        </div>
+                          </div>
+                        ))}
                       </div>
-                    );
-                  })
-                )}
-              </div>
-            </aside>
-          </>
-        )}
+                    </div>
 
-        {/* ===================================================================
-            PAGE 2: HALAMAN KHUSUS CRUD MENU & MANAJEMEN STOK
-           =================================================================== */}
-        {activePage === "crud" && (
-          <main className="flex-1 min-w-0 h-full overflow-y-auto px-5 sm:px-8 py-6 custom-scrollbar space-y-5">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-2xl p-5 sm:p-6 border border-gray-100">
+                    <div>
+                      <span className="block text-xs font-bold text-slate-900 mb-3">
+                        Yesterday
+                      </span>
+                      <div className="space-y-3.5 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
+                        {[
+                          {
+                            title: "Rekapitulasi kasir harian ditutup",
+                            time: "21:00",
+                          },
+                          {
+                            title: "Restock 24 pcs Steak sapi bakar",
+                            time: "16:20",
+                          },
+                        ].map((act, i) => (
+                          <div
+                            key={i}
+                            className="flex items-start gap-3 relative z-10"
+                          >
+                            <div className="w-8 h-8 rounded-lg bg-[#F8FAFC] border border-slate-200 flex items-center justify-center shrink-0">
+                              <Clock className="w-3.5 h-3.5 text-slate-500" />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-800 leading-snug">
+                                {act.title}
+                              </p>
+                              <span className="text-[10px] text-slate-400">
+                                {act.time}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </main>
+        ) : activePage === "crud" ? (
+          /* ===================================================================
+              VIEW B: HALAMAN TERPISAH CRUD MENU & STOK (FinPay Clean Style)
+             =================================================================== */
+          <main className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar space-y-5">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h1 className="text-lg sm:text-xl font-extrabold text-zinc-900">
-                  Kelola Menu & Stok Produk (CRUD)
-                </h1>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Tambah menu baru, perbarui harga, foto, deskripsi, atau atur ketersediaan stok
+                <h2 className="text-lg font-extrabold text-slate-900">
+                  Manajemen CRUD Menu & Stok
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Tambah menu baru, ubah harga, foto, deskripsi, atau perbarui stok pcs
                 </p>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2.5">
-                <div className="px-3.5 py-2 rounded-xl bg-[#F8F9FB] border border-gray-100 text-xs">
-                  <span className="text-zinc-400 mr-1.5">Total Menu:</span>
-                  <strong className="text-zinc-900">{menuItems.length}</strong>
-                </div>
-
-                <div className="px-3.5 py-2 rounded-xl bg-[#F8F9FB] border border-gray-100 text-xs">
-                  <span className="text-zinc-400 mr-1.5">Stok Menipis:</span>
-                  <strong className="text-[#FF6B2C]">
-                    {menuItems.filter((m) => m.stock <= 5).length}
-                  </strong>
-                </div>
-
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setActivePage("dashboard")}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+                >
+                  ← Kembali ke Dashboard
+                </button>
                 <button
                   type="button"
                   onClick={openCreateModal}
-                  className="px-4 py-2.5 rounded-full bg-[#FF6B2C] hover:bg-[#e85d20] text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+                  className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Tambah Menu Baru</span>
@@ -1124,57 +1490,35 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            {/* Search & Category Filter Bar */}
-            <div className="bg-white rounded-2xl p-3.5 border border-gray-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 bg-[#F8F9FB] px-3.5 py-2 rounded-full border border-gray-200/60 flex-1 max-w-md">
-                <Search className="w-4 h-4 text-zinc-400" />
-                <input
-                  type="text"
-                  value={globalSearch}
-                  onChange={(e) => setGlobalSearch(e.target.value)}
-                  placeholder="Cari menu untuk diedit..."
-                  className="w-full bg-transparent text-xs font-medium text-zinc-800 placeholder:text-zinc-400 focus:outline-none"
-                />
-                {globalSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setGlobalSearch("")}
-                    className="text-zinc-400 hover:text-zinc-700 cursor-pointer"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 custom-scrollbar">
-                {[
-                  "All",
-                  "Rice bowl",
-                  "Chicken",
-                  "Seafood",
-                  "Pasta",
-                  "Coffee",
-                  "Beverages",
-                  "Appetizer",
-                  "Snack",
-                ].map((cat) => (
-                  <button
-                    type="button"
-                    key={cat}
-                    onClick={() => setCrudCategoryFilter(cat)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs transition cursor-pointer shrink-0 ${
-                      crudCategoryFilter === cat
-                        ? "border border-[#FF6B2C] bg-[#FFF5EF] text-[#FF6B2C] font-semibold"
-                        : "bg-[#F8F9FB] text-zinc-600 hover:bg-gray-100 font-medium"
-                    }`}
-                  >
-                    {cat}
-                  </button>
-                ))}
-              </div>
+            {/* Category Filter Pills */}
+            <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 flex items-center gap-1.5 overflow-x-auto custom-scrollbar">
+              {[
+                "All",
+                "Rice bowl",
+                "Chicken",
+                "Seafood",
+                "Pasta",
+                "Coffee",
+                "Beverages",
+                "Appetizer",
+                "Snack",
+              ].map((cat) => (
+                <button
+                  type="button"
+                  key={cat}
+                  onClick={() => setCrudCategoryFilter(cat)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer shrink-0 ${
+                    crudCategoryFilter === cat
+                      ? "bg-[#2563EB] text-white"
+                      : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
             </div>
 
-            {/* 4-Column Full CRUD Cards Grid */}
+            {/* 4-Column CRUD Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 pb-8">
               {crudFilteredItems.map((item) => {
                 const effectivePrice = getEffectivePrice(item);
@@ -1182,22 +1526,21 @@ export function AdminDashboard() {
                 return (
                   <div
                     key={item.id}
-                    className="bg-white rounded-2xl p-4 border border-gray-100 hover:border-gray-200 transition flex flex-col justify-between group"
+                    className="bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-blue-300 transition flex flex-col justify-between group"
                   >
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[10.5px] font-semibold text-zinc-400 uppercase tracking-wider">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                           {item.group} • {item.category}
                         </span>
-
                         {item.featured && (
-                          <span className="px-2 py-0.5 rounded bg-[#FFF5EF] text-[#FF6B2C] text-[9.5px] font-bold">
+                          <span className="px-2 py-0.5 rounded bg-blue-50 text-[#2563EB] text-[9.5px] font-bold">
                             FEATURED
                           </span>
                         )}
                       </div>
 
-                      <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-[#F8F9FB] my-2">
+                      <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-[#F8FAFC] my-2">
                         <img
                           src={item.imageUrl}
                           alt={item.name}
@@ -1205,8 +1548,8 @@ export function AdminDashboard() {
                           loading="lazy"
                         />
                         {item.stock <= 0 && (
-                          <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
-                            <span className="px-2.5 py-1 rounded-full bg-white text-zinc-900 text-[10px] font-bold">
+                          <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
+                            <span className="px-2.5 py-1 rounded-full bg-white text-slate-900 text-[10px] font-bold">
                               Stok Habis
                             </span>
                           </div>
@@ -1215,31 +1558,31 @@ export function AdminDashboard() {
 
                       <div className="flex items-baseline justify-between gap-2 mt-2.5">
                         <h4
-                          className="font-bold text-zinc-900 text-sm truncate"
+                          className="font-bold text-slate-900 text-sm truncate"
                           title={item.name}
                         >
                           {item.name}
                         </h4>
-                        <span className="font-extrabold text-[#FF6B2C] text-sm shrink-0 tabular-nums">
+                        <span className="font-extrabold text-[#2563EB] text-sm shrink-0 tabular-nums">
                           {formatRupiah(effectivePrice)}
                         </span>
                       </div>
 
-                      <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1 leading-relaxed">
+                      <p className="text-[11px] text-slate-400 line-clamp-2 mt-1 leading-relaxed">
                         {item.description}
                       </p>
 
                       {/* Stock Stepper */}
-                      <div className="flex items-center justify-between mt-3 p-2.5 rounded-xl bg-[#F8F9FB] border border-gray-100 text-xs">
+                      <div className="flex items-center justify-between mt-3 p-2.5 rounded-xl bg-[#F8FAFC] border border-slate-200/60 text-xs">
                         <div>
-                          <span className="block text-[10px] text-zinc-400">
-                            Stok
+                          <span className="block text-[10px] text-slate-400">
+                            Stok Tersedia
                           </span>
                           <span
                             className={`font-bold ${
                               item.stock <= 0
                                 ? "text-rose-600"
-                                : "text-zinc-900"
+                                : "text-slate-900"
                             }`}
                           >
                             {item.stock} pcs
@@ -1252,8 +1595,7 @@ export function AdminDashboard() {
                             onClick={() =>
                               updateProductStock(item.id, item.stock - 1)
                             }
-                            className="w-6 h-6 rounded-full bg-white border border-gray-200 hover:bg-gray-100 text-zinc-700 flex items-center justify-center cursor-pointer"
-                            title="Kurangi 1"
+                            className="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer"
                           >
                             <Minus className="w-3 h-3" />
                           </button>
@@ -1262,8 +1604,7 @@ export function AdminDashboard() {
                             onClick={() =>
                               updateProductStock(item.id, item.stock + 1)
                             }
-                            className="w-6 h-6 rounded-full bg-zinc-900 hover:bg-zinc-700 text-white flex items-center justify-center cursor-pointer"
-                            title="Tambah 1"
+                            className="w-6 h-6 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white flex items-center justify-center cursor-pointer"
                           >
                             <Plus className="w-3 h-3" />
                           </button>
@@ -1272,8 +1613,7 @@ export function AdminDashboard() {
                             onClick={() =>
                               updateProductStock(item.id, item.stock + 10)
                             }
-                            className="px-2 py-0.5 rounded-full bg-white border border-gray-200 hover:border-zinc-400 text-zinc-700 font-semibold text-[10px] cursor-pointer"
-                            title="Tambah 10"
+                            className="px-2 py-0.5 rounded-lg bg-white border border-slate-200 hover:border-blue-400 text-slate-700 font-semibold text-[10px] cursor-pointer"
                           >
                             +10
                           </button>
@@ -1281,12 +1621,11 @@ export function AdminDashboard() {
                       </div>
                     </div>
 
-                    {/* Edit & Delete Buttons */}
-                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100">
+                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-100">
                       <button
                         type="button"
                         onClick={() => openEditModal(item)}
-                        className="py-2 rounded-xl bg-[#F8F9FB] hover:bg-zinc-900 text-zinc-700 hover:text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        className="py-2 rounded-xl bg-[#F1F5F9] hover:bg-[#2563EB] text-slate-700 hover:text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                         <span>Edit</span>
@@ -1298,7 +1637,7 @@ export function AdminDashboard() {
                           deleteMenuItem(item.id);
                           showToast(`Menu "${item.name}" telah dihapus.`);
                         }}
-                        className="py-2 rounded-xl bg-[#F8F9FB] hover:bg-rose-50 text-zinc-500 hover:text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                        className="py-2 rounded-xl bg-[#F8FAFC] hover:bg-rose-50 text-slate-500 hover:text-rose-600 font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         <span>Hapus</span>
@@ -1309,25 +1648,27 @@ export function AdminDashboard() {
               })}
             </div>
           </main>
-        )}
-
-        {/* ===================================================================
-            PAGE 3: HALAMAN MANAJEMEN PESANAN
-           =================================================================== */}
-        {activePage === "orders" && (
-          <main className="flex-1 min-w-0 h-full overflow-y-auto px-5 sm:px-8 py-6 custom-scrollbar space-y-5">
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        ) : (
+          /* ===================================================================
+              VIEW C: HALAMAN TRANSAKSI LENGKAP
+             =================================================================== */
+          <main className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar space-y-5">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center justify-between">
               <div>
-                <h1 className="text-lg sm:text-xl font-extrabold text-zinc-900">
-                  Daftar Pesanan ({filteredOrders.length})
-                </h1>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Kelola status pesanan masuk dari Preparing, Ready, hingga Completed
+                <h2 className="text-lg font-extrabold text-slate-900">
+                  Daftar Seluruh Transaksi ({filteredOrders.length})
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Kelola status pesanan dari Preparing, Ready, hingga Completed
                 </p>
               </div>
-              <div className="px-4 py-2 rounded-xl bg-[#FFF5EF] text-[#FF6B2C] text-xs font-bold">
-                Total Transaksi Aktif: {formatRupiah(liveOrdersRevenue)}
-              </div>
+              <button
+                type="button"
+                onClick={() => setActivePage("dashboard")}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                ← Kembali ke Dashboard
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-8">
@@ -1337,20 +1678,20 @@ export function AdminDashboard() {
                 return (
                   <div
                     key={order.id}
-                    className="bg-white rounded-2xl p-5 border border-gray-100 flex flex-col justify-between space-y-4"
+                    className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col justify-between space-y-4"
                   >
                     <div>
-                      <div className="flex items-center justify-between gap-2 pb-3 border-b border-gray-100">
+                      <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm text-zinc-900">
+                            <span className="font-bold text-sm text-slate-900">
                               {order.customerName}
                             </span>
-                            <span className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 text-[10px] font-bold">
+                            <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
                               {order.orderNumber}
                             </span>
                           </div>
-                          <span className="block text-[11px] text-zinc-400 mt-0.5">
+                          <span className="block text-[11px] text-slate-400 mt-0.5">
                             {order.createdAt} • {order.paymentMethod}
                           </span>
                         </div>
@@ -1363,8 +1704,7 @@ export function AdminDashboard() {
                               `Order ${order.orderNumber} berhasil dihapus.`
                             );
                           }}
-                          className="w-7 h-7 rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center cursor-pointer"
-                          title="Hapus Transaksi"
+                          className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -1374,7 +1714,7 @@ export function AdminDashboard() {
                         {order.items.map((line, i) => (
                           <div
                             key={i}
-                            className="flex items-center justify-between text-xs bg-[#F8F9FB] p-2.5 rounded-xl"
+                            className="flex items-center justify-between text-xs bg-[#F8FAFC] p-2.5 rounded-xl"
                           >
                             <div className="flex items-center gap-2.5">
                               <img
@@ -1383,16 +1723,16 @@ export function AdminDashboard() {
                                 className="w-9 h-9 rounded-lg object-cover"
                               />
                               <div>
-                                <p className="font-semibold text-zinc-900">
+                                <p className="font-semibold text-slate-900">
                                   {line.product.name}
                                 </p>
-                                <span className="text-[10.5px] text-zinc-400">
+                                <span className="text-[10.5px] text-slate-400">
                                   {line.quantity} pcs x{" "}
                                   {formatRupiah(line.unitPrice)}
                                 </span>
                               </div>
                             </div>
-                            <span className="font-bold text-zinc-900 tabular-nums">
+                            <span className="font-bold text-slate-900 tabular-nums">
                               {formatRupiah(line.lineTotal)}
                             </span>
                           </div>
@@ -1400,10 +1740,10 @@ export function AdminDashboard() {
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-gray-100 space-y-3">
+                    <div className="pt-3 border-t border-slate-100 space-y-3">
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-400">Total (Termasuk Pajak)</span>
-                        <span className="text-sm font-extrabold text-[#FF6B2C] tabular-nums">
+                        <span className="text-slate-400">Total Bayar</span>
+                        <span className="text-sm font-extrabold text-[#2563EB] tabular-nums">
                           {formatRupiah(order.totalAmount)}
                         </span>
                       </div>
@@ -1417,18 +1757,14 @@ export function AdminDashboard() {
                             key={st}
                             onClick={() => {
                               updateOrderStatus(order.id, st);
-                              showToast(
-                                `Order ${order.orderNumber} -> ${st}`
-                              );
+                              showToast(`Order ${order.orderNumber} -> ${st}`);
                             }}
-                            className={`py-1.5 rounded-full text-[11px] font-semibold transition cursor-pointer ${
+                            className={`py-1.5 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
                               currentStatus === st
                                 ? st === "Completed"
                                   ? "bg-emerald-600 text-white"
-                                  : st === "Ready"
-                                  ? "bg-zinc-900 text-white"
-                                  : "bg-[#FF6B2C] text-white"
-                                : "bg-[#F8F9FB] text-zinc-500 hover:bg-gray-100"
+                                  : "bg-[#2563EB] text-white"
+                                : "bg-[#F8FAFC] text-slate-500 hover:bg-slate-100"
                             }`}
                           >
                             {st}
@@ -1454,25 +1790,25 @@ export function AdminDashboard() {
             backdropFilter: "blur(12px)",
             WebkitBackdropFilter: "blur(12px)",
           }}
-          className="fixed inset-0 z-[110] bg-zinc-950/55 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[110] bg-slate-950/55 flex items-center justify-center p-4"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-gray-100 max-h-[92vh] overflow-y-auto custom-scrollbar"
+            className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 max-h-[92vh] overflow-y-auto custom-scrollbar"
           >
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-5">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
               <div>
-                <h3 className="text-base font-extrabold text-zinc-900">
+                <h3 className="text-base font-extrabold text-slate-900">
                   {editingItem ? "Edit Menu Penjualan" : "Tambah Menu Baru"}
                 </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Perubahan otomatis diperbarui pada katalog pembeli
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Perubahan langsung diperbarui pada katalog pembeli
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCrudModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-[#F8F9FB] hover:bg-gray-100 text-zinc-500 flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#F8FAFC] hover:bg-slate-100 text-slate-500 flex items-center justify-center cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1480,7 +1816,7 @@ export function AdminDashboard() {
 
             <form onSubmit={handleSaveMenu} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-zinc-700 mb-1">
+                <label className="block font-bold text-slate-700 mb-1">
                   Nama Makanan / Minuman
                 </label>
                 <input
@@ -1489,13 +1825,13 @@ export function AdminDashboard() {
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Contoh: Steak Sapi Bakar"
                   required
-                  className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200 px-3.5 py-2.5 font-medium text-zinc-900 focus:outline-none focus:bg-white focus:border-[#FF6B2C]"
+                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-[#2563EB]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-zinc-700 mb-1">
+                  <label className="block font-bold text-slate-700 mb-1">
                     Grup Sidebar
                   </label>
                   <select
@@ -1503,7 +1839,7 @@ export function AdminDashboard() {
                     onChange={(e) =>
                       setFormGroup(e.target.value as SidebarGroupType)
                     }
-                    className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200 px-3 py-2.5 font-medium text-zinc-900 focus:outline-none focus:border-[#FF6B2C]"
+                    className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3 py-2.5 font-medium text-slate-900 focus:outline-none focus:border-[#2563EB]"
                   >
                     <option value="Food">Food</option>
                     <option value="Coffee">Coffee</option>
@@ -1515,7 +1851,7 @@ export function AdminDashboard() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-zinc-700 mb-1">
+                  <label className="block font-bold text-slate-700 mb-1">
                     Sub-Kategori Filter
                   </label>
                   <select
@@ -1523,7 +1859,7 @@ export function AdminDashboard() {
                     onChange={(e) =>
                       setFormCategory(e.target.value as MenuItem["category"])
                     }
-                    className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200 px-3 py-2.5 font-medium text-zinc-900 focus:outline-none focus:border-[#FF6B2C]"
+                    className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3 py-2.5 font-medium text-slate-900 focus:outline-none focus:border-[#2563EB]"
                   >
                     <option value="Rice bowl">Rice bowl</option>
                     <option value="Chicken">Chicken</option>
@@ -1540,7 +1876,7 @@ export function AdminDashboard() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-zinc-700 mb-1">
+                  <label className="block font-bold text-slate-700 mb-1">
                     Harga Jual (Rp)
                   </label>
                   <input
@@ -1550,12 +1886,12 @@ export function AdminDashboard() {
                     value={formPrice}
                     onChange={(e) => setFormPrice(Number(e.target.value))}
                     required
-                    className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200 px-3.5 py-2.5 font-bold text-zinc-900 focus:outline-none focus:bg-white focus:border-[#FF6B2C]"
+                    className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-[#2563EB]"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-bold text-zinc-700 mb-1">
+                  <label className="block font-bold text-slate-700 mb-1">
                     Stok Tersedia (Pcs)
                   </label>
                   <input
@@ -1564,13 +1900,13 @@ export function AdminDashboard() {
                     value={formStock}
                     onChange={(e) => setFormStock(Number(e.target.value))}
                     required
-                    className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200 px-3.5 py-2.5 font-bold text-zinc-900 focus:outline-none focus:bg-white focus:border-[#FF6B2C]"
+                    className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-[#2563EB]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-bold text-zinc-700 mb-1">
+                <label className="block font-bold text-slate-700 mb-1">
                   Deskripsi Hidangan
                 </label>
                 <textarea
@@ -1578,19 +1914,19 @@ export function AdminDashboard() {
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
                   placeholder="Jelaskan bahan dan keunggulan menu ini..."
-                  className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200 p-3 font-medium text-zinc-800 focus:outline-none focus:bg-white focus:border-[#FF6B2C]"
+                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 p-3 font-medium text-slate-800 focus:outline-none focus:bg-white focus:border-[#2563EB]"
                 />
               </div>
 
               <div>
-                <label className="block font-bold text-zinc-700 mb-1">
+                <label className="block font-bold text-slate-700 mb-1">
                   URL Foto Menu
                 </label>
                 <input
                   type="url"
                   value={formImage}
                   onChange={(e) => setFormImage(e.target.value)}
-                  className="w-full rounded-xl bg-[#F8F9FB] border border-gray-200 px-3.5 py-2 font-medium text-zinc-800 focus:outline-none focus:bg-white focus:border-[#FF6B2C] mb-2"
+                  className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2 font-medium text-slate-800 focus:outline-none focus:bg-white focus:border-[#2563EB] mb-2"
                 />
                 <div className="flex flex-wrap gap-1.5">
                   {PRESET_FOOD_IMAGES.map((preset) => (
@@ -1600,8 +1936,8 @@ export function AdminDashboard() {
                       onClick={() => setFormImage(preset.url)}
                       className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border transition cursor-pointer ${
                         formImage === preset.url
-                          ? "bg-[#FFF5EF] border-[#FF6B2C] text-[#FF6B2C]"
-                          : "bg-[#F8F9FB] border-gray-200 text-zinc-500 hover:bg-gray-100"
+                          ? "bg-blue-50 border-[#2563EB] text-[#2563EB]"
+                          : "bg-[#F8FAFC] border-slate-200 text-slate-500 hover:bg-slate-100"
                       }`}
                     >
                       {preset.label}
@@ -1615,24 +1951,24 @@ export function AdminDashboard() {
                   type="checkbox"
                   checked={formFeatured}
                   onChange={(e) => setFormFeatured(e.target.checked)}
-                  className="w-4 h-4 accent-[#FF6B2C] rounded"
+                  className="w-4 h-4 accent-[#2563EB] rounded"
                 />
-                <span className="font-semibold text-zinc-700">
+                <span className="font-semibold text-slate-700">
                   Tandai sebagai menu &ldquo;FEATURED&rdquo;
                 </span>
               </label>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsCrudModalOpen(false)}
-                  className="px-4 py-2.5 rounded-full bg-[#F8F9FB] hover:bg-gray-100 text-zinc-600 font-semibold cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-[#F8FAFC] hover:bg-slate-100 text-slate-600 font-semibold cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 rounded-full bg-[#FF6B2C] hover:bg-[#e85d20] text-white font-bold cursor-pointer"
+                  className="px-6 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold cursor-pointer"
                 >
                   {editingItem ? "Simpan Perubahan" : "Tambahkan Menu"}
                 </button>
