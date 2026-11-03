@@ -47,29 +47,16 @@ export function AdminDashboard() {
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F4F5F7]">
+    <div className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-[#F8F9FB]">
       {/* Header Row */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
-        <div className="flex items-center gap-3">
-          {!isSidebarOpen && (
-            <button
-              type="button"
-              onClick={toggleSidebar}
-              className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
-              aria-label="Buka Sidebar"
-              title="Buka Sidebar Navigasi"
-            >
-              <Menu className="w-5 h-5 stroke-[2]" />
-            </button>
-          )}
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">
-              Admin Panel Kantin
-            </h1>
-            <p className="text-xs text-gray-500 font-medium mt-0.5">
-              Pemantauan Perkembangan Penjualan, Pemasukan & Manajemen Stok
-            </p>
-          </div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200/70">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">
+            Admin Panel Kantin
+          </h1>
+          <p className="text-xs text-gray-500 font-medium mt-0.5">
+            Pemantauan Perkembangan Penjualan, Pemasukan & Manajemen Stok
+          </p>
         </div>
 
         {/* Tab switch + Back to POS button */}

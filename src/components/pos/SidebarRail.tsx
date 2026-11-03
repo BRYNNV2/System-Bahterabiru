@@ -1,224 +1,117 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
-  BookOpen,
-  ConciergeBell,
-  ThumbsUp,
-  MessageSquareMore,
+  Coffee,
+  Wine,
+  UtensilsCrossed,
+  Soup,
+  Croissant,
+  Cookie,
+  LayoutDashboard,
   Settings,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
 } from "lucide-react";
-import { usePosStore, AppNavTab } from "@/store/usePosStore";
-
-const ORDER_TIPS = [
-  {
-    title: "How to order food?",
-    desc: "Ordering food from our web app is a seamless and delightful experience designed to satisfy you effortlessly...",
-    image:
-      "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=500&q=80",
-  },
-  {
-    title: "Fast Category Filter",
-    desc: "Use category cards or the live search & price filter to quickly find any dish or beverage in seconds.",
-    image:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=500&q=80",
-  },
-  {
-    title: "Instant Checkout",
-    desc: "Review items in the invoice panel, select Cash, Debit, or QRIS, and process the transaction immediately.",
-    image:
-      "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=500&q=80",
-  },
-];
+import { usePosStore } from "@/store/usePosStore";
+import { SidebarGroupType } from "@/data/initialMenu";
 
 export function SidebarRail() {
   const {
     activeTab,
     setActiveTab,
+    activeSidebarGroup,
+    setActiveSidebarGroup,
     isSidebarOpen,
-    setIsSidebarOpen,
-    toggleSidebar,
   } = usePosStore();
-  const [tipIndex, setTipIndex] = useState(0);
 
-  // Automatically close sidebar on small/mobile screens upon initial mount
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-    }
-  }, [setIsSidebarOpen]);
+  // Collapsible via the single hamburger icon in the top header
+  if (!isSidebarOpen) return null;
 
-  const navLinks: {
-    id: AppNavTab;
+  const menuGroups: {
+    id: SidebarGroupType;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
   }[] = [
-    { id: "analytics", label: "Dashboard", icon: BookOpen },
-    { id: "pos", label: "Food Order", icon: ConciergeBell },
-    { id: "feedback", label: "Feedback", icon: ThumbsUp },
-    { id: "message", label: "Message", icon: MessageSquareMore },
-    { id: "settings", label: "Customization", icon: Settings },
+    { id: "Coffee", label: "Coffee", icon: Coffee },
+    { id: "Beverages", label: "Beverages", icon: Wine },
+    { id: "Food", label: "Food", icon: UtensilsCrossed },
+    { id: "Appetizer", label: "Appetizer", icon: Soup },
+    { id: "Bread", label: "Bread", icon: Croissant },
+    { id: "Snack", label: "Snack", icon: Cookie },
   ];
 
-  const currentTip = ORDER_TIPS[tipIndex];
+  return (
+    <aside className="w-[88px] sm:w-[100px] bg-white border-r border-gray-100 py-5 px-2 flex flex-col items-center justify-between shrink-0 h-full overflow-y-auto custom-scrollbar select-none z-20">
+      {/* Main Vertical Category Rail matching Coca coffeetalk UI */}
+      <nav className="flex flex-col items-center gap-3 w-full">
+        {menuGroups.map((group) => {
+          const Icon = group.icon;
+          const isActive =
+            activeTab === "pos" && activeSidebarGroup === group.id;
 
-  const renderInnerContent = (isMobile: boolean = false) => (
-    <div className="flex flex-col justify-between h-full min-h-0">
-      {/* Top Section: Brand Logo + Hamburger Toggle */}
-      <div>
-        {/* Brand Header */}
-        <div className="flex items-center justify-between px-1 mb-6">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab("pos");
-              if (isMobile) setIsSidebarOpen(false);
-            }}
-            className="flex items-center gap-2.5 cursor-pointer group"
-          >
-            {/* Two-tone Pie Slice Icon */}
-            <div className="relative w-8 h-8 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <svg width="30" height="30" viewBox="0 0 32 32" fill="none">
-                <path
-                  d="M15 4C8.92487 4 4 8.92487 4 15C4 21.0751 8.92487 26 15 26C21.0751 26 26 21.0751 26 15H15V4Z"
-                  fill="#EE5728"
-                />
-                <path
-                  d="M18 2C23.5228 2 28 6.47715 28 12H18V2Z"
-                  fill="#F5A623"
-                />
-              </svg>
-            </div>
-
-            <span className="text-[21px] font-extrabold tracking-tight leading-none">
-              <span className="text-[#EE5728]">foodi</span>
-              <span className="text-[#F5A623]">slice</span>
-            </span>
-          </button>
-
-          {/* Hamburger toggle button (No ugly X!) */}
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen(false)}
-            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] text-zinc-700 flex items-center justify-center transition cursor-pointer active:scale-95 shadow-2xs"
-            aria-label="Tutup Sidebar"
-            title="Tutup Sidebar"
-          >
-            <Menu className="w-5 h-5 stroke-[2]" />
-          </button>
-        </div>
-
-        {/* Navigation Links */}
-        <nav className="space-y-2">
-          {navLinks.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-
-            return (
-              <button
-                type="button"
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  if (isMobile) setIsSidebarOpen(false);
-                }}
-                className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl border text-[13px] font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-[#FCEAE3] border-[#EE5728]/50 text-[#EE5728] shadow-[0_2px_10px_rgba(238,87,40,0.08)]"
-                    : "bg-white border-gray-200/80 text-zinc-700 hover:border-[#EE5728]/35 hover:text-[#EE5728] hover:bg-[#FFF9F6]"
+          return (
+            <button
+              type="button"
+              key={group.id}
+              onClick={() => setActiveSidebarGroup(group.id)}
+              className={`w-[68px] h-[68px] rounded-2xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isActive
+                  ? "bg-gradient-to-b from-[#FF8C42] to-[#FF5511] text-white shadow-[0_8px_20px_rgba(255,94,26,0.28)] scale-[1.02]"
+                  : "bg-transparent text-gray-400 hover:text-zinc-700 hover:bg-[#F8F9FB]"
+              }`}
+            >
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center transition ${
+                  isActive ? "bg-white/20" : "bg-transparent"
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 shrink-0 ${
-                    isActive
-                      ? "text-[#EE5728] stroke-[2.2]"
-                      : "text-zinc-500 stroke-[1.8]"
+                  className={`w-[19px] h-[19px] ${
+                    isActive ? "text-white stroke-[2.1]" : "stroke-[1.7]"
                   }`}
                 />
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Bottom Info Card ("How to order food?") */}
-      <div className="mt-5 pt-2 shrink-0">
-        <div className="rounded-2xl bg-white border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-3">
-          <div className="w-full h-24 rounded-xl overflow-hidden bg-gray-100 mb-2.5">
-            <img
-              src={currentTip.image}
-              alt={currentTip.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          </div>
-
-          <h4 className="text-[12px] font-extrabold text-zinc-900 leading-snug">
-            {currentTip.title}
-          </h4>
-          <p className="text-[10px] text-gray-400 leading-relaxed mt-1 line-clamp-2">
-            {currentTip.desc}
-          </p>
-
-          {/* Mini Prev / Next Circular Buttons */}
-          <div className="flex items-center gap-2 mt-2.5">
-            <button
-              type="button"
-              onClick={() =>
-                setTipIndex(
-                  (prev) => (prev - 1 + ORDER_TIPS.length) % ORDER_TIPS.length
-                )
-              }
-              aria-label="Previous tip"
-              className="w-6 h-6 rounded-full border border-gray-300 text-zinc-500 hover:border-[#EE5728] hover:text-[#EE5728] flex items-center justify-center transition cursor-pointer active:scale-95"
-            >
-              <ChevronLeft className="w-3.5 h-3.5 stroke-[2.5]" />
+              </div>
+              <span
+                className={`text-[11px] leading-none tracking-tight ${
+                  isActive ? "font-bold text-white" : "font-medium text-gray-400"
+                }`}
+              >
+                {group.label}
+              </span>
             </button>
+          );
+        })}
+      </nav>
 
-            <button
-              type="button"
-              onClick={() =>
-                setTipIndex((prev) => (prev + 1) % ORDER_TIPS.length)
-              }
-              aria-label="Next tip"
-              className="w-6 h-6 rounded-full bg-[#EE5728] hover:bg-[#d94b1f] text-white flex items-center justify-center transition shadow-xs cursor-pointer active:scale-95"
-            >
-              <ChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
-            </button>
-          </div>
-        </div>
+      {/* Bottom Utility Rail: Dashboard & Settings */}
+      <div className="flex flex-col items-center gap-2 pt-4 mt-4 border-t border-gray-100 w-full">
+        <button
+          type="button"
+          onClick={() => setActiveTab("analytics")}
+          className={`w-[68px] py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+            activeTab === "analytics" || activeTab === "inventory"
+              ? "bg-gradient-to-b from-[#FF8C42] to-[#FF5511] text-white shadow-[0_8px_20px_rgba(255,94,26,0.25)]"
+              : "text-gray-400 hover:text-zinc-700 hover:bg-[#F8F9FB]"
+          }`}
+          title="Dashboard & Stok"
+        >
+          <LayoutDashboard className="w-[18px] h-[18px] stroke-[1.8]" />
+          <span className="text-[10px] font-medium leading-none">Dashboard</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("settings")}
+          className={`w-[68px] py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+            activeTab === "settings"
+              ? "bg-gradient-to-b from-[#FF8C42] to-[#FF5511] text-white shadow-[0_8px_20px_rgba(255,94,26,0.25)]"
+              : "text-gray-400 hover:text-zinc-700 hover:bg-[#F8F9FB]"
+          }`}
+          title="Pengaturan"
+        >
+          <Settings className="w-[18px] h-[18px] stroke-[1.8]" />
+          <span className="text-[10px] font-medium leading-none">Settings</span>
+        </button>
       </div>
-    </div>
-  );
-
-  return (
-    <>
-      {/* 1. Desktop Sidebar (collapsible via hamburger) */}
-      {isSidebarOpen && (
-        <aside className="hidden lg:flex w-[225px] xl:w-[242px] bg-white border-r border-gray-200/70 px-4 py-5 flex-col justify-between shrink-0 z-20 h-full overflow-y-auto custom-scrollbar select-none animate-in slide-in-from-left duration-200">
-          {renderInnerContent(false)}
-        </aside>
-      )}
-
-      {/* 2. Mobile Drawer (visible on < lg when opened) */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          {/* Dark Backdrop */}
-          <div
-            onClick={() => setIsSidebarOpen(false)}
-            className="fixed inset-0 bg-black/50 backdrop-blur-xs transition-opacity animate-in fade-in"
-          />
-
-          {/* Slide-over Drawer */}
-          <aside className="relative w-[280px] max-w-[85vw] bg-white h-full px-5 py-6 flex flex-col justify-between overflow-y-auto z-10 shadow-2xl animate-in slide-in-from-left duration-200">
-            {renderInnerContent(true)}
-          </aside>
-        </div>
-      )}
-    </>
+    </aside>
   );
 }

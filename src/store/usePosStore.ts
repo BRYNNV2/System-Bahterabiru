@@ -3,6 +3,7 @@ import {
   INITIAL_MENU_ITEMS,
   MenuItem,
   CategoryType,
+  SidebarGroupType,
   getEffectivePrice,
 } from "@/data/initialMenu";
 
@@ -41,12 +42,17 @@ export type AppNavTab =
 
 interface PosState {
   activeTab: AppNavTab;
+  activeSidebarGroup: SidebarGroupType;
   menuItems: MenuItem[];
   cart: CartItem[];
   selectedCategory: CategoryType;
   searchQuery: string;
   sortBy: "default" | "price-asc" | "price-desc" | "stock-desc";
   paymentMethod: "Cash" | "Debit" | "QRIS";
+  orderMode: "Buy" | "Reservation";
+  customerName: string;
+  selectedTable: string;
+  orderNote: string;
   recentOrders: CompletedOrder[];
   isFilterOpen: boolean;
   isSidebarOpen: boolean;
@@ -54,10 +60,15 @@ interface PosState {
 
   // Actions
   setActiveTab: (tab: AppNavTab) => void;
+  setActiveSidebarGroup: (group: SidebarGroupType) => void;
   setSelectedCategory: (category: CategoryType) => void;
   setSearchQuery: (query: string) => void;
   setSortBy: (sort: "default" | "price-asc" | "price-desc" | "stock-desc") => void;
   setPaymentMethod: (method: "Cash" | "Debit" | "QRIS") => void;
+  setOrderMode: (mode: "Buy" | "Reservation") => void;
+  setCustomerName: (name: string) => void;
+  setSelectedTable: (table: string) => void;
+  setOrderNote: (note: string) => void;
   setIsFilterOpen: (open: boolean) => void;
   setIsSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
@@ -79,37 +90,42 @@ interface PosState {
 
 export const usePosStore = create<PosState>((set, get) => ({
   activeTab: "pos",
+  activeSidebarGroup: "Food",
   menuItems: INITIAL_MENU_ITEMS,
-  // Pre-populated matching the exact reference image
+  // Pre-populated matching the reference screenshot (Steak sapi bakar, Ayam kentang, Mie kuah pedas)
   cart: [
-    { productId: "prod-9", quantity: 2 }, // Cinnaple
-    { productId: "prod-10", quantity: 1 }, // Chicken Pop Matah
-    { productId: "prod-2", quantity: 2 }, // Bolognese Spaghetti
+    { productId: "prod-1", quantity: 1 },
+    { productId: "prod-2", quantity: 1 },
+    { productId: "prod-4", quantity: 1 },
   ],
   selectedCategory: "All Menu",
   searchQuery: "",
   sortBy: "default",
   paymentMethod: "Cash",
+  orderMode: "Buy",
+  customerName: "",
+  selectedTable: "",
+  orderNote: "",
   recentOrders: [
     {
       id: "ord-prev-1",
       orderNumber: "TRX-8821",
-      customerName: "Pelanggan Kantin",
+      customerName: "Pelanggan Meja 04",
       items: [
         {
           product: INITIAL_MENU_ITEMS[0],
           quantity: 2,
-          unitPrice: 21200,
-          lineTotal: 42400,
+          unitPrice: 35000,
+          lineTotal: 70000,
         },
       ],
       itemCount: 2,
-      subtotal: 52400,
-      discountTotal: 10000,
-      taxTotal: 6360,
-      totalAmount: 48760,
+      subtotal: 70000,
+      discountTotal: 0,
+      taxTotal: 7000,
+      totalAmount: 77000,
       paymentMethod: "QRIS",
-      createdAt: "2026-11-01 14:20",
+      createdAt: "12:40",
     },
   ],
   isFilterOpen: false,
@@ -117,10 +133,20 @@ export const usePosStore = create<PosState>((set, get) => ({
   isMobileCartOpen: false,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+  setActiveSidebarGroup: (group) =>
+    set({
+      activeSidebarGroup: group,
+      selectedCategory: "All Menu",
+      activeTab: "pos",
+    }),
   setSelectedCategory: (category) => set({ selectedCategory: category }),
   setSearchQuery: (query) => set({ searchQuery: query }),
   setSortBy: (sortBy) => set({ sortBy }),
   setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
+  setOrderMode: (orderMode) => set({ orderMode }),
+  setCustomerName: (customerName) => set({ customerName }),
+  setSelectedTable: (selectedTable) => set({ selectedTable }),
+  setOrderNote: (orderNote) => set({ orderNote }),
   setIsFilterOpen: (isFilterOpen) => set({ isFilterOpen }),
   setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
@@ -181,7 +207,14 @@ export const usePosStore = create<PosState>((set, get) => ({
   },
 
   completeCheckout: () => {
-    const { cart, menuItems, paymentMethod, recentOrders } = get();
+    const {
+      cart,
+      menuItems,
+      paymentMethod,
+      recentOrders,
+      customerName,
+      selectedTable,
+    } = get();
     if (cart.length === 0) return null;
 
     let subtotal = 0;
@@ -209,16 +242,25 @@ export const usePosStore = create<PosState>((set, get) => ({
       })
       .filter(Boolean) as CompletedOrder["items"];
 
-    const taxTotal = Math.round((subtotal - discountTotal) * 0.15);
-    const totalAmount = Math.max(0, subtotal - discountTotal + taxTotal);
+    const netSubtotal = Math.max(0, subtotal - discountTotal);
+    const taxTotal = Math.round(netSubtotal * 0.1);
+    const totalAmount = netSubtotal + taxTotal;
+
+    const formattedCustomer = customerName.trim()
+      ? selectedTable
+        ? `${customerName.trim()} (${selectedTable})`
+        : customerName.trim()
+      : selectedTable
+      ? `Pelanggan (${selectedTable})`
+      : "Pelanggan Kantin";
 
     const newOrder: CompletedOrder = {
       id: `ord-${Date.now()}`,
       orderNumber: `TRX-${Math.floor(1000 + Math.random() * 9000)}`,
-      customerName: "Pelanggan Kantin",
+      customerName: formattedCustomer,
       items: detailedItems,
       itemCount,
-      subtotal,
+      subtotal: netSubtotal,
       discountTotal,
       taxTotal,
       totalAmount,
@@ -229,7 +271,6 @@ export const usePosStore = create<PosState>((set, get) => ({
       }),
     };
 
-    // Update real-time stocks and sold counts
     const updatedMenu = menuItems.map((item) => {
       const inCart = cart.find((c) => c.productId === item.id);
       if (!inCart) return item;
@@ -243,6 +284,8 @@ export const usePosStore = create<PosState>((set, get) => ({
     set({
       menuItems: updatedMenu,
       cart: [],
+      customerName: "",
+      orderNote: "",
       recentOrders: [newOrder, ...recentOrders],
     });
 
