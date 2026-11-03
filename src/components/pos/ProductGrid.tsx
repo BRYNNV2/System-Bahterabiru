@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { SlidersHorizontal, Plus, Minus, Search, X } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { formatRupiah, getEffectivePrice } from "@/data/initialMenu";
@@ -19,13 +19,43 @@ export function ProductGrid() {
   } = usePosStore();
 
   const [showFilterPopover, setShowFilterPopover] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close popover when clicking outside or pressing Escape
+  useEffect(() => {
+    if (!showFilterPopover) return;
+
+    const handlePointerDownOutside = (e: MouseEvent | TouchEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setShowFilterPopover(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowFilterPopover(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDownOutside);
+    document.addEventListener("touchstart", handlePointerDownOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDownOutside);
+      document.removeEventListener("touchstart", handlePointerDownOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [showFilterPopover]);
 
   const getActiveSortLabel = (sort: typeof sortBy) => {
     switch (sort) {
       case "price-asc":
-        return "PRICE: LOW";
+        return "PRICE: LOW TO HIGH";
       case "price-desc":
-        return "PRICE: HIGH";
+        return "PRICE: HIGH TO LOW";
       case "stock-desc":
         return "MOST STOCK";
       default:
@@ -33,21 +63,21 @@ export function ProductGrid() {
     }
   };
 
-  const filteredItems = menuItems
+  const filteredItems = [...menuItems]
     .filter((item) => {
-      // If user typed in search, search across catalog or within category
+      // Filter by category first
+      if (selectedCategory !== "All Menu" && item.category !== selectedCategory) {
+        return false;
+      }
+
+      // Filter by search query if active
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
         const matchesName = item.name.toLowerCase().includes(q);
         const matchesCategory = item.category.toLowerCase().includes(q);
         if (!matchesName && !matchesCategory) return false;
-        return true;
       }
 
-      // If no search, filter strictly by selected category
-      if (selectedCategory !== "All Menu" && item.category !== selectedCategory) {
-        return false;
-      }
       return true;
     })
     .sort((a, b) => {
@@ -64,9 +94,9 @@ export function ProductGrid() {
     });
 
   return (
-    <section className="mt-7">
-      {/* Section Header matching exact user screenshot */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+    <section className="mt-7 relative">
+      {/* Section Header matching exact user screenshot - elevated z-index so dropdown is always above product cards */}
+      <div className="relative z-40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         {/* Title and Active Search indicator */}
         <div className="flex items-center gap-3">
           <h2 className="text-[17px] font-bold text-zinc-900 tracking-tight">
@@ -74,9 +104,10 @@ export function ProductGrid() {
           </h2>
 
           {searchQuery && (
-            <div className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] text-[#FF5B35] px-2.5 py-0.5 rounded-full text-[11px] font-bold animate-in fade-in">
+            <div className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] text-[#FF5B35] px-2.5 py-0.5 rounded-full text-[11px] font-bold">
               <span>Cari: &ldquo;{searchQuery}&rdquo;</span>
               <button
+                type="button"
                 onClick={() => setSearchQuery("")}
                 className="hover:text-zinc-900 cursor-pointer ml-0.5"
                 title="Hapus pencarian"
@@ -90,7 +121,7 @@ export function ProductGrid() {
         {/* Right Sort Controls (3 ITEMS | [NEWEST ▼] with Popover) */}
         <div className="flex items-center gap-3.5 self-end sm:self-auto">
           {/* Item Count */}
-          <span className="text-[11.5px] font-bold tracking-[0.16em] text-[#8E95A5] uppercase tabular-nums">
+          <span className="text-[11.5px] font-bold tracking-[0.16em] text-[#8E95A5] uppercase tabular-nums select-none">
             {filteredItems.length} ITEMS
           </span>
 
@@ -98,87 +129,95 @@ export function ProductGrid() {
           <div className="h-4 w-[1px] bg-gray-200" />
 
           {/* Pill Button + Dropdown Popover matching screenshot */}
-          <div className="relative">
+          <div ref={dropdownRef} className="relative z-50">
             <button
-              onClick={() => setShowFilterPopover((prev) => !prev)}
-              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-gray-200/90 bg-white hover:border-zinc-800 text-[11px] font-black tracking-wider uppercase text-zinc-900 transition cursor-pointer shadow-2xs"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowFilterPopover((prev) => !prev);
+              }}
+              aria-expanded={showFilterPopover}
+              className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-gray-200/90 bg-white hover:border-zinc-800 active:scale-[0.98] text-[11px] font-black tracking-wider uppercase text-zinc-900 transition cursor-pointer shadow-sm select-none"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.2]" />
+              <SlidersHorizontal className="w-3.5 h-3.5 stroke-[2.2] shrink-0" />
               <span>{getActiveSortLabel(sortBy)}</span>
-              <span className="text-[#84CC16] text-[9px] transform scale-y-90">&#9660;</span>
+              <span
+                className={`text-[#84CC16] text-[9px] transition-transform duration-200 ${
+                  showFilterPopover ? "rotate-180" : ""
+                }`}
+              >
+                &#9660;
+              </span>
             </button>
 
             {showFilterPopover && (
-              <>
-                {/* Backdrop overlay to close when clicking outside */}
-                <div
-                  onClick={() => setShowFilterPopover(false)}
-                  className="fixed inset-0 z-30"
-                />
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-2 w-[215px] bg-white rounded-[26px] shadow-[0_14px_44px_rgba(0,0,0,0.16)] border border-gray-100 p-2 z-50"
+              >
+                {/* Option 1: NEWEST ARRIVALS */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy("default");
+                    setShowFilterPopover(false);
+                  }}
+                  className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer ${
+                    sortBy === "default"
+                      ? "bg-[#0D1117] text-white"
+                      : "text-zinc-800 hover:bg-gray-100"
+                  }`}
+                >
+                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                    NEWEST
+                  </span>
+                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                    ARRIVALS
+                  </span>
+                </button>
 
-                {/* The Exact Popover Card matching reference screenshot */}
-                <div className="absolute right-0 top-full mt-2 w-[210px] bg-white rounded-[26px] shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-gray-100 p-2 z-40 animate-in fade-in zoom-in-95">
-                  {/* Option 1: NEWEST ARRIVALS */}
-                  <button
-                    onClick={() => {
-                      setSortBy("default");
-                      setShowFilterPopover(false);
-                    }}
-                    className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer ${
-                      sortBy === "default"
-                        ? "bg-[#0D1117] text-white shadow-xs"
-                        : "text-zinc-800 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
-                      NEWEST
-                    </span>
-                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
-                      ARRIVALS
-                    </span>
-                  </button>
+                {/* Option 2: PRICE: LOW TO HIGH */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy("price-asc");
+                    setShowFilterPopover(false);
+                  }}
+                  className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
+                    sortBy === "price-asc"
+                      ? "bg-[#0D1117] text-white"
+                      : "text-zinc-800 hover:bg-gray-100"
+                  }`}
+                >
+                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                    PRICE: LOW TO
+                  </span>
+                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                    HIGH
+                  </span>
+                </button>
 
-                  {/* Option 2: PRICE: LOW TO HIGH */}
-                  <button
-                    onClick={() => {
-                      setSortBy("price-asc");
-                      setShowFilterPopover(false);
-                    }}
-                    className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
-                      sortBy === "price-asc"
-                        ? "bg-[#0D1117] text-white shadow-xs"
-                        : "text-zinc-800 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
-                      PRICE: LOW TO
-                    </span>
-                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
-                      HIGH
-                    </span>
-                  </button>
-
-                  {/* Option 3: PRICE: HIGH TO LOW */}
-                  <button
-                    onClick={() => {
-                      setSortBy("price-desc");
-                      setShowFilterPopover(false);
-                    }}
-                    className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
-                      sortBy === "price-desc"
-                        ? "bg-[#0D1117] text-white shadow-xs"
-                        : "text-zinc-800 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
-                      PRICE: HIGH TO
-                    </span>
-                    <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
-                      LOW
-                    </span>
-                  </button>
-                </div>
-              </>
+                {/* Option 3: PRICE: HIGH TO LOW */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSortBy("price-desc");
+                    setShowFilterPopover(false);
+                  }}
+                  className={`w-full text-left p-3 rounded-[18px] transition cursor-pointer mt-1 ${
+                    sortBy === "price-desc"
+                      ? "bg-[#0D1117] text-white"
+                      : "text-zinc-800 hover:bg-gray-100"
+                  }`}
+                >
+                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                    PRICE: HIGH TO
+                  </span>
+                  <span className="block text-[11px] font-black tracking-wider uppercase leading-tight">
+                    LOW
+                  </span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -222,13 +261,15 @@ export function ProductGrid() {
                     addToCart(item.id);
                   }
                 }}
-                className={`group bg-white rounded-2xl p-2.5 border border-gray-100 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:shadow-md transition-all flex flex-col justify-between ${
-                  !isOutOfStock ? "cursor-pointer hover:border-gray-200" : "opacity-75"
-                }`}
+                className={`group bg-white rounded-2xl p-3 border transition-all flex flex-col justify-between ${
+                  qtyInCart > 0
+                    ? "border-[#EE5728]/60 shadow-[0_6px_20px_rgba(238,87,40,0.08)]"
+                    : "border-gray-200/70 shadow-[0_2px_10px_rgba(0,0,0,0.02)] hover:border-[#EE5728]/40 hover:shadow-md"
+                } ${!isOutOfStock ? "cursor-pointer" : "opacity-75"}`}
               >
                 <div>
-                  {/* Food Image with Blue Discount Badge */}
-                  <div className="relative aspect-[4/3] w-full rounded-2xl overflow-hidden bg-gray-100">
+                  {/* Food Image with Discount Badge */}
+                  <div className="relative aspect-[4/3] w-full rounded-xl overflow-hidden bg-[#F4F5F7]">
                     <img
                       src={item.imageUrl}
                       alt={item.name}
@@ -238,10 +279,17 @@ export function ProductGrid() {
                       loading="lazy"
                     />
 
-                    {/* Blue Discount Badge */}
+                    {/* Discount Badge */}
                     {item.discountPercent && (
-                      <div className="absolute top-2.5 left-2.5 bg-[#2B7FFF] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
+                      <div className="absolute top-2.5 left-2.5 bg-[#EE5728] text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
                         {item.discountPercent}% Off
+                      </div>
+                    )}
+
+                    {/* Selected Quantity Badge in top-right when in cart */}
+                    {qtyInCart > 0 && (
+                      <div className="absolute top-2.5 right-2.5 w-6 h-6 rounded-lg bg-[#EE5728] text-white text-[11px] font-extrabold flex items-center justify-center shadow-sm">
+                        {qtyInCart}
                       </div>
                     )}
                   </div>
@@ -268,28 +316,26 @@ export function ProductGrid() {
                 </div>
 
                 {/* Price Row & Action Controls */}
-                <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-50">
+                <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100">
                   <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+                    <span className="font-extrabold text-[#EE5728] text-[14px]">
+                      {formatRupiah(finalPrice)}
+                    </span>
                     {item.discountPercent && (
-                      <span className="text-[11px] text-gray-400 line-through font-medium">
+                      <span className="text-[10.5px] text-gray-400 line-through font-medium">
                         {formatRupiah(item.price)}
                       </span>
                     )}
-                    <span className="font-extrabold text-zinc-900 text-[13.5px]">
-                      {formatRupiah(finalPrice)}
-                    </span>
-                    <span className="text-[10px] text-gray-400 font-medium">
-                      / Portion
-                    </span>
                   </div>
 
                   {/* Stepper matching reference (- 2 +) */}
                   {qtyInCart > 0 ? (
                     <div
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center gap-1.5 bg-[#FFF4F0] border border-[#FFCCBF] px-1.5 py-0.5 rounded-xl ml-1 shrink-0"
+                      className="flex items-center gap-1.5 bg-[#FCEAE3] border border-[#EE5728]/40 px-1.5 py-0.5 rounded-xl ml-1 shrink-0"
                     >
                       <button
+                        type="button"
                         onClick={() => decrementFromCart(item.id)}
                         className="w-5 h-5 rounded-lg bg-white hover:bg-gray-100 text-zinc-700 flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
                         aria-label="Kurangi"
@@ -299,13 +345,14 @@ export function ProductGrid() {
                       >
                         <Minus className="w-3 h-3 stroke-[2.5]" />
                       </button>
-                      <span className="text-xs font-black text-[#FF5B35] min-w-[14px] text-center tabular-nums">
+                      <span className="text-xs font-black text-[#EE5728] min-w-[14px] text-center tabular-nums">
                         {qtyInCart}
                       </span>
                       <button
+                        type="button"
                         onClick={() => addToCart(item.id)}
                         disabled={qtyInCart >= item.stock}
-                        className="w-5 h-5 rounded-lg bg-[#FF5B35] hover:bg-[#e04d28] disabled:opacity-30 text-white flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
+                        className="w-5 h-5 rounded-lg bg-[#EE5728] hover:bg-[#d94b1f] disabled:opacity-30 text-white flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95"
                         aria-label="Tambah"
                         title="Tambah 1"
                       >
@@ -314,15 +361,17 @@ export function ProductGrid() {
                     </div>
                   ) : (
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!isOutOfStock) addToCart(item.id);
                       }}
                       disabled={isOutOfStock}
-                      className="w-6 h-6 rounded-lg bg-gray-100 hover:bg-[#FF5B35] text-zinc-600 hover:text-white disabled:opacity-30 flex items-center justify-center transition cursor-pointer shadow-2xs active:scale-95 ml-1 shrink-0"
+                      className="px-2.5 py-1 rounded-lg bg-[#EE5728] hover:bg-[#d94b1f] text-white disabled:bg-gray-200 disabled:text-gray-400 text-[10.5px] font-bold flex items-center gap-1 transition cursor-pointer shadow-xs active:scale-95 ml-1 shrink-0"
                       title={isOutOfStock ? "Stok Habis" : "Tambah ke Pesanan"}
                     >
-                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      <span>Order</span>
+                      <Plus className="w-3 h-3 stroke-[2.5]" />
                     </button>
                   )}
                 </div>

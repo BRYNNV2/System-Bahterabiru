@@ -30,7 +30,14 @@ export interface CompletedOrder {
   createdAt: string;
 }
 
-export type AppNavTab = "pos" | "analytics" | "inventory" | "history" | "settings";
+export type AppNavTab =
+  | "pos"
+  | "analytics"
+  | "feedback"
+  | "message"
+  | "history"
+  | "inventory"
+  | "settings";
 
 interface PosState {
   activeTab: AppNavTab;

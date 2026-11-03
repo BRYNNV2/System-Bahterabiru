@@ -39,8 +39,8 @@ export function CategoryCards() {
 
   return (
     <section className="mt-5">
-      <h2 className="text-[17px] font-bold text-zinc-900 tracking-tight mb-3.5">
-        Categories
+      <h2 className="text-[16px] font-extrabold text-zinc-900 tracking-tight mb-3">
+        Explore Categories
       </h2>
 
       {/* Horizontal row of 7 category cards */}
@@ -50,20 +50,21 @@ export function CategoryCards() {
 
           return (
             <button
+              type="button"
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`p-3.5 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer border ${
+              className={`p-3 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer border ${
                 isActive
-                  ? "bg-[#FFF4F0] border-[#FFCCBF] shadow-xs"
-                  : "bg-white border-gray-100 hover:border-gray-200 hover:bg-gray-50/50"
+                  ? "bg-[#FCEAE3] border-[#EE5728]/55 shadow-[0_4px_14px_rgba(238,87,40,0.10)]"
+                  : "bg-white border-gray-200/70 hover:border-[#EE5728]/35 hover:bg-[#FFF9F6]"
               }`}
             >
               {/* Category Icon */}
               <div
-                className={`mb-2 w-9 h-9 rounded-xl flex items-center justify-center ${
+                className={`mb-2 w-9 h-9 rounded-xl flex items-center justify-center transition ${
                   isActive
-                    ? "text-[#FF5B35] bg-white shadow-2xs"
-                    : "text-zinc-600 bg-gray-50"
+                    ? "text-[#EE5728] bg-white shadow-xs"
+                    : "text-zinc-600 bg-[#F4F5F7]"
                 }`}
               >
                 {getCategoryIcon(cat.id)}
@@ -72,12 +73,16 @@ export function CategoryCards() {
               {/* Title & Count */}
               <span
                 className={`text-[12.5px] font-bold truncate w-full ${
-                  isActive ? "text-[#FF5B35]" : "text-zinc-800"
+                  isActive ? "text-[#EE5728]" : "text-zinc-800"
                 }`}
               >
                 {cat.label}
               </span>
-              <span className="text-[10px] text-gray-400 font-medium mt-0.5">
+              <span
+                className={`text-[10px] font-medium mt-0.5 ${
+                  isActive ? "text-[#EE5728]/80" : "text-gray-400"
+                }`}
+              >
                 {cat.count} Item
               </span>
             </button>
