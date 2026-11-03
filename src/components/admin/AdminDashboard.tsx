@@ -186,6 +186,10 @@ export function AdminDashboard() {
   const [formDesc, setFormDesc] = useState("");
   const [formImage, setFormImage] = useState("");
   const [formFeatured, setFormFeatured] = useState(false);
+  const [formUseVariants, setFormUseVariants] = useState(false);
+  const [formVariantsText, setFormVariantsText] = useState(
+    "Porsi Reguler, Pedas Normal, Pedas Ekstra"
+  );
   const [isConvertingWebp, setIsConvertingWebp] = useState(false);
   const [isDragOverUpload, setIsDragOverUpload] = useState(false);
   const [uploadedImageMeta, setUploadedImageMeta] = useState<{
@@ -299,12 +303,12 @@ export function AdminDashboard() {
     setFormGroup("Food");
     setFormPrice(25000);
     setFormStock(20);
-    setFormDesc(
-      "Hidangan spesial racikan dapur utama menggunakan bahan segar berkualitas tinggi."
-    );
+    setFormDesc("");
     setFormImage("");
     setUploadedImageMeta(null);
-    setFormFeatured(true);
+    setFormFeatured(false);
+    setFormUseVariants(false);
+    setFormVariantsText("Porsi Reguler, Pedas Normal, Pedas Ekstra");
     setIsCrudModalOpen(true);
   };
 
@@ -315,10 +319,31 @@ export function AdminDashboard() {
     setFormGroup(item.group);
     setFormPrice(getEffectivePrice(item));
     setFormStock(item.stock);
-    setFormDesc(item.description);
+    const isLegacyDesc =
+      item.description?.startsWith("Hidangan spesial racikan dapur utama") &&
+      (item.category === "Snack" || item.group === "Snack");
+    setFormDesc(isLegacyDesc ? "" : item.description || "");
     setFormImage(item.imageUrl);
     setUploadedImageMeta(null);
     setFormFeatured(Boolean(item.featured));
+
+    const rawOpts = item.servingOptions || [];
+    const isOldPlaceholder =
+      rawOpts.length === 3 &&
+      rawOpts[0] === "Porsi Reguler" &&
+      rawOpts[1] === "Pedas Normal" &&
+      rawOpts[2] === "Extra Bumbu" &&
+      (item.category === "Snack" ||
+        item.group === "Snack" ||
+        item.category === "Bread" ||
+        item.group === "Bread");
+    const effectiveOpts = isOldPlaceholder ? [] : rawOpts;
+    setFormUseVariants(effectiveOpts.length > 0);
+    setFormVariantsText(
+      effectiveOpts.length > 0
+        ? effectiveOpts.join(", ")
+        : "Porsi Reguler, Pedas Normal, Pedas Ekstra"
+    );
     setIsCrudModalOpen(true);
   };
 
@@ -330,18 +355,26 @@ export function AdminDashboard() {
       return;
     }
 
+    const parsedServingOptions = formUseVariants
+      ? formVariantsText
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+
     if (editingItem) {
       updateMenuItem(editingItem.id, {
         name: formName.trim(),
         category: formCategory,
         group: formGroup,
-        price: Number(formPrice) || 15000,
+        price: Number(formPrice) || 1000,
         discountedPrice: undefined,
         discountPercent: undefined,
         stock: Math.max(0, Number(formStock) || 0),
         description: formDesc.trim(),
-        imageUrl: formImage.trim() || PRESET_FOOD_IMAGES[0].url,
+        imageUrl: formImage.trim(),
         featured: formFeatured,
+        servingOptions: parsedServingOptions,
       });
       showToast(`Menu "${formName}" berhasil diperbarui.`);
     } else {
@@ -349,14 +382,12 @@ export function AdminDashboard() {
         name: formName.trim(),
         category: formCategory,
         group: formGroup,
-        price: Number(formPrice) || 15000,
+        price: Number(formPrice) || 1000,
         stock: Math.max(0, Number(formStock) || 0),
-        description:
-          formDesc.trim() ||
-          "Hidangan spesial racikan dapur utama menggunakan bahan segar berkualitas.",
-        imageUrl: formImage.trim() || PRESET_FOOD_IMAGES[0].url,
+        description: formDesc.trim(),
+        imageUrl: formImage.trim(),
         featured: formFeatured,
-        servingOptions: ["Porsi Reguler", "Pedas Normal", "Extra Bumbu"],
+        servingOptions: parsedServingOptions,
       });
       showToast(`Menu baru "${formName}" berhasil ditambahkan.`);
     }
@@ -2573,16 +2604,119 @@ export function AdminDashboard() {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Deskripsi Hidangan
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Deskripsi Produk (Opsional)
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Kosongkan jika tidak perlu deskripsi
+                  </span>
+                </div>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
-                  placeholder="Jelaskan bahan dan keunggulan menu ini..."
+                  placeholder="Contoh: Snack ikan gurih renyah kemasan 25g, atau rincian bahan makanan..."
                   className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 p-3 font-medium text-slate-800 focus:outline-none focus:bg-white focus:border-[#2563EB]"
                 />
+              </div>
+
+              {/* Pilihan Mode Varian: Hanya Jumlah Pcs (Snack/Satuan) vs Pakai Detail Varian (Makanan/Minuman) */}
+              <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-slate-800">
+                    Tipe Pilihan Pembelian
+                  </label>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    Sesuaikan dengan jenis produk
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFormUseVariants(false)}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                      !formUseVariants
+                        ? "bg-white border-[#2563EB] ring-1 ring-[#2563EB]/20"
+                        : "bg-white/60 border-slate-200 text-slate-500 hover:bg-white"
+                    }`}
+                  >
+                    <p
+                      className={`text-xs font-extrabold ${
+                        !formUseVariants ? "text-[#2563EB]" : "text-slate-700"
+                      }`}
+                    >
+                      Hanya Jumlah Pcs
+                    </p>
+                    <span className="block text-[10px] text-slate-400 mt-0.5">
+                      Tanpa varian (Cocok untuk Snack, Roti, Minuman Kemasan)
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormUseVariants(true)}
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
+                      formUseVariants
+                        ? "bg-white border-[#2563EB] ring-1 ring-[#2563EB]/20"
+                        : "bg-white/60 border-slate-200 text-slate-500 hover:bg-white"
+                    }`}
+                  >
+                    <p
+                      className={`text-xs font-extrabold ${
+                        formUseVariants ? "text-[#2563EB]" : "text-slate-700"
+                      }`}
+                    >
+                      Pakai Pilihan Varian / Detail
+                    </p>
+                    <span className="block text-[10px] text-slate-400 mt-0.5">
+                      Ada opsi Porsi / Pedas / Es / Rasa saat pembeli memesan
+                    </span>
+                  </button>
+                </div>
+
+                {formUseVariants && (
+                  <div className="pt-2 border-t border-slate-200/70 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5">
+                      <span className="text-[10.5px] font-bold text-slate-700">
+                        Daftar Pilihan Varian (pisahkan dengan koma):
+                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {[
+                          {
+                            label: "Makanan",
+                            val: "Porsi Reguler, Pedas Normal, Pedas Ekstra, Tanpa Sambal",
+                          },
+                          {
+                            label: "Minuman",
+                            val: "Dingin (Es), Hangat, Less Sugar",
+                          },
+                          {
+                            label: "Rasa",
+                            val: "Original, Balado, BBQ, Pedas",
+                          },
+                        ].map((preset) => (
+                          <button
+                            type="button"
+                            key={preset.label}
+                            onClick={() => setFormVariantsText(preset.val)}
+                            className="px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 text-[#2563EB] text-[10px] font-bold cursor-pointer transition"
+                          >
+                            + Preset {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      value={formVariantsText}
+                      onChange={(e) => setFormVariantsText(e.target.value)}
+                      placeholder="Contoh: Porsi Reguler, Pedas Normal, Tanpa Sambal"
+                      className="w-full rounded-xl bg-white border border-slate-200 px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#2563EB]"
+                    />
+                  </div>
+                )}
               </div>
 
               <div>

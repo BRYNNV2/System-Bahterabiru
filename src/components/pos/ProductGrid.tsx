@@ -28,14 +28,35 @@ export function ProductGrid() {
   const [selectedServing, setSelectedServing] = useState<string>("");
   const [buyQty, setBuyQty] = useState<number>(1);
 
+  const getValidServingOptions = (item: MenuItem): string[] => {
+    const raw = item.servingOptions || [];
+    if (raw.length === 0) return [];
+    const isOldDefaultPlaceholder =
+      raw.length === 3 &&
+      raw[0] === "Porsi Reguler" &&
+      raw[1] === "Pedas Normal" &&
+      raw[2] === "Extra Bumbu";
+    if (
+      isOldDefaultPlaceholder &&
+      (item.category === "Snack" ||
+        item.group === "Snack" ||
+        item.category === "Bread" ||
+        item.group === "Bread" ||
+        item.category === "Beverages" ||
+        item.group === "Beverages" ||
+        item.category === "Coffee" ||
+        item.group === "Coffee")
+    ) {
+      return [];
+    }
+    return raw;
+  };
+
   // Open Quick View modal with smooth enter animation & deep background blur
   const handleOpenQuickView = (item: MenuItem) => {
     setQuickViewItem(item);
-    setSelectedServing(
-      item.servingOptions && item.servingOptions.length > 0
-        ? item.servingOptions[0]
-        : "Porsi Reguler"
-    );
+    const validOptions = getValidServingOptions(item);
+    setSelectedServing(validOptions.length > 0 ? validOptions[0] : "");
     setBuyQty(1);
     setIsModalBlurActive(true);
     requestAnimationFrame(() => {
@@ -312,47 +333,58 @@ export function ProductGrid() {
                   </div>
                 </div>
 
-                {/* Dish Description */}
-                <p className="text-xs text-zinc-500 leading-relaxed mb-4">
-                  {quickViewItem.description}
-                </p>
+                {/* Dish Description (Shown only when non-empty and not legacy kitchen placeholder on snacks) */}
+                {(() => {
+                  const desc = (quickViewItem.description || "").trim();
+                  const isLegacyPlaceholder =
+                    desc.startsWith("Hidangan spesial racikan dapur utama") &&
+                    (quickViewItem.category === "Snack" ||
+                      quickViewItem.group === "Snack");
+                  if (!desc || isLegacyPlaceholder) return null;
+                  return (
+                    <p className="text-xs text-zinc-500 leading-relaxed mb-4">
+                      {desc}
+                    </p>
+                  );
+                })()}
 
-                {/* Serving / Portion Variant Selector */}
-                <div className="mb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-zinc-900">
-                      PILIH VARIAN PENYAJIAN
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 underline">
-                      STANDAR PORSI KANTIN
-                    </span>
-                  </div>
+                {/* Serving / Portion Variant Selector (Only shown for items that actually have variants) */}
+                {(() => {
+                  const validOptions = getValidServingOptions(quickViewItem);
+                  if (validOptions.length === 0) return null;
+                  return (
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-zinc-900">
+                          PILIH VARIAN / PENYAJIAN
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                          OPSIONAL DETAIL
+                        </span>
+                      </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {(
-                      quickViewItem.servingOptions || [
-                        "Porsi Reguler",
-                        "Pedas Normal",
-                      ]
-                    ).map((option) => {
-                      const isSelected = selectedServing === option;
-                      return (
-                        <button
-                          type="button"
-                          key={option}
-                          onClick={() => setSelectedServing(option)}
-                          className={`px-4 py-2 rounded-full text-xs font-extrabold transition cursor-pointer ${
-                            isSelected
-                              ? "bg-zinc-900 text-white shadow-xs"
-                              : "bg-[#F4F4F5] text-zinc-600 hover:bg-zinc-200/80"
-                          }`}
-                        >
-                          {option}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                      <div className="flex flex-wrap gap-2">
+                        {validOptions.map((option) => {
+                          const isSelected = selectedServing === option;
+                          return (
+                            <button
+                              type="button"
+                              key={option}
+                              onClick={() => setSelectedServing(option)}
+                              className={`px-4 py-2 rounded-full text-xs font-extrabold transition cursor-pointer ${
+                                isSelected
+                                  ? "bg-zinc-900 text-white shadow-xs"
+                                  : "bg-[#F4F4F5] text-zinc-600 hover:bg-zinc-200/80"
+                              }`}
+                            >
+                              {option}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Quantity To Buy Selector (Berapa Pcs yang Dibeli) */}
                 {quickViewItem.stock > 0 && (
