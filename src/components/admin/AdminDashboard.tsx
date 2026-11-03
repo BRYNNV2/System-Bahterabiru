@@ -2262,7 +2262,7 @@ export function AdminDashboard() {
                   <thead>
                     <tr className="bg-[#F8FAFC] border-b border-slate-200/70 text-[11px] font-bold text-slate-500">
                       <th className="py-3.5 px-5">Pembeli</th>
-                      <th className="py-3.5 px-4">Meja / Rincian Pesanan</th>
+                      <th className="py-3.5 px-4">Rincian Pesanan</th>
                       <th className="py-3.5 px-4">Metode</th>
                       <th
                         onClick={() => {

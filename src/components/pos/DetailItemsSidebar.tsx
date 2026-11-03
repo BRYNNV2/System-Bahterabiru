@@ -95,7 +95,7 @@ export function DetailItemsSidebar({
             <div className="flex items-center gap-2">
               <ShoppingBag className="w-4 h-4 text-zinc-900" />
               <span className="text-sm font-extrabold text-zinc-900">
-                Detail Pesanan & Meja
+                Detail Pesanan
               </span>
             </div>
             <button
@@ -148,25 +148,6 @@ export function DetailItemsSidebar({
               placeholder="Customer name"
               className="w-full rounded-full border border-zinc-200/80 px-4 py-2 text-xs text-zinc-800 placeholder:text-zinc-300 focus:outline-none focus:border-zinc-900 transition"
             />
-
-            <div className="relative">
-              <select
-                value={selectedTable}
-                onChange={(e) => setSelectedTable(e.target.value)}
-                className={`w-full appearance-none rounded-full border border-zinc-200/80 px-4 py-2 pr-9 text-xs bg-white focus:outline-none focus:border-zinc-900 transition cursor-pointer ${
-                  selectedTable ? "text-zinc-800 font-medium" : "text-zinc-300"
-                }`}
-              >
-                <option value="">Select table</option>
-                <option value="Table 01">Table 01</option>
-                <option value="Table 02">Table 02</option>
-                <option value="Table 03">Table 03</option>
-                <option value="Table 04">Table 04</option>
-                <option value="Table 05">Table 05</option>
-                <option value="Takeaway">Takeaway / Bungkus</option>
-              </select>
-              <ChevronRight className="w-3.5 h-3.5 text-zinc-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
 
             {showNoteInput ? (
               <div className="pt-0.5">
