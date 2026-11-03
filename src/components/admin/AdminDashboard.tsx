@@ -70,7 +70,7 @@ const PRESET_FOOD_IMAGES = [
   },
 ];
 
-type AdminPageTab = "dashboard" | "transactions" | "analytics" | "crud";
+type AdminPageTab = "dashboard" | "transactions" | "crud";
 type RevenueTimeframe = "daily" | "weekly" | "monthly";
 
 // Helper component for the signature FinPay striped progress bar
@@ -106,6 +106,7 @@ export function AdminDashboard() {
     deleteMenuItem,
     updateOrderStatus,
     deleteOrder,
+    syncFromServer,
   } = usePosStore();
 
   // Login State
@@ -122,7 +123,22 @@ export function AdminDashboard() {
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    void syncFromServer();
+
+    const interval = setInterval(() => {
+      void syncFromServer();
+    }, 3000);
+
+    const handleFocus = () => {
+      void syncFromServer();
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [syncFromServer]);
 
   // Timeframe & Chart State
   const [revenueTimeframe, setRevenueTimeframe] =
@@ -579,7 +595,6 @@ export function AdminDashboard() {
               {[
                 { id: "dashboard", label: "Dashboard", icon: Home },
                 { id: "transactions", label: "Transaction", icon: Receipt },
-                { id: "analytics", label: "Analytics", icon: BarChart2 },
                 {
                   id: "crud",
                   label: "Menu CRUD & Stok",
@@ -757,7 +772,7 @@ export function AdminDashboard() {
         {/* ===================================================================
             VIEW A: HALAMAN UTAMA DASHBOARD (Exact FinPay 3-Column Bento Grid)
            =================================================================== */}
-        {activePage === "dashboard" || activePage === "analytics" ? (
+        {activePage === "dashboard" ? (
           <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 pb-20 lg:pb-6 custom-scrollbar">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 max-w-[1600px] mx-auto">
               {/* -------------------------------------------------------------
@@ -1829,11 +1844,10 @@ export function AdminDashboard() {
         )}
 
         {/* Mobile Bottom Navigation Bar (< lg) */}
-        <nav className="lg:hidden absolute bottom-0 inset-x-0 bg-white border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-4 gap-1 z-30">
+        <nav className="lg:hidden absolute bottom-0 inset-x-0 bg-white border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-3 gap-1 z-30">
           {[
             { id: "dashboard", label: "Dashboard", icon: Home },
             { id: "transactions", label: "Pesanan", icon: Receipt },
-            { id: "analytics", label: "Statistik", icon: BarChart2 },
             { id: "crud", label: "CRUD Stok", icon: UtensilsCrossed },
           ].map((tab) => {
             const Icon = tab.icon;

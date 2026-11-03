@@ -18,6 +18,7 @@ export default function PosTerminalPage() {
     isModalBlurActive,
     cart,
     menuItems,
+    syncFromServer,
   } = usePosStore();
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
@@ -26,7 +27,22 @@ export default function PosTerminalPage() {
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    void syncFromServer();
+
+    const interval = setInterval(() => {
+      void syncFromServer();
+    }, 3000);
+
+    const handleFocus = () => {
+      void syncFromServer();
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [syncFromServer]);
 
   const handleHamburgerClick = () => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {

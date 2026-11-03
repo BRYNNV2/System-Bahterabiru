@@ -103,8 +103,23 @@ interface PosState {
   updateOrderStatus: (orderId: string, status: OrderStatusType) => void;
   deleteOrder: (orderId: string) => void;
 
+  // Multi-Device Backend Sync
+  syncFromServer: () => Promise<void>;
+
   // Checkout
   completeCheckout: () => CompletedOrder | null;
+}
+
+async function sendSyncMutation(action: string, payload: unknown) {
+  try {
+    await fetch("/api/pos-sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action, payload }),
+    });
+  } catch {
+    // Fallback to local state if offline
+  }
 }
 
 export const usePosStore = create<PosState>()(
@@ -301,13 +316,16 @@ export const usePosStore = create<PosState>()(
       },
 
       updateProductStock: (productId, newStock) => {
+        const clamped = Math.max(0, newStock);
         set((state) => ({
           menuItems: state.menuItems.map((item) =>
-            item.id === productId
-              ? { ...item, stock: Math.max(0, newStock) }
-              : item
+            item.id === productId ? { ...item, stock: clamped } : item
           ),
         }));
+        void sendSyncMutation("UPDATE_STOCK", {
+          productId,
+          newStock: clamped,
+        });
       },
 
       addMenuItem: (newItem) => {
@@ -319,6 +337,7 @@ export const usePosStore = create<PosState>()(
         set((state) => ({
           menuItems: [created, ...state.menuItems],
         }));
+        void sendSyncMutation("ADD_MENU", { item: created });
       },
 
       updateMenuItem: (id, updates) => {
@@ -327,6 +346,7 @@ export const usePosStore = create<PosState>()(
             item.id === id ? { ...item, ...updates } : item
           ),
         }));
+        void sendSyncMutation("UPDATE_MENU", { id, updates });
       },
 
       deleteMenuItem: (id) => {
@@ -334,6 +354,7 @@ export const usePosStore = create<PosState>()(
           menuItems: state.menuItems.filter((item) => item.id !== id),
           cart: state.cart.filter((c) => c.productId !== id),
         }));
+        void sendSyncMutation("DELETE_MENU", { id });
       },
 
       updateOrderStatus: (orderId, status) => {
@@ -342,12 +363,34 @@ export const usePosStore = create<PosState>()(
             o.id === orderId ? { ...o, status } : o
           ),
         }));
+        void sendSyncMutation("UPDATE_ORDER_STATUS", { orderId, status });
       },
 
       deleteOrder: (orderId) => {
         set((state) => ({
           recentOrders: state.recentOrders.filter((o) => o.id !== orderId),
         }));
+        void sendSyncMutation("DELETE_ORDER", { orderId });
+      },
+
+      syncFromServer: async () => {
+        try {
+          const res = await fetch("/api/pos-sync", { cache: "no-store" });
+          if (!res.ok) return;
+          const data = await res.json();
+          if (
+            data &&
+            Array.isArray(data.menuItems) &&
+            Array.isArray(data.recentOrders)
+          ) {
+            set({
+              menuItems: data.menuItems,
+              recentOrders: data.recentOrders,
+            });
+          }
+        } catch {
+          // Ignore network errors if offline
+        }
       },
 
       completeCheckout: () => {
@@ -433,6 +476,8 @@ export const usePosStore = create<PosState>()(
           orderNote: "",
           recentOrders: [newOrder, ...recentOrders],
         });
+
+        void sendSyncMutation("CREATE_ORDER", { order: newOrder });
 
         return newOrder;
       },
