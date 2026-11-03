@@ -312,9 +312,11 @@ export const usePosStore = create<PosState>()(
       },
 
       updateOrderStatus: (orderId, status) => {
+        const currentOrder = get().recentOrders.find((o) => o.id === orderId);
+        if (currentOrder?.status === "Completed") return;
         set((state) => ({
           recentOrders: state.recentOrders.map((o) =>
-            o.id === orderId ? { ...o, status } : o
+            o.id === orderId && o.status !== "Completed" ? { ...o, status } : o
           ),
         }));
         void sendSyncMutation("UPDATE_ORDER_STATUS", { orderId, status });

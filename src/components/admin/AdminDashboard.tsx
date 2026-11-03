@@ -1551,12 +1551,12 @@ export function AdminDashboard() {
                         {filteredOrders.map((ord) => {
                           const currentStatus: OrderStatusType =
                             ord.status || "Preparing";
+                          const isCompletedLocked =
+                            currentStatus === "Completed";
                           const nextStatus: OrderStatusType =
                             currentStatus === "Preparing"
                               ? "Ready"
-                              : currentStatus === "Ready"
-                              ? "Completed"
-                              : "Preparing";
+                              : "Completed";
                           const firstItem =
                             ord.items[0]?.product.name || "Pesanan Menu";
 
@@ -1598,23 +1598,29 @@ export function AdminDashboard() {
                               >
                                 <button
                                   type="button"
-                                  title="Klik untuk mengubah status pesanan"
+                                  disabled={isCompletedLocked}
+                                  title={
+                                    isCompletedLocked
+                                      ? "Pesanan sudah selesai dan terkunci"
+                                      : "Klik untuk mengubah status pesanan"
+                                  }
                                   onClick={() => {
+                                    if (isCompletedLocked) return;
                                     updateOrderStatus(ord.id, nextStatus);
                                     showToast(
                                       `Status ${ord.orderNumber} -> ${nextStatus}`
                                     );
                                   }}
-                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition hover:scale-105 ${
-                                    currentStatus === "Completed"
-                                      ? "bg-emerald-50 text-emerald-600"
+                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${
+                                    isCompletedLocked
+                                      ? "bg-emerald-50 text-emerald-600 cursor-default"
                                       : currentStatus === "Ready"
-                                      ? "bg-blue-50 text-[#2563EB]"
-                                      : "bg-amber-50 text-amber-600"
+                                      ? "bg-blue-50 text-[#2563EB] cursor-pointer hover:scale-105"
+                                      : "bg-amber-50 text-amber-600 cursor-pointer hover:scale-105"
                                   }`}
                                 >
-                                  {currentStatus === "Completed"
-                                    ? "Successful"
+                                  {isCompletedLocked
+                                    ? "✓ Selesai"
                                     : currentStatus}
                                 </button>
                               </td>
@@ -2269,31 +2275,30 @@ export function AdminDashboard() {
                           .map((i) => `${i.quantity}x ${i.product.name}`)
                           .join(", ");
 
-                        const statusConfig =
-                          currentStatus === "Completed"
-                            ? {
-                                label: "Selesai",
-                                bg: "bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100",
-                                dot: "bg-emerald-500",
-                              }
-                            : currentStatus === "Ready"
-                            ? {
-                                label: "Siap Diambil",
-                                bg: "bg-blue-50 text-[#2563EB] border-blue-200 hover:bg-blue-100",
-                                dot: "bg-[#2563EB]",
-                              }
-                            : {
-                                label: "Pending",
-                                bg: "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100",
-                                dot: "bg-amber-500",
-                              };
+                        const isCompletedLocked =
+                          currentStatus === "Completed";
+                        const statusConfig = isCompletedLocked
+                          ? {
+                              label: "Selesai",
+                              bg: "bg-emerald-50 text-emerald-600 border-emerald-200 cursor-default",
+                              dot: "bg-emerald-500",
+                            }
+                          : currentStatus === "Ready"
+                          ? {
+                              label: "Siap Diambil",
+                              bg: "bg-blue-50 text-[#2563EB] border-blue-200 hover:bg-blue-100 cursor-pointer",
+                              dot: "bg-[#2563EB]",
+                            }
+                          : {
+                              label: "Pending",
+                              bg: "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 cursor-pointer",
+                              dot: "bg-amber-500",
+                            };
 
                         const nextStatus: OrderStatusType =
                           currentStatus === "Preparing"
                             ? "Ready"
-                            : currentStatus === "Ready"
-                            ? "Completed"
-                            : "Preparing";
+                            : "Completed";
 
                         return (
                           <tr
@@ -2341,24 +2346,37 @@ export function AdminDashboard() {
                               {order.createdAt}
                             </td>
 
-                            {/* 6. Status Pill (Click to cycle status directly) */}
+                            {/* 6. Status Pill (Locked once Completed) */}
                             <td
                               className="py-3.5 px-4"
                               onClick={(e) => {
                                 e.stopPropagation();
+                                if (isCompletedLocked) return;
                                 updateOrderStatus(order.id, nextStatus);
                                 showToast(
-                                  `Status ${order.orderNumber} diubah ke ${nextStatus}`
+                                  `Status ${order.orderNumber} diubah ke ${
+                                    nextStatus === "Completed"
+                                      ? "Selesai"
+                                      : nextStatus
+                                  }`
                                 );
                               }}
                             >
                               <span
-                                title="Klik badge untuk mengubah status pesanan"
+                                title={
+                                  isCompletedLocked
+                                    ? "Pesanan sudah selesai dan tidak dapat diubah lagi"
+                                    : "Klik badge untuk mengubah status pesanan"
+                                }
                                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold transition ${statusConfig.bg}`}
                               >
-                                <span
-                                  className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`}
-                                />
+                                {isCompletedLocked ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                ) : (
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`}
+                                  />
+                                )}
                                 {statusConfig.label}
                               </span>
                             </td>
@@ -2930,34 +2948,45 @@ export function AdminDashboard() {
 
             <div className="space-y-2">
               <span className="block text-[10px] font-bold text-slate-400 uppercase">
-                Ubah Status Pesanan
+                Status Pesanan
               </span>
               <div className="grid grid-cols-3 gap-2">
                 {(["Preparing", "Ready", "Completed"] as OrderStatusType[]).map(
                   (st) => {
-                    const active =
-                      (selectedOrderDetail.status || "Preparing") === st;
+                    const currentSt =
+                      selectedOrderDetail.status || "Preparing";
+                    const active = currentSt === st;
+                    const isLocked = currentSt === "Completed" && !active;
+
                     return (
                       <button
                         type="button"
                         key={st}
+                        disabled={isLocked}
                         onClick={() => {
+                          if (currentSt === "Completed") return;
                           updateOrderStatus(selectedOrderDetail.id, st);
                           setSelectedOrderDetail({
                             ...selectedOrderDetail,
                             status: st,
                           });
                           showToast(
-                            `Status ${selectedOrderDetail.orderNumber} -> ${st}`
+                            `Status ${selectedOrderDetail.orderNumber} -> ${
+                              st === "Completed" ? "Selesai" : st
+                            }`
                           );
                         }}
-                        className={`py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        className={`py-2 rounded-xl text-xs font-bold transition ${
                           active
-                            ? "bg-[#2563EB] text-white"
-                            : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100"
+                            ? st === "Completed"
+                              ? "bg-emerald-600 text-white cursor-default"
+                              : "bg-[#2563EB] text-white cursor-pointer"
+                            : isLocked
+                            ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                            : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100 cursor-pointer"
                         }`}
                       >
-                        {st}
+                        {st === "Completed" ? "Selesai" : st}
                       </button>
                     );
                   }

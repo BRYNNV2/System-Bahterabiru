@@ -246,10 +246,15 @@ export async function POST(req: NextRequest) {
           status: OrderStatusType;
         };
         try {
-          await prisma.posOrder.update({
+          const existingOrder = await prisma.posOrder.findUnique({
             where: { id: orderId },
-            data: { status },
           });
+          if (existingOrder && existingOrder.status !== "Completed") {
+            await prisma.posOrder.update({
+              where: { id: orderId },
+              data: { status },
+            });
+          }
           const saved = await readNeonDbOrFallback();
           return NextResponse.json({ success: true, ...saved });
         } catch {
@@ -257,7 +262,9 @@ export async function POST(req: NextRequest) {
           const saved = writeLocalFallbackDb({
             ...db,
             recentOrders: db.recentOrders.map((ord) =>
-              ord.id === orderId ? { ...ord, status } : ord
+              ord.id === orderId && ord.status !== "Completed"
+                ? { ...ord, status }
+                : ord
             ),
           });
           return NextResponse.json({ success: true, ...saved });
