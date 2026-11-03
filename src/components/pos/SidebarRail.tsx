@@ -35,8 +35,14 @@ const ORDER_TIPS = [
 ];
 
 export function SidebarRail() {
-  const { activeTab, setActiveTab, isMobileMenuOpen, setIsMobileMenuOpen } =
-    usePosStore();
+  const {
+    activeTab,
+    setActiveTab,
+    isSidebarOpen,
+    setIsSidebarOpen,
+    isMobileMenuOpen,
+    setIsMobileMenuOpen,
+  } = usePosStore();
   const [tipIndex, setTipIndex] = useState(0);
 
   const navLinks: {
@@ -87,17 +93,22 @@ export function SidebarRail() {
             </span>
           </button>
 
-          {/* Close button for mobile drawer */}
-          {isMobile && (
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-zinc-600 transition cursor-pointer"
-              aria-label="Tutup Menu"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          {/* Close button (bisa ditutup dari desktop maupun mobile) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isMobile) {
+                setIsMobileMenuOpen(false);
+              } else {
+                setIsSidebarOpen(false);
+              }
+            }}
+            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center text-zinc-600 transition cursor-pointer"
+            aria-label="Tutup Menu"
+            title="Tutup Sidebar"
+          >
+            <X className="w-4 h-4 stroke-[2]" />
+          </button>
         </div>
 
         {/* Navigation Links */}
@@ -186,10 +197,12 @@ export function SidebarRail() {
 
   return (
     <>
-      {/* 1. Desktop Fixed Sidebar (visible only on lg and above) */}
-      <aside className="hidden lg:flex w-[225px] xl:w-[242px] bg-white border-r border-gray-200/70 px-4 py-5 flex-col justify-between shrink-0 z-20 h-full overflow-y-auto custom-scrollbar select-none">
-        {renderInnerContent(false)}
-      </aside>
+      {/* 1. Desktop Sidebar (collapsible via hamburger or close button) */}
+      {isSidebarOpen && (
+        <aside className="hidden lg:flex w-[225px] xl:w-[242px] bg-white border-r border-gray-200/70 px-4 py-5 flex-col justify-between shrink-0 z-20 h-full overflow-y-auto custom-scrollbar select-none animate-in slide-in-from-left duration-200">
+          {renderInnerContent(false)}
+        </aside>
+      )}
 
       {/* 2. Mobile Drawer (visible on < lg when opened) */}
       {isMobileMenuOpen && (

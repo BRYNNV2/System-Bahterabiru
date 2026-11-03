@@ -9,7 +9,8 @@ export function HeaderBar() {
     searchQuery,
     setSearchQuery,
     cart,
-    setIsMobileMenuOpen,
+    isSidebarOpen,
+    toggleSidebar,
     setIsMobileCartOpen,
   } = usePosStore();
   const [currentDate, setCurrentDate] = useState("");
@@ -33,13 +34,13 @@ export function HeaderBar() {
 
   return (
     <header className="flex items-center justify-between gap-2.5 sm:gap-4 bg-white px-3 sm:px-5 py-3 rounded-2xl border border-gray-200/60 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
-      {/* Left: Mobile Hamburger Toggle (visible on < lg) */}
+      {/* Left: Hamburger Toggle (Bisa buka/tutup sidebar di berbagai device) */}
       <button
         type="button"
-        onClick={() => setIsMobileMenuOpen(true)}
-        className="lg:hidden w-9 h-9 rounded-xl bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center text-zinc-700 transition cursor-pointer shrink-0"
-        aria-label="Buka Menu"
-        title="Buka Navigasi"
+        onClick={toggleSidebar}
+        className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center text-zinc-700 transition cursor-pointer shrink-0 active:scale-95 shadow-2xs border border-gray-200/50"
+        aria-label="Buka/Tutup Menu"
+        title={isSidebarOpen ? "Tutup Sidebar Navigasi" : "Buka Sidebar Navigasi"}
       >
         <Menu className="w-5 h-5 stroke-[2]" />
       </button>

@@ -49,6 +49,7 @@ interface PosState {
   paymentMethod: "Cash" | "Debit" | "QRIS";
   recentOrders: CompletedOrder[];
   isFilterOpen: boolean;
+  isSidebarOpen: boolean;
   isMobileMenuOpen: boolean;
   isMobileCartOpen: boolean;
 
@@ -59,6 +60,8 @@ interface PosState {
   setSortBy: (sort: "default" | "price-asc" | "price-desc" | "stock-desc") => void;
   setPaymentMethod: (method: "Cash" | "Debit" | "QRIS") => void;
   setIsFilterOpen: (open: boolean) => void;
+  setIsSidebarOpen: (open: boolean) => void;
+  toggleSidebar: () => void;
   setIsMobileMenuOpen: (open: boolean) => void;
   setIsMobileCartOpen: (open: boolean) => void;
 
@@ -112,6 +115,7 @@ export const usePosStore = create<PosState>((set, get) => ({
     },
   ],
   isFilterOpen: false,
+  isSidebarOpen: true,
   isMobileMenuOpen: false,
   isMobileCartOpen: false,
 
@@ -121,6 +125,12 @@ export const usePosStore = create<PosState>((set, get) => ({
   setSortBy: (sortBy) => set({ sortBy }),
   setPaymentMethod: (paymentMethod) => set({ paymentMethod }),
   setIsFilterOpen: (isFilterOpen) => set({ isFilterOpen }),
+  setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
+  toggleSidebar: () =>
+    set((state) => ({
+      isSidebarOpen: !state.isSidebarOpen,
+      isMobileMenuOpen: !state.isMobileMenuOpen,
+    })),
   setIsMobileMenuOpen: (isMobileMenuOpen) => set({ isMobileMenuOpen }),
   setIsMobileCartOpen: (isMobileCartOpen) => set({ isMobileCartOpen }),
 

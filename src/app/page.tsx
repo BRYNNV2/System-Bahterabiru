@@ -13,7 +13,7 @@ import { RecentOrdersModal } from "@/components/pos/RecentOrdersModal";
 import { usePosStore } from "@/store/usePosStore";
 
 export default function PosTerminalPage() {
-  const { activeTab, setActiveTab, setIsMobileMenuOpen } = usePosStore();
+  const { activeTab, setActiveTab, toggleSidebar } = usePosStore();
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
   const [isRecentOrdersOpen, setIsRecentOrdersOpen] = useState(false);
 
@@ -51,9 +51,10 @@ export default function PosTerminalPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
-                aria-label="Buka Menu"
+                onClick={toggleSidebar}
+                className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
+                aria-label="Buka/Tutup Menu"
+                title="Buka/Tutup Sidebar Navigasi"
               >
                 <Menu className="w-5 h-5 stroke-[2]" />
               </button>
@@ -122,9 +123,10 @@ export default function PosTerminalPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
-                aria-label="Buka Menu"
+                onClick={toggleSidebar}
+                className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
+                aria-label="Buka/Tutup Menu"
+                title="Buka/Tutup Sidebar Navigasi"
               >
                 <Menu className="w-5 h-5 stroke-[2]" />
               </button>
@@ -182,9 +184,10 @@ export default function PosTerminalPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
-                aria-label="Buka Menu"
+                onClick={toggleSidebar}
+                className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
+                aria-label="Buka/Tutup Menu"
+                title="Buka/Tutup Sidebar Navigasi"
               >
                 <Menu className="w-5 h-5 stroke-[2]" />
               </button>
@@ -217,9 +220,10 @@ export default function PosTerminalPage() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
-                aria-label="Buka Menu"
+                onClick={toggleSidebar}
+                className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
+                aria-label="Buka/Tutup Menu"
+                title="Buka/Tutup Sidebar Navigasi"
               >
                 <Menu className="w-5 h-5 stroke-[2]" />
               </button>
