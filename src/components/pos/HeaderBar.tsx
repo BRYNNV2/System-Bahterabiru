@@ -34,16 +34,18 @@ export function HeaderBar() {
 
   return (
     <header className="flex items-center justify-between gap-2.5 sm:gap-4 bg-white px-3 sm:px-5 py-3 rounded-2xl border border-gray-200/60 shadow-[0_2px_12px_rgba(0,0,0,0.02)]">
-      {/* Left: Hamburger Toggle (Bisa buka/tutup sidebar di berbagai device) */}
-      <button
-        type="button"
-        onClick={toggleSidebar}
-        className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center text-zinc-700 transition cursor-pointer shrink-0 active:scale-95 shadow-2xs border border-gray-200/50"
-        aria-label="Buka/Tutup Menu"
-        title={isSidebarOpen ? "Tutup Sidebar Navigasi" : "Buka Sidebar Navigasi"}
-      >
-        <Menu className="w-5 h-5 stroke-[2]" />
-      </button>
+      {/* Hamburger Toggle (Hanya muncul jika sidebar sedang ditutup, sehingga tidak ada tombol ganda) */}
+      {!isSidebarOpen && (
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-[#FCEAE3] hover:text-[#EE5728] text-zinc-700 flex items-center justify-center transition cursor-pointer shrink-0 active:scale-95 shadow-2xs border border-gray-200/50"
+          aria-label="Buka Sidebar"
+          title="Buka Sidebar Navigasi"
+        >
+          <Menu className="w-5 h-5 stroke-[2]" />
+        </button>
+      )}
 
       {/* Middle: Search Food Input */}
       <div className="flex-1 max-w-[520px]">

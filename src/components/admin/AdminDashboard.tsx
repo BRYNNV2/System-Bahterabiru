@@ -21,6 +21,7 @@ export function AdminDashboard() {
     recentOrders,
     updateProductStock,
     setActiveTab,
+    isSidebarOpen,
     toggleSidebar,
   } = usePosStore();
 
@@ -50,15 +51,17 @@ export function AdminDashboard() {
       {/* Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={toggleSidebar}
-            className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
-            aria-label="Buka/Tutup Menu"
-            title="Buka/Tutup Sidebar Navigasi"
-          >
-            <Menu className="w-5 h-5 stroke-[2]" />
-          </button>
+          {!isSidebarOpen && (
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              className="w-9 h-9 rounded-xl bg-white border border-gray-200 text-zinc-700 hover:bg-[#FCEAE3] hover:text-[#EE5728] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs transition"
+              aria-label="Buka Sidebar"
+              title="Buka Sidebar Navigasi"
+            >
+              <Menu className="w-5 h-5 stroke-[2]" />
+            </button>
+          )}
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">
               Admin Panel Kantin
