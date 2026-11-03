@@ -61,7 +61,13 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
   const paymentOptions: ("Cash" | "Debit" | "QRIS")[] = ["Cash", "Debit", "QRIS"];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+    <div
+      style={{
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+      }}
+      className="fixed inset-0 z-[100] bg-zinc-950/55 backdrop-blur-md flex items-center justify-center p-4"
+    >
       <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-in fade-in zoom-in-95">
         {!completedOrder ? (
           <div>

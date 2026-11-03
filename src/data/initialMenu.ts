@@ -17,6 +17,9 @@ export interface MenuItem {
   discountedPrice?: number;
   stock: number;
   soldCount: number;
+  featured?: boolean;
+  description: string;
+  servingOptions?: string[];
   imageUrl: string;
 }
 
@@ -53,6 +56,10 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 35000,
     stock: 24,
     soldCount: 18,
+    featured: true,
+    description:
+      "Steak sapi bakar pilihan yang dipanggang dengan bumbu rempah khas Coca coffeetalk hingga empuk dan juicy. Disajikan lengkap bersama sayuran segar, kentang panggang, dan saus lada hitam spesial.",
+    servingOptions: ["Medium Well", "Well Done", "Extra Sauce"],
     imageUrl:
       "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80",
   },
@@ -64,6 +71,10 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 25000,
     stock: 18,
     soldCount: 14,
+    featured: true,
+    description:
+      "Potongan daging ayam panggang berbumbu gurih manis yang disajikan di atas hotplate bersama kentang wedges lembut serta taburan rempah aromatik yang menggugah selera.",
+    servingOptions: ["Porsi Reguler", "Pedas Manis", "Original Gurih"],
     imageUrl:
       "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=600&q=80",
   },
@@ -73,8 +84,11 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     category: "Seafood",
     group: "Food",
     price: 22000,
-    stock: 15,
-    soldCount: 11,
+    stock: 0,
+    soldCount: 31,
+    description:
+      "Olahan fillet ikan segar yang dimasak perlahan dalam kuah santan rempah kuning khas nusantara. Tekstur daging ikan yang lembut berpadu sempurna dengan kuah gurih kaya rasa.",
+    servingOptions: ["Kuah Normal", "Kuah Pisah"],
     imageUrl:
       "https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?auto=format&fit=crop&w=600&q=80",
   },
@@ -86,6 +100,10 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 19000,
     stock: 28,
     soldCount: 22,
+    featured: true,
+    description:
+      "Mie kenyal racikan dapur sendiri dengan siraman kuah kaldu pedas gurih, dilengkapi topping irisan ayam, telur rebus setengah matang, dan sayuran segar pilihan.",
+    servingOptions: ["Pedas Level 1", "Pedas Level 2", "Pedas Level 3"],
     imageUrl:
       "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80",
   },
@@ -97,6 +115,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 15000,
     stock: 20,
     soldCount: 9,
+    description:
+      "Sup krim santan hangat bertekstur lembut dengan perpaduan bumbu rempah pilihan dan taburan daun bawang segar. Sangat cocok sebagai hidangan pembuka yang menenangkan.",
+    servingOptions: ["Hangat Reguler", "Extra Crouton"],
     imageUrl:
       "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=600&q=80",
   },
@@ -108,6 +129,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 21000,
     stock: 22,
     soldCount: 16,
+    description:
+      "Mie pipih tekstur lembut yang ditumis dengan bumbu bawang putih harumkan, disajikan bersama telur mata sapi setengah matang dan taburan wijen panggang.",
+    servingOptions: ["Telur Setengah Matang", "Telur Matang"],
     imageUrl:
       "https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?auto=format&fit=crop&w=600&q=80",
   },
@@ -119,6 +143,10 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 26500,
     stock: 16,
     soldCount: 19,
+    featured: true,
+    description:
+      "Nasi hangat berbumbu mentega yang disajikan dengan fillet dada ayam panggang renyah di luar dan lembut di dalam, lengkap dengan saus jamur creamy.",
+    servingOptions: ["Saus Jamur", "Saus Barbeque", "Saus Blackpepper"],
     imageUrl:
       "https://images.unsplash.com/photo-1604908176997-125f25cc6f3d?auto=format&fit=crop&w=600&q=80",
   },
@@ -130,6 +158,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 24500,
     stock: 14,
     soldCount: 12,
+    description:
+      "Steak ikan dori panggang tanpa duri yang disiram saus santan rempah wangi jeruk purut, menghasilkan cita rasa fusion pesisir yang lembut dan segar.",
+    servingOptions: ["Porsi Reguler", "Extra Sambal Matah"],
     imageUrl:
       "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=80",
   },
@@ -141,6 +172,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 18000,
     stock: 30,
     soldCount: 25,
+    description:
+      "Nasi goreng oriental tanpa kecap dengan aroma wok smoky yang khas, dimasak bersama bawang putih cincang, potongan ayam, telur orak-arik, dan daun bawang.",
+    servingOptions: ["Original Tidak Pedas", "Sedang", "Pedas"],
     imageUrl:
       "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80",
   },
@@ -152,6 +186,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 21500,
     stock: 19,
     soldCount: 15,
+    description:
+      "Perpaduan sehat nasi hangat, irisan dada ayam panggang rendah lemak, serta aneka sayuran segar dengan siraman sesame dressing yang gurih menyegarkan.",
+    servingOptions: ["Sesame Dressing", "Thousand Island"],
     imageUrl:
       "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80",
   },
@@ -163,6 +200,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 20000,
     stock: 21,
     soldCount: 17,
+    description:
+      "Mie putih lembut dengan topping ayam cincang berbumbu cabai merah pilihan, memberikan sensasi pedas gurih yang pas untuk pecinta kuliner mie.",
+    servingOptions: ["Pedas Normal", "Extra Pedas"],
     imageUrl:
       "https://images.unsplash.com/photo-1555126634-323283e090fa?auto=format&fit=crop&w=600&q=80",
   },
@@ -174,6 +214,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 23000,
     stock: 12,
     soldCount: 10,
+    description:
+      "Cumi segar pilihan yang dimasak cepat menggunakan api besar dengan saus tiram rempah sehingga teksturnya tetap empuk, tidak alot, dan kaya bumbu.",
+    servingOptions: ["Porsi Reguler", "Pedas Rempah"],
     imageUrl:
       "https://images.unsplash.com/photo-1565557623262-b51c2513a641?auto=format&fit=crop&w=600&q=80",
   },
@@ -185,6 +228,10 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 18500,
     stock: 35,
     soldCount: 28,
+    featured: true,
+    description:
+      "Perpaduan espresso biji kopi arabika pilihan dengan susu segar steamed yang lembut dan sirup karamel autentik. Nikmat disajikan dingin maupun hangat.",
+    servingOptions: ["Normal Ice", "Less Ice", "Hot"],
     imageUrl:
       "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80",
   },
@@ -196,6 +243,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 15000,
     stock: 40,
     soldCount: 20,
+    description:
+      "Double shot espresso dari biji kopi panggang medium-dark yang diseduh dengan air mineral dingin menghasilkan karakter rasa kopi yang bersih dan menyegarkan.",
+    servingOptions: ["Normal Ice", "Less Ice", "No Sugar"],
     imageUrl:
       "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=600&q=80",
   },
@@ -207,6 +257,10 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 17500,
     stock: 25,
     soldCount: 14,
+    featured: true,
+    description:
+      "Minuman segar racikan buah beri tropis pilihan dengan perasan lemon asli dan daun mint segar. Memberikan kesegaran instan di tengah aktivitas padat.",
+    servingOptions: ["Normal Ice", "Less Ice"],
     imageUrl:
       "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
   },
@@ -218,6 +272,10 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 16000,
     stock: 15,
     soldCount: 11,
+    featured: true,
+    description:
+      "Pastri Prancis berlapis yang dipanggang setiap pagi menggunakan French butter berkualitas tinggi, menghasilkan tekstur renyah berlapis di luar dan lembut berongga di dalam.",
+    servingOptions: ["Disajikan Hangat", "Tambah Selai Cokelat"],
     imageUrl:
       "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80",
   },
@@ -229,6 +287,9 @@ export const INITIAL_MENU_ITEMS: MenuItem[] = [
     price: 14500,
     stock: 26,
     soldCount: 19,
+    description:
+      "Potongan kentang tebal berkulit yang digoreng renyah keemasan dengan taburan bumbu herbs & garlic, disajikan hangat bersama saus keju dan saus sambal.",
+    servingOptions: ["Saus Keju", "Saus BBQ", "Pedas"],
     imageUrl:
       "https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80",
   },

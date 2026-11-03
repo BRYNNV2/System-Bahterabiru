@@ -41,14 +41,14 @@ export function HeaderBar() {
 
   return (
     <div className="mb-4">
-      {/* Top Breadcrumb matching Coca coffeetalk UI */}
+      {/* Top Breadcrumb for Buyer Self-Ordering */}
       <div className="flex items-center gap-1.5 text-xs mb-3 px-0.5">
         <button
           type="button"
-          onClick={() => setActiveTab("analytics")}
+          onClick={() => setSelectedCategory("All Menu")}
           className="text-[#FF6B2C] font-semibold hover:underline cursor-pointer"
         >
-          Dashboard
+          Menu
         </button>
         <span className="text-gray-300">/</span>
         <span className="text-gray-400 font-medium">{activeSidebarGroup}</span>

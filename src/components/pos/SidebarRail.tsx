@@ -8,20 +8,13 @@ import {
   Soup,
   Croissant,
   Cookie,
-  LayoutDashboard,
-  Settings,
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { SidebarGroupType } from "@/data/initialMenu";
 
 export function SidebarRail() {
-  const {
-    activeTab,
-    setActiveTab,
-    activeSidebarGroup,
-    setActiveSidebarGroup,
-    isSidebarOpen,
-  } = usePosStore();
+  const { activeSidebarGroup, setActiveSidebarGroup, isSidebarOpen } =
+    usePosStore();
 
   // Collapsible via the single hamburger icon in the top header
   if (!isSidebarOpen) return null;
@@ -40,13 +33,12 @@ export function SidebarRail() {
   ];
 
   return (
-    <aside className="w-[88px] sm:w-[100px] bg-white border-r border-gray-100 py-5 px-2 flex flex-col items-center justify-between shrink-0 h-full overflow-y-auto custom-scrollbar select-none z-20">
-      {/* Main Vertical Category Rail matching Coca coffeetalk UI */}
+    <aside className="w-[88px] sm:w-[100px] bg-white border-r border-gray-100 py-5 px-2 flex flex-col items-center shrink-0 h-full overflow-y-auto custom-scrollbar select-none z-20">
+      {/* Main Vertical Category Rail for Buyer Self-Ordering */}
       <nav className="flex flex-col items-center gap-3 w-full">
         {menuGroups.map((group) => {
           const Icon = group.icon;
-          const isActive =
-            activeTab === "pos" && activeSidebarGroup === group.id;
+          const isActive = activeSidebarGroup === group.id;
 
           return (
             <button
@@ -81,37 +73,6 @@ export function SidebarRail() {
           );
         })}
       </nav>
-
-      {/* Bottom Utility Rail: Dashboard & Settings */}
-      <div className="flex flex-col items-center gap-2 pt-4 mt-4 border-t border-gray-100 w-full">
-        <button
-          type="button"
-          onClick={() => setActiveTab("analytics")}
-          className={`w-[68px] py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-            activeTab === "analytics" || activeTab === "inventory"
-              ? "bg-gradient-to-b from-[#FF8C42] to-[#FF5511] text-white shadow-[0_8px_20px_rgba(255,94,26,0.25)]"
-              : "text-gray-400 hover:text-zinc-700 hover:bg-[#F8F9FB]"
-          }`}
-          title="Dashboard & Stok"
-        >
-          <LayoutDashboard className="w-[18px] h-[18px] stroke-[1.8]" />
-          <span className="text-[10px] font-medium leading-none">Dashboard</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("settings")}
-          className={`w-[68px] py-2.5 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
-            activeTab === "settings"
-              ? "bg-gradient-to-b from-[#FF8C42] to-[#FF5511] text-white shadow-[0_8px_20px_rgba(255,94,26,0.25)]"
-              : "text-gray-400 hover:text-zinc-700 hover:bg-[#F8F9FB]"
-          }`}
-          title="Pengaturan"
-        >
-          <Settings className="w-[18px] h-[18px] stroke-[1.8]" />
-          <span className="text-[10px] font-medium leading-none">Settings</span>
-        </button>
-      </div>
     </aside>
   );
 }

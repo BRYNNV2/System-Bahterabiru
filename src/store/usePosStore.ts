@@ -57,6 +57,7 @@ interface PosState {
   isFilterOpen: boolean;
   isSidebarOpen: boolean;
   isMobileCartOpen: boolean;
+  isModalBlurActive: boolean;
 
   // Actions
   setActiveTab: (tab: AppNavTab) => void;
@@ -73,9 +74,11 @@ interface PosState {
   setIsSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
   setIsMobileCartOpen: (open: boolean) => void;
+  setIsModalBlurActive: (active: boolean) => void;
 
   // Cart
   addToCart: (productId: string) => void;
+  addToCartWithQty: (productId: string, qty: number) => void;
   decrementFromCart: (productId: string) => void;
   removeFromCart: (productId: string) => void;
   clearCart: () => void;
@@ -131,6 +134,7 @@ export const usePosStore = create<PosState>((set, get) => ({
   isFilterOpen: false,
   isSidebarOpen: true,
   isMobileCartOpen: false,
+  isModalBlurActive: false,
 
   setActiveTab: (tab) => set({ activeTab: tab }),
   setActiveSidebarGroup: (group) =>
@@ -151,21 +155,48 @@ export const usePosStore = create<PosState>((set, get) => ({
   setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
   setIsMobileCartOpen: (isMobileCartOpen) => set({ isMobileCartOpen }),
+  setIsModalBlurActive: (isModalBlurActive) => set({ isModalBlurActive }),
 
   addToCart: (productId) => {
     const { menuItems, cart } = get();
     const product = menuItems.find((p) => p.id === productId);
-    if (!product) return;
+    if (!product || product.stock <= 0) return;
 
     const existing = cart.find((c) => c.productId === productId);
     if (existing) {
       set({
         cart: cart.map((c) =>
-          c.productId === productId ? { ...c, quantity: c.quantity + 1 } : c
+          c.productId === productId
+            ? { ...c, quantity: Math.min(product.stock, c.quantity + 1) }
+            : c
         ),
       });
     } else {
       set({ cart: [...cart, { productId, quantity: 1 }] });
+    }
+  },
+
+  addToCartWithQty: (productId, qty) => {
+    const { menuItems, cart } = get();
+    const product = menuItems.find((p) => p.id === productId);
+    if (!product || product.stock <= 0 || qty <= 0) return;
+
+    const existing = cart.find((c) => c.productId === productId);
+    if (existing) {
+      set({
+        cart: cart.map((c) =>
+          c.productId === productId
+            ? { ...c, quantity: Math.min(product.stock, c.quantity + qty) }
+            : c
+        ),
+      });
+    } else {
+      set({
+        cart: [
+          ...cart,
+          { productId, quantity: Math.min(product.stock, qty) },
+        ],
+      });
     }
   },
 
