@@ -90,31 +90,61 @@ function mapDbRowToOrder(row: {
   };
 }
 
-export async function readNeonDbOrFallback(): Promise<ServerPosDatabase> {
+export interface ReadDbOptions {
+  ordersLimit?: number;
+  ordersSkip?: number;
+  allOrders?: boolean;
+}
+
+export interface PaginatedPosDatabase extends ServerPosDatabase {
+  totalOrdersCount: number;
+}
+
+export async function readNeonDbOrFallback(
+  options?: ReadDbOptions
+): Promise<PaginatedPosDatabase> {
+  const limit = options?.ordersLimit ?? 50;
+  const skip = options?.ordersSkip ?? 0;
+  const fetchAll = Boolean(options?.allOrders);
+
   try {
-    const [menuRows, orderRows] = await Promise.all([
+    const [menuRows, orderRows, totalOrdersCount] = await Promise.all([
       prisma.posMenuItem.findMany({
         orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
       }),
-      prisma.posOrder.findMany({
-        orderBy: { createdAt: "desc" },
-      }),
+      fetchAll
+        ? prisma.posOrder.findMany({
+            orderBy: { createdAt: "desc" },
+          })
+        : prisma.posOrder.findMany({
+            orderBy: { createdAt: "desc" },
+            take: limit,
+            skip,
+          }),
+      prisma.posOrder.count(),
     ]);
 
-    const result: ServerPosDatabase = {
+    const result: PaginatedPosDatabase = {
       menuItems: menuRows.map(mapDbRowToMenuItem),
       recentOrders: orderRows.map(mapDbRowToOrder),
+      totalOrdersCount,
       updatedAt: Date.now(),
     };
 
     writeLocalFallbackDb(result);
     return result;
   } catch {
-    return readLocalFallbackDb();
+    return readLocalFallbackDb(options);
   }
 }
 
-export function readLocalFallbackDb(): ServerPosDatabase {
+export function readLocalFallbackDb(
+  options?: ReadDbOptions
+): PaginatedPosDatabase {
+  const limit = options?.ordersLimit ?? 50;
+  const skip = options?.ordersSkip ?? 0;
+  const fetchAll = Boolean(options?.allOrders);
+
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, "utf-8");
@@ -125,7 +155,16 @@ export function readLocalFallbackDb(): ServerPosDatabase {
         Array.isArray(parsed.recentOrders)
       ) {
         globalForDb.posMemoryDb = parsed;
-        return parsed;
+        const total = parsed.recentOrders.length;
+        const slice = fetchAll
+          ? parsed.recentOrders
+          : parsed.recentOrders.slice(skip, skip + limit);
+        return {
+          menuItems: parsed.menuItems,
+          recentOrders: slice,
+          totalOrdersCount: total,
+          updatedAt: parsed.updatedAt || Date.now(),
+        };
       }
     }
   } catch {
@@ -133,7 +172,17 @@ export function readLocalFallbackDb(): ServerPosDatabase {
   }
 
   if (globalForDb.posMemoryDb) {
-    return globalForDb.posMemoryDb;
+    const mem = globalForDb.posMemoryDb;
+    const total = mem.recentOrders.length;
+    const slice = fetchAll
+      ? mem.recentOrders
+      : mem.recentOrders.slice(skip, skip + limit);
+    return {
+      menuItems: mem.menuItems,
+      recentOrders: slice,
+      totalOrdersCount: total,
+      updatedAt: mem.updatedAt || Date.now(),
+    };
   }
 
   const initialDb: ServerPosDatabase = {
@@ -143,7 +192,10 @@ export function readLocalFallbackDb(): ServerPosDatabase {
   };
 
   writeLocalFallbackDb(initialDb);
-  return initialDb;
+  return {
+    ...initialDb,
+    totalOrdersCount: 0,
+  };
 }
 
 export function writeLocalFallbackDb(data: ServerPosDatabase): ServerPosDatabase {

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { CategoryType, SidebarGroupType } from "@/data/initialMenu";
+import { useDebounce } from "@/hooks/useDebounce";
 
 const FILTER_PILLS: { id: CategoryType; label: string }[] = [
   { id: "All Menu", label: "All" },
@@ -52,6 +53,21 @@ export function HeaderBar() {
 
   const [showSortMenu, setShowSortMenu] = useState(false);
   const sortRef = useRef<HTMLDivElement>(null);
+
+  // Debouncing pencarian & barcode scanner agar ketikan / scan tidak membebani render
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const debouncedSearch = useDebounce(localSearch, 200);
+
+  useEffect(() => {
+    setSearchQuery(debouncedSearch);
+  }, [debouncedSearch, setSearchQuery]);
+
+  // Sinkronisasi jika store di-clear dari luar
+  useEffect(() => {
+    if (!searchQuery && localSearch) {
+      setLocalSearch("");
+    }
+  }, [searchQuery, localSearch]);
 
   useEffect(() => {
     if (!showSortMenu) return;
@@ -111,15 +127,23 @@ export function HeaderBar() {
           <Search className="w-4 h-4 text-zinc-400 shrink-0 stroke-[2]" />
           <input
             type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search menu..."
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                setSearchQuery(localSearch);
+              }
+            }}
+            placeholder="Search menu or scan barcode..."
             className="w-full bg-transparent text-zinc-800 placeholder:text-zinc-300 text-xs font-medium pl-2.5 pr-7 py-1 focus:outline-none"
           />
-          {searchQuery && (
+          {localSearch && (
             <button
               type="button"
-              onClick={() => setSearchQuery("")}
+              onClick={() => {
+                setLocalSearch("");
+                setSearchQuery("");
+              }}
               className="text-zinc-400 hover:text-zinc-800 cursor-pointer"
               aria-label="Clear search"
             >

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
 import { formatRupiah, MenuItem } from "@/data/initialMenu";
+import { useDebounce } from "@/hooks/useDebounce";
 
 type PeriodFilter = "today" | "7d" | "30d" | "month" | "all" | "custom";
 type HistoryTab = "transactions" | "products";
@@ -424,11 +425,14 @@ export function TransactionHistory({
   );
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("ALL");
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 200);
   const [tab, setTab] = useState<HistoryTab>("transactions");
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>(
     {}
   );
+  const [historyPage, setHistoryPage] = useState<number>(1);
+  const [historyPageSize, setHistoryPageSize] = useState<number>(10);
 
   // Harga modal per produk (snapshot saat checkout → fallback harga modal terkini)
   const costLookup = useMemo(() => {
@@ -468,7 +472,7 @@ export function TransactionHistory({
       if (customTo) to = new Date(`${customTo}T23:59:59.999`);
     }
 
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
 
     return orders
       .filter((o) => {
@@ -606,6 +610,16 @@ export function TransactionHistory({
     });
     return groups;
   }, [filteredOrders]);
+
+  const totalHistoryPages = Math.max(
+    1,
+    Math.ceil(groupedByDay.length / historyPageSize)
+  );
+  const safeHistoryPage = Math.min(Math.max(1, historyPage), totalHistoryPages);
+  const paginatedGroups = groupedByDay.slice(
+    (safeHistoryPage - 1) * historyPageSize,
+    safeHistoryPage * historyPageSize
+  );
 
   // Rekap per produk
   const productRecap = useMemo(() => {
@@ -1115,7 +1129,7 @@ export function TransactionHistory({
                   <th className="py-3 px-5">Status</th>
                 </tr>
               </thead>
-              {groupedByDay.map((group) => {
+              {paginatedGroups.map((group) => {
                 const isCollapsed = collapsedDays[group.dayKey];
                 return (
                   <tbody key={group.dayKey} className="text-xs">
@@ -1361,6 +1375,77 @@ export function TransactionHistory({
                 );
               })}
             </table>
+
+            {/* Pagination Hari Transaksi */}
+            {groupedByDay.length > historyPageSize && (
+              <div className="p-3.5 sm:p-4 bg-[#F8FAFC] border-t border-slate-200/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                <div className="flex items-center gap-2">
+                  <span>
+                    Menampilkan grup hari{" "}
+                    <b className="text-slate-800">
+                      {(safeHistoryPage - 1) * historyPageSize + 1}
+                    </b>{" "}
+                    –{" "}
+                    <b className="text-slate-800">
+                      {Math.min(
+                        safeHistoryPage * historyPageSize,
+                        groupedByDay.length
+                      )}
+                    </b>{" "}
+                    dari{" "}
+                    <b className="text-slate-800">{groupedByDay.length}</b>{" "}
+                    hari
+                  </span>
+
+                  <div className="flex items-center gap-1.5 ml-3">
+                    <span className="text-[11px] text-slate-400">Tampilkan:</span>
+                    <select
+                      value={historyPageSize}
+                      onChange={(e) => {
+                        setHistoryPageSize(Number(e.target.value));
+                        setHistoryPage(1);
+                      }}
+                      className="bg-white border border-slate-200/80 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:border-[#2563EB]"
+                    >
+                      <option value={5}>5 hari</option>
+                      <option value={10}>10 hari</option>
+                      <option value={20}>20 hari</option>
+                      <option value={50}>50 hari</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={safeHistoryPage <= 1}
+                    onClick={() =>
+                      setHistoryPage((p) => Math.max(1, p - 1))
+                    }
+                    className="px-3 py-1.5 rounded-lg border border-slate-200/80 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                  >
+                    ← Sebelumnya
+                  </button>
+
+                  <span className="px-2.5 py-1 text-xs font-bold text-slate-700 tabular-nums">
+                    Hal {safeHistoryPage} / {totalHistoryPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={safeHistoryPage >= totalHistoryPages}
+                    onClick={() =>
+                      setHistoryPage((p) =>
+                        Math.min(totalHistoryPages, p + 1)
+                      )
+                    }
+                    className="px-3 py-1.5 rounded-lg border border-slate-200/80 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                  >
+                    Berikutnya →
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto custom-scrollbar">

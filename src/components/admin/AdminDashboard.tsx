@@ -37,6 +37,7 @@ import {
   History,
 } from "lucide-react";
 import { TransactionHistory } from "@/components/admin/TransactionHistory";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   usePosStore,
   OrderStatusType,
@@ -170,9 +171,12 @@ export function AdminDashboard() {
   >("ALL");
   const [txSortField, setTxSortField] = useState<"date" | "amount">("date");
   const [txSortAsc, setTxSortAsc] = useState<boolean>(false);
+  const [txCurrentPage, setTxCurrentPage] = useState<number>(1);
+  const [txPageSize, setTxPageSize] = useState<number>(20);
 
   // Search & Filter State
   const [globalSearch, setGlobalSearch] = useState("");
+  const debouncedGlobalSearch = useDebounce(globalSearch, 200);
   const [crudCategoryFilter, setCrudCategoryFilter] = useState<string>("All");
   const [mobileCrudCols, setMobileCrudCols] = useState<2 | 3>(2);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -691,7 +695,7 @@ export function AdminDashboard() {
     ) {
       return false;
     }
-    const q = globalSearch.toLowerCase().trim();
+    const q = debouncedGlobalSearch.toLowerCase().trim();
     if (!q) return true;
     return (
       item.name.toLowerCase().includes(q) ||
@@ -706,7 +710,7 @@ export function AdminDashboard() {
         const st = ord.status || "Preparing";
         if (st !== txStatusFilter) return false;
       }
-      const q = globalSearch.toLowerCase().trim();
+      const q = debouncedGlobalSearch.toLowerCase().trim();
       if (!q) return true;
       return (
         ord.customerName.toLowerCase().includes(q) ||
@@ -723,6 +727,14 @@ export function AdminDashboard() {
       }
       return txSortAsc ? 1 : -1;
     });
+
+  // Pagination untuk Halaman Transaksi agar rendering tabel secepat kilat
+  const totalTxPages = Math.max(1, Math.ceil(filteredOrders.length / txPageSize));
+  const safeTxCurrentPage = Math.min(Math.max(1, txCurrentPage), totalTxPages);
+  const paginatedOrders = filteredOrders.slice(
+    (safeTxCurrentPage - 1) * txPageSize,
+    safeTxCurrentPage * txPageSize
+  );
 
   // Calculate SVG Donut stroke-dasharray segments
   let cumulativePercent = 0;
@@ -2421,7 +2433,7 @@ export function AdminDashboard() {
                         </td>
                       </tr>
                     ) : (
-                      filteredOrders.map((order) => {
+                      paginatedOrders.map((order) => {
                         const currentStatus: OrderStatusType =
                           order.status || "Preparing";
                         const itemsSummary = order.items
@@ -2570,6 +2582,75 @@ export function AdminDashboard() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Table Pagination Footer */}
+              {filteredOrders.length > 0 && (
+                <div className="p-3.5 sm:p-4 bg-[#F8FAFC] border-t border-slate-200/70 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                  <div className="flex items-center gap-3">
+                    <span>
+                      Menampilkan{" "}
+                      <b className="text-slate-800">
+                        {(safeTxCurrentPage - 1) * txPageSize + 1}
+                      </b>{" "}
+                      –{" "}
+                      <b className="text-slate-800">
+                        {Math.min(
+                          safeTxCurrentPage * txPageSize,
+                          filteredOrders.length
+                        )}
+                      </b>{" "}
+                      dari{" "}
+                      <b className="text-slate-800">{filteredOrders.length}</b>{" "}
+                      transaksi
+                    </span>
+
+                    <div className="flex items-center gap-1.5 ml-2">
+                      <span className="text-[11px] text-slate-400">Per hal:</span>
+                      <select
+                        value={txPageSize}
+                        onChange={(e) => {
+                          setTxPageSize(Number(e.target.value));
+                          setTxCurrentPage(1);
+                        }}
+                        className="bg-white border border-slate-200/80 rounded-lg px-2 py-1 text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:border-[#2563EB]"
+                      >
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={safeTxCurrentPage <= 1}
+                      onClick={() =>
+                        setTxCurrentPage((p) => Math.max(1, p - 1))
+                      }
+                      className="px-3 py-1.5 rounded-lg border border-slate-200/80 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                    >
+                      ← Sebelumnya
+                    </button>
+
+                    <span className="px-2.5 py-1 text-xs font-bold text-slate-700 tabular-nums">
+                      Hal {safeTxCurrentPage} / {totalTxPages}
+                    </span>
+
+                    <button
+                      type="button"
+                      disabled={safeTxCurrentPage >= totalTxPages}
+                      onClick={() =>
+                        setTxCurrentPage((p) => Math.min(totalTxPages, p + 1))
+                      }
+                      className="px-3 py-1.5 rounded-lg border border-slate-200/80 bg-white font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition cursor-pointer"
+                    >
+                      Berikutnya →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </main>
         )}

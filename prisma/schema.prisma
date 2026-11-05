@@ -26,6 +26,11 @@ model PosMenuItem {
   sortOrder       Int      @default(0)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([name])
+  @@index([category])
+  @@index([group])
+  @@index([sortOrder, createdAt])
 }
 
 model PosOrder {
@@ -43,6 +48,12 @@ model PosOrder {
   createdAtText String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@index([paymentMethod])
+  @@index([orderNumber])
+  @@index([customerName])
 }
 
 model Product {
@@ -59,6 +70,9 @@ model Product {
   updatedAt         DateTime    @updatedAt
   orderItems        OrderItem[]
   stockLogs         StockLog[]
+
+  @@index([name])
+  @@index([category])
 }
 
 model Order {
@@ -74,6 +88,10 @@ model Order {
   status        String      @default("COMPLETED")
   createdAt     DateTime    @default(now())
   items         OrderItem[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@index([customerName])
 }
 
 model OrderItem {

@@ -10,12 +10,28 @@ import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const db = await readNeonDbOrFallback();
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const all = searchParams.get("all") === "true";
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(
+    100,
+    Math.max(5, Number(searchParams.get("limit")) || 50)
+  );
+  const skip = (page - 1) * limit;
+
+  const db = await readNeonDbOrFallback(
+    all ? { allOrders: true } : { ordersLimit: limit, ordersSkip: skip }
+  );
+
   return NextResponse.json({
     success: true,
     menuItems: db.menuItems,
     recentOrders: db.recentOrders,
+    totalOrdersCount: db.totalOrdersCount,
+    currentPage: page,
+    pageSize: limit,
+    totalPages: Math.max(1, Math.ceil(db.totalOrdersCount / limit)),
     updatedAt: db.updatedAt,
   });
 }
