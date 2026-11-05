@@ -33,6 +33,10 @@ export interface CompletedOrder {
   totalAmount: number;
   paymentMethod: "Cash" | "Debit" | "QRIS";
   createdAt: string;
+  /** Timestamp ISO asli (dipakai untuk History Transaksi & filter tanggal) */
+  createdAtIso?: string;
+  /** Timestamp ISO terakhir status diubah */
+  updatedAtIso?: string;
 }
 
 export type AppNavTab =
@@ -321,7 +325,9 @@ export const usePosStore = create<PosState>()(
         if (currentOrder?.status === "Completed") return;
         set((state) => ({
           recentOrders: state.recentOrders.map((o) =>
-            o.id === orderId && o.status !== "Completed" ? { ...o, status } : o
+            o.id === orderId && o.status !== "Completed"
+              ? { ...o, status, updatedAtIso: new Date().toISOString() }
+              : o
           ),
         }));
         void sendSyncMutation("UPDATE_ORDER_STATUS", { orderId, status });
@@ -419,6 +425,7 @@ export const usePosStore = create<PosState>()(
             hour: "2-digit",
             minute: "2-digit",
           })}`,
+          createdAtIso: new Date().toISOString(),
         };
 
         const updatedMenu = menuItems.map((item) => {

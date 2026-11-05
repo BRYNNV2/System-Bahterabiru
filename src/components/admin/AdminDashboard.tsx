@@ -34,7 +34,9 @@ import {
   BarChart2,
   UtensilsCrossed,
   Clock,
+  History,
 } from "lucide-react";
+import { TransactionHistory } from "@/components/admin/TransactionHistory";
 import {
   usePosStore,
   OrderStatusType,
@@ -74,7 +76,7 @@ const PRESET_FOOD_IMAGES = [
   },
 ];
 
-type AdminPageTab = "dashboard" | "transactions" | "crud";
+type AdminPageTab = "dashboard" | "transactions" | "history" | "crud";
 type RevenueTimeframe = "daily" | "weekly" | "monthly";
 
 // Helper component for the signature FinPay striped progress bar
@@ -804,6 +806,11 @@ export function AdminDashboard() {
               {[
                 { id: "dashboard", label: "Dashboard", icon: Home },
                 { id: "transactions", label: "Transaction", icon: Receipt },
+                {
+                  id: "history",
+                  label: "History Transaksi",
+                  icon: History,
+                },
                 {
                   id: "crud",
                   label: "Menu CRUD & Stok",
@@ -2253,6 +2260,15 @@ export function AdminDashboard() {
               })}
             </div>
           </main>
+        ) : activePage === "history" ? (
+          /* ===================================================================
+              VIEW D: HISTORY TRANSAKSI DETAIL (Riwayat Penjualan, Modal & Laba)
+             =================================================================== */
+          <TransactionHistory
+            orders={recentOrders}
+            menuItems={menuItems}
+            onOpenDetail={(order) => setSelectedOrderDetail(order)}
+          />
         ) : (
           /* ===================================================================
               VIEW C: HALAMAN TRANSAKSI LENGKAP (Table Layout — FinPay Blue & White)
@@ -2559,10 +2575,11 @@ export function AdminDashboard() {
         )}
 
         {/* Mobile Bottom Navigation Bar (< lg) */}
-        <nav className="lg:hidden absolute bottom-0 inset-x-0 bg-white border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-3 gap-1 z-30">
+        <nav className="lg:hidden absolute bottom-0 inset-x-0 bg-white border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-4 gap-1 z-30">
           {[
             { id: "dashboard", label: "Dashboard", icon: Home },
             { id: "transactions", label: "Pesanan", icon: Receipt },
+            { id: "history", label: "History", icon: History },
             { id: "crud", label: "CRUD Stok", icon: UtensilsCrossed },
           ].map((tab) => {
             const Icon = tab.icon;

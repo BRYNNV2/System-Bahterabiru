@@ -68,6 +68,8 @@ function mapDbRowToOrder(row: {
   totalAmount: number;
   paymentMethod: string;
   createdAtText: string;
+  createdAt?: Date | null;
+  updatedAt?: Date | null;
 }): CompletedOrder {
   return {
     id: row.id,
@@ -83,6 +85,8 @@ function mapDbRowToOrder(row: {
     paymentMethod:
       (row.paymentMethod as CompletedOrder["paymentMethod"]) || "QRIS",
     createdAt: row.createdAtText,
+    ...(row.createdAt ? { createdAtIso: row.createdAt.toISOString() } : {}),
+    ...(row.updatedAt ? { updatedAtIso: row.updatedAt.toISOString() } : {}),
   };
 }
 
