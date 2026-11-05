@@ -12,6 +12,7 @@ export interface MenuItem {
     | "Bread"
     | "Snack";
   group: "Food" | "Coffee" | "Beverages" | "Appetizer" | "Bread" | "Snack";
+  costPrice?: number;
   price: number;
   discountPercent?: number;
   discountedPrice?: number;

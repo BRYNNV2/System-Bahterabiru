@@ -24,6 +24,7 @@ function mapDbRowToMenuItem(row: {
   name: string;
   category: string;
   group: string;
+  costPrice?: number | null;
   price: number;
   discountPercent: number | null;
   discountedPrice: number | null;
@@ -39,6 +40,7 @@ function mapDbRowToMenuItem(row: {
     name: row.name,
     category: row.category as MenuItem["category"],
     group: row.group as MenuItem["group"],
+    costPrice: row.costPrice ?? 0,
     price: row.price,
     ...(row.discountPercent ? { discountPercent: row.discountPercent } : {}),
     ...(row.discountedPrice ? { discountedPrice: row.discountedPrice } : {}),

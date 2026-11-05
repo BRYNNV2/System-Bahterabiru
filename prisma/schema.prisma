@@ -13,6 +13,7 @@ model PosMenuItem {
   name            String
   category        String
   group           String
+  costPrice       Int      @default(0)
   price           Int
   discountPercent Int?
   discountedPrice Int?

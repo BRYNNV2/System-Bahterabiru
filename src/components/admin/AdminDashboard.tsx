@@ -182,7 +182,8 @@ export function AdminDashboard() {
   const [formCategory, setFormCategory] =
     useState<MenuItem["category"]>("Rice bowl");
   const [formGroup, setFormGroup] = useState<MenuItem["group"]>("Food");
-  const [formPrice, setFormPrice] = useState<number>(25000);
+  const [formCostPrice, setFormCostPrice] = useState<number>(3000);
+  const [formPrice, setFormPrice] = useState<number>(4000);
   const [formStock, setFormStock] = useState<number>(20);
   const [formDesc, setFormDesc] = useState("");
   const [formImage, setFormImage] = useState("");
@@ -302,7 +303,8 @@ export function AdminDashboard() {
     setFormName("");
     setFormCategory("Rice bowl");
     setFormGroup("Food");
-    setFormPrice(25000);
+    setFormCostPrice(3000);
+    setFormPrice(4000);
     setFormStock(20);
     setFormDesc("");
     setFormImage("");
@@ -318,6 +320,7 @@ export function AdminDashboard() {
     setFormName(item.name);
     setFormCategory(item.category);
     setFormGroup(item.group);
+    setFormCostPrice(item.costPrice ?? 0);
     setFormPrice(getEffectivePrice(item));
     setFormStock(item.stock);
     const isLegacyDesc =
@@ -368,7 +371,8 @@ export function AdminDashboard() {
         name: formName.trim(),
         category: formCategory,
         group: formGroup,
-        price: Number(formPrice) || 1000,
+        costPrice: Math.max(0, Number(formCostPrice) || 0),
+        price: Number(formPrice) || 500,
         discountedPrice: undefined,
         discountPercent: undefined,
         stock: Math.max(0, Number(formStock) || 0),
@@ -383,7 +387,8 @@ export function AdminDashboard() {
         name: formName.trim(),
         category: formCategory,
         group: formGroup,
-        price: Number(formPrice) || 1000,
+        costPrice: Math.max(0, Number(formCostPrice) || 0),
+        price: Number(formPrice) || 500,
         stock: Math.max(0, Number(formStock) || 0),
         description: formDesc.trim(),
         imageUrl: formImage.trim(),
@@ -504,21 +509,50 @@ export function AdminDashboard() {
   }
 
   // ============================================================================
-  // 2. DATA & ANALYTICS CALCULATIONS
+  // 2. DATA & ANALYTICS CALCULATIONS (Per-Product Cost Price vs Selling Price)
   // ============================================================================
-  const liveOrdersRevenue = recentOrders.reduce((s, o) => s + o.totalAmount, 0);
   const totalSoldUnits = menuItems.reduce((s, m) => s + m.soldCount, 0);
+  const totalProductSalesRevenue = menuItems.reduce(
+    (s, m) => s + getEffectivePrice(m) * m.soldCount,
+    0
+  );
+  const totalProductCostOfGoodsSold = menuItems.reduce(
+    (s, m) => s + (m.costPrice || 0) * m.soldCount,
+    0
+  );
+  const liveOrdersRevenue =
+    totalProductSalesRevenue > 0
+      ? totalProductSalesRevenue
+      : recentOrders.reduce((s, o) => s + o.totalAmount, 0);
 
   const totalIncome = liveOrdersRevenue;
-  const totalExpenses = customExpenses;
+  const totalExpenses = totalProductCostOfGoodsSold + customExpenses;
   const totalNetProfit = totalIncome - totalExpenses;
   const todayRevenue = liveOrdersRevenue;
   const dailyTargetPct = Math.min(
     100,
     Math.round((todayRevenue / Math.max(1, dailyTargetAmount)) * 100)
   );
-  const liveBarPct = liveOrdersRevenue > 0 ? Math.min(100, Math.max(18, Math.round((liveOrdersRevenue / Math.max(1, dailyTargetAmount)) * 100))) : 4;
-  const expBarPct = customExpenses > 0 ? Math.min(100, Math.max(15, Math.round((customExpenses / Math.max(1, dailyTargetAmount)) * 100))) : 4;
+  const liveBarPct =
+    totalIncome > 0
+      ? Math.min(
+          100,
+          Math.max(
+            18,
+            Math.round((totalIncome / Math.max(1, dailyTargetAmount)) * 100)
+          )
+        )
+      : 4;
+  const expBarPct =
+    totalExpenses > 0
+      ? Math.min(
+          100,
+          Math.max(
+            15,
+            Math.round((totalExpenses / Math.max(1, dailyTargetAmount)) * 100)
+          )
+        )
+      : 4;
 
   // Bidirectional Bar Chart Datasets (Per Hari, Minggu, Bulan)
   const REVENUE_DATASETS: Record<
@@ -537,7 +571,7 @@ export function AdminDashboard() {
   > = {
     daily: {
       label: "Per Hari (7 Hari)",
-      balance: liveOrdersRevenue,
+      balance: totalIncome,
       bars: [
         { label: "Sen", income: 0, expense: 0, inPct: 4, exPct: 4 },
         { label: "Sel", income: 0, expense: 0, inPct: 4, exPct: 4 },
@@ -545,8 +579,8 @@ export function AdminDashboard() {
         { label: "Kam", income: 0, expense: 0, inPct: 4, exPct: 4 },
         {
           label: "Hari Ini",
-          income: liveOrdersRevenue,
-          expense: customExpenses,
+          income: totalIncome,
+          expense: totalExpenses,
           inPct: liveBarPct,
           exPct: expBarPct,
         },
@@ -556,7 +590,7 @@ export function AdminDashboard() {
     },
     weekly: {
       label: "Per Minggu (8 Mgg)",
-      balance: liveOrdersRevenue,
+      balance: totalIncome,
       bars: [
         { label: "Mgg 1", income: 0, expense: 0, inPct: 4, exPct: 4 },
         { label: "Mgg 2", income: 0, expense: 0, inPct: 4, exPct: 4 },
@@ -567,8 +601,8 @@ export function AdminDashboard() {
         { label: "Mgg 7", income: 0, expense: 0, inPct: 4, exPct: 4 },
         {
           label: "Mgg Ini",
-          income: liveOrdersRevenue,
-          expense: customExpenses,
+          income: totalIncome,
+          expense: totalExpenses,
           inPct: liveBarPct,
           exPct: expBarPct,
         },
@@ -576,7 +610,7 @@ export function AdminDashboard() {
     },
     monthly: {
       label: "Bulanan (Tahun Ini)",
-      balance: liveOrdersRevenue,
+      balance: totalIncome,
       bars: [
         { label: "Jan", income: 0, expense: 0, inPct: 4, exPct: 4 },
         { label: "Feb", income: 0, expense: 0, inPct: 4, exPct: 4 },
@@ -585,8 +619,8 @@ export function AdminDashboard() {
         { label: "May", income: 0, expense: 0, inPct: 4, exPct: 4 },
         {
           label: "Bln Ini",
-          income: liveOrdersRevenue,
-          expense: customExpenses,
+          income: totalIncome,
+          expense: totalExpenses,
           inPct: liveBarPct,
           exPct: expBarPct,
         },
@@ -1134,8 +1168,11 @@ export function AdminDashboard() {
                       const soldPct = Math.round(
                         (item.soldCount / totalCap) * 100
                       );
-                      const itemOmzet =
-                        item.soldCount * getEffectivePrice(item);
+                      const sellPrice = getEffectivePrice(item);
+                      const buyCost = item.costPrice || 0;
+                      const profitPerPcs = sellPrice - buyCost;
+                      const itemOmzet = item.soldCount * sellPrice;
+                      const itemTotalProfit = item.soldCount * profitPerPcs;
 
                       return (
                         <div
@@ -1145,9 +1182,12 @@ export function AdminDashboard() {
                         >
                           {/* Hover Tooltip for Popular Item */}
                           <div className="hidden group-hover:flex items-center justify-between text-[10px] bg-slate-900 text-white px-2.5 py-1 rounded-lg">
-                            <span>Omzet: {formatRupiah(itemOmzet)}</span>
+                            <span>
+                              Omzet: {formatRupiah(itemOmzet)} • Laba:{" "}
+                              {formatRupiah(itemTotalProfit)}
+                            </span>
                             <span className="text-blue-300 font-bold">
-                              Klik Edit Menu / Stok →
+                              Edit →
                             </span>
                           </div>
 
@@ -1162,23 +1202,44 @@ export function AdminDashboard() {
                                 {item.name}
                               </span>
                             </div>
-                            <span className="text-[10px] font-semibold text-slate-400 group-hover:text-[#2563EB] shrink-0">
-                              Stok: {item.stock}
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                profitPerPcs >= 0
+                                  ? "bg-emerald-50 text-emerald-600"
+                                  : "bg-rose-50 text-rose-600"
+                              }`}
+                            >
+                              {profitPerPcs >= 0 ? "Untung +" : "Rugi "}
+                              {formatRupiah(profitPerPcs)}/pcs
                             </span>
                           </div>
 
                           <StripedProgressBar percentage={soldPct} />
 
-                          <div className="flex items-center justify-between text-[10.5px]">
-                            <span className="text-slate-500">
-                              <strong className="text-slate-800">
+                          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+                            <span>
+                              Beli:{" "}
+                              <strong className="text-slate-700">
+                                {formatRupiah(buyCost)}
+                              </strong>{" "}
+                              • Jual:{" "}
+                              <strong className="text-slate-900">
+                                {formatRupiah(sellPrice)}
+                              </strong>
+                            </span>
+                            <span className="font-bold text-emerald-600">
+                              Laba: {formatRupiah(itemTotalProfit)}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-[10px] text-slate-400 border-t border-slate-100 pt-1">
+                            <span>
+                              <strong className="text-slate-700">
                                 {item.soldCount} Terjual
                               </strong>{" "}
-                              • {soldPct}% rasio
+                              • Stok: {item.stock} pcs
                             </span>
-                            <span className="font-bold text-slate-800">
-                              {formatRupiah(getEffectivePrice(item))}
-                            </span>
+                            <span>{soldPct}% terjual</span>
                           </div>
                         </div>
                       );
@@ -2084,11 +2145,37 @@ export function AdminDashboard() {
                         </span>
                       </div>
 
-                      {item.description && (
-                        <p className="hidden sm:line-clamp-2 text-[11px] text-slate-400 mt-1 leading-relaxed">
-                          {item.description}
-                        </p>
-                      )}
+                      {/* Rincian Harga Beli (Modal) vs Harga Jual & Untung/Rugi per Pcs */}
+                      {(() => {
+                        const costVal = item.costPrice || 0;
+                        const profitPerUnit = effectivePrice - costVal;
+                        const totalItemProfit = profitPerUnit * item.soldCount;
+                        return (
+                          <div className="mt-1.5 p-1.5 sm:p-2 rounded-lg bg-slate-50 border border-slate-200/60 space-y-1 text-[9.5px] sm:text-[10.5px]">
+                            <div className="flex items-center justify-between text-slate-500">
+                              <span>Beli: {formatRupiah(costVal)}</span>
+                              <span
+                                className={`font-extrabold ${
+                                  profitPerUnit >= 0
+                                    ? "text-emerald-600"
+                                    : "text-rose-600"
+                                }`}
+                              >
+                                {profitPerUnit >= 0 ? "+" : ""}
+                                {formatRupiah(profitPerUnit)}/pcs
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between border-t border-slate-200/60 pt-1 text-[9px] sm:text-[10px]">
+                              <span className="text-slate-400">
+                                Terjual: {item.soldCount} pcs
+                              </span>
+                              <span className="font-bold text-slate-800">
+                                Laba: {formatRupiah(totalItemProfit)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Stock Stepper (Compact on Mobile, Full on Desktop) */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mt-2 sm:mt-3 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-[#F8FAFC] border border-slate-200/60 text-xs">
@@ -2591,14 +2678,29 @@ export function AdminDashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">
+                    Harga Beli / Modal (Rp)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={formCostPrice}
+                    onChange={(e) => setFormCostPrice(Number(e.target.value))}
+                    required
+                    className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-[#2563EB]"
+                  />
+                </div>
+
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
                     Harga Jual (Rp)
                   </label>
                   <input
                     type="number"
-                    min={1000}
+                    min={500}
                     step={500}
                     value={formPrice}
                     onChange={(e) => setFormPrice(Number(e.target.value))}
@@ -2621,6 +2723,46 @@ export function AdminDashboard() {
                   />
                 </div>
               </div>
+
+              {/* Live Kalkulasi Laba / Rugi per Produk */}
+              {(() => {
+                const unitProfit = (Number(formPrice) || 0) - (Number(formCostPrice) || 0);
+                const estTotalStockProfit = unitProfit * Math.max(0, Number(formStock) || 0);
+                const isProfit = unitProfit >= 0;
+                return (
+                  <div
+                    className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between gap-2 text-xs ${
+                      isProfit
+                        ? "bg-emerald-50/70 border-emerald-200/80 text-emerald-900"
+                        : "bg-rose-50/70 border-rose-200/80 text-rose-900"
+                    }`}
+                  >
+                    <div>
+                      <span className="font-bold">
+                        {isProfit ? "Estimasi Untung / Pcs:" : "Peringatan Rugi / Pcs:"}
+                      </span>{" "}
+                      <strong
+                        className={`font-extrabold ${
+                          isProfit ? "text-emerald-700" : "text-rose-600"
+                        }`}
+                      >
+                        {isProfit ? "+" : ""}
+                        {formatRupiah(unitProfit)}
+                      </strong>
+                      <span className="text-[10.5px] opacity-75 ml-1.5">
+                        (Jual {formatRupiah(Number(formPrice) || 0)} - Beli{" "}
+                        {formatRupiah(Number(formCostPrice) || 0)})
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-bold">
+                      Potensi Laba ({formStock} stok):{" "}
+                      <span className="underline">
+                        {formatRupiah(estTotalStockProfit)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -3164,19 +3306,15 @@ export function AdminDashboard() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100"
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto custom-scrollbar"
           >
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
               <div>
                 <span className="px-2.5 py-0.5 rounded-md bg-blue-50 text-[#2563EB] text-[10px] font-bold uppercase">
-                  Manajemen Keuangan & Target POS
+                  Laporan Laba Rugi & Target POS
                 </span>
                 <h3 className="text-base font-extrabold text-slate-900 mt-1">
-                  {isFinanceModalOpen === "target"
-                    ? "Atur Target Omzet Harian"
-                    : isFinanceModalOpen === "expenses"
-                    ? "Atur Biaya Operasional (HPP)"
-                    : "Rincian Saldo & Laba Bersih Kasir"}
+                  Rincian Laba Bersih & Keuntungan Tiap Produk
                 </h3>
               </div>
               <button
@@ -3191,22 +3329,122 @@ export function AdminDashboard() {
             <div className="space-y-4 text-xs">
               <div className="p-3.5 rounded-2xl bg-[#F8FAFC] border border-slate-200/70 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Total Pendapatan Kotor</span>
+                  <span className="text-slate-500">Total Pendapatan Penjualan</span>
                   <strong className="text-slate-900">
                     {formatRupiah(totalIncome)}
                   </strong>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Biaya Operasional (HPP)</span>
+                  <span className="text-slate-500">
+                    Total Modal Barang Terjual (HPP Produk)
+                  </span>
                   <strong className="text-rose-600">
-                    -{formatRupiah(totalExpenses)}
+                    -{formatRupiah(totalProductCostOfGoodsSold)}
                   </strong>
                 </div>
+                {customExpenses > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">
+                      Biaya Operasional Tambahan
+                    </span>
+                    <strong className="text-rose-600">
+                      -{formatRupiah(customExpenses)}
+                    </strong>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-slate-200 font-extrabold text-sm">
                   <span className="text-slate-900">Laba Bersih (Net Profit)</span>
-                  <span className="text-emerald-600">
+                  <span
+                    className={
+                      totalNetProfit >= 0 ? "text-emerald-600" : "text-rose-600"
+                    }
+                  >
                     {formatRupiah(totalNetProfit)}
                   </span>
+                </div>
+              </div>
+
+              {/* Tabel Detail Laba Rugi Tiap Produk */}
+              <div className="rounded-2xl border border-slate-200/80 overflow-hidden">
+                <div className="bg-[#F8FAFC] px-3.5 py-2.5 border-b border-slate-200/70 flex items-center justify-between">
+                  <span className="font-extrabold text-slate-800">
+                    Detail Laba / Rugi Tiap Produk
+                  </span>
+                  <span className="text-[10.5px] text-slate-400">
+                    Klik produk di CRUD untuk ubah Harga Beli / Jual
+                  </span>
+                </div>
+                <div className="overflow-x-auto max-h-56 overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse min-w-[480px]">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-[10.5px] font-bold text-slate-400 bg-white">
+                        <th className="py-2 px-3">Produk</th>
+                        <th className="py-2 px-2.5">Harga Beli</th>
+                        <th className="py-2 px-2.5">Harga Jual</th>
+                        <th className="py-2 px-2.5">Untung/Pcs</th>
+                        <th className="py-2 px-2.5">Terjual</th>
+                        <th className="py-2 px-3 text-right">Total Laba</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-[11px]">
+                      {menuItems.length === 0 ? (
+                        <tr>
+                          <td
+                            colSpan={6}
+                            className="py-6 text-center text-slate-400"
+                          >
+                            Belum ada produk. Tambahkan produk beserta Harga Beli & Harga Jual di menu CRUD.
+                          </td>
+                        </tr>
+                      ) : (
+                        menuItems.map((item) => {
+                          const buyCost = item.costPrice || 0;
+                          const sellPrice = getEffectivePrice(item);
+                          const unitProfit = sellPrice - buyCost;
+                          const totalItemProfit = unitProfit * item.soldCount;
+                          return (
+                            <tr
+                              key={item.id}
+                              onClick={() => {
+                                setIsFinanceModalOpen(null);
+                                openEditModal(item);
+                              }}
+                              className="hover:bg-blue-50/40 cursor-pointer transition"
+                              title="Klik untuk mengedit Harga Beli / Harga Jual produk ini"
+                            >
+                              <td className="py-2.5 px-3 font-bold text-slate-900">
+                                {item.name}
+                              </td>
+                              <td className="py-2.5 px-2.5 text-slate-600 tabular-nums">
+                                {formatRupiah(buyCost)}
+                              </td>
+                              <td className="py-2.5 px-2.5 font-semibold text-slate-900 tabular-nums">
+                                {formatRupiah(sellPrice)}
+                              </td>
+                              <td className="py-2.5 px-2.5 tabular-nums">
+                                <span
+                                  className={`font-bold ${
+                                    unitProfit >= 0
+                                      ? "text-emerald-600"
+                                      : "text-rose-600"
+                                  }`}
+                                >
+                                  {unitProfit >= 0 ? "+" : ""}
+                                  {formatRupiah(unitProfit)}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2.5 text-slate-600">
+                                {item.soldCount} pcs
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-extrabold text-emerald-600 tabular-nums">
+                                {formatRupiah(totalItemProfit)}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

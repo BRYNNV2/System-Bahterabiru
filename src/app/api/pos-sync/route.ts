@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
               name: newItem.name,
               category: newItem.category,
               group: newItem.group,
+              costPrice: newItem.costPrice ?? 0,
               price: newItem.price,
               discountPercent: newItem.discountPercent ?? null,
               discountedPrice: newItem.discountedPrice ?? null,
@@ -145,6 +146,7 @@ export async function POST(req: NextRequest) {
               name: newItem.name,
               category: newItem.category,
               group: newItem.group,
+              costPrice: newItem.costPrice ?? 0,
               price: newItem.price,
               discountPercent: newItem.discountPercent ?? null,
               discountedPrice: newItem.discountedPrice ?? null,
@@ -183,6 +185,9 @@ export async function POST(req: NextRequest) {
                 ? { category: updates.category }
                 : {}),
               ...(updates.group !== undefined ? { group: updates.group } : {}),
+              ...(updates.costPrice !== undefined
+                ? { costPrice: updates.costPrice }
+                : {}),
               ...(updates.price !== undefined ? { price: updates.price } : {}),
               ...(updates.discountPercent !== undefined
                 ? { discountPercent: updates.discountPercent }
