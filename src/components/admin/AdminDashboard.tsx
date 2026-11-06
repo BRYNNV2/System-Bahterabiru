@@ -5,16 +5,11 @@ import Link from "next/link";
 import {
   Home,
   FolderKanban,
-  Package,
   Search,
   Plus,
   Minus,
   Pencil,
   Trash2,
-  Lock,
-  User,
-  Eye,
-  EyeOff,
   LogOut,
   CheckCircle2,
   X,
@@ -31,11 +26,11 @@ import {
   HelpCircle,
   Settings,
   Receipt,
-  BarChart2,
   UtensilsCrossed,
   Clock,
   History,
 } from "lucide-react";
+import { AdminLoginView } from "@/components/admin/AdminLoginView";
 import { TransactionHistory } from "@/components/admin/TransactionHistory";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
@@ -47,35 +42,7 @@ import {
   formatRupiah,
   getEffectivePrice,
   MenuItem,
-  SidebarGroupType,
 } from "@/data/initialMenu";
-
-const PRESET_FOOD_IMAGES = [
-  {
-    label: "Steak Sapi",
-    url: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    label: "Ayam Panggang",
-    url: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    label: "Mie Ramen",
-    url: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    label: "Nasi Goreng",
-    url: "https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    label: "Kopi Latte",
-    url: "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&w=600&q=80",
-  },
-  {
-    label: "Croissant",
-    url: "https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=80",
-  },
-];
 
 type AdminPageTab = "dashboard" | "transactions" | "history" | "crud";
 type RevenueTimeframe = "daily" | "weekly" | "monthly";
@@ -380,9 +347,9 @@ export function AdminDashboard() {
 
     const parsedServingOptions = formUseVariants
       ? formVariantsText
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
       : [];
 
     if (editingItem) {
@@ -427,410 +394,19 @@ export function AdminDashboard() {
   }
 
   if (!isAdminAuthenticated) {
-    const phoneChartBars = [
-      { day: "Sen", totalH: 60, activeH: 32 },
-      { day: "Sel", totalH: 74, activeH: 46 },
-      { day: "Rab", totalH: 66, activeH: 52 },
-      { day: "Kam", totalH: 78, activeH: 40 },
-      { day: "Jum", totalH: 70, activeH: 60 },
-      { day: "Sab", totalH: 76, activeH: 68, badge: "+24%" },
-      { day: "Min", totalH: 62, activeH: 38 },
-    ];
-
     return (
-      <div className="min-h-[100dvh] lg:h-[100dvh] w-screen bg-[#0F172A] flex flex-col lg:flex-row font-sans select-none overflow-x-hidden lg:overflow-hidden">
-        {/* ================================================================
-            LEFT DARK PANEL: Bahtera Biru POS Showcase + 3D Tilted Phone
-        ================================================================ */}
-        <div
-          className="w-full lg:w-[48%] xl:w-[47%] h-full relative flex flex-col items-center justify-between pt-8 sm:pt-12 pb-0 px-6 sm:px-12 overflow-hidden min-h-[500px] lg:min-h-full shrink-0"
-          style={{
-            background:
-              "radial-gradient(circle at 50% 35%, #1E293B 0%, #0F172A 65%, #090D16 100%)",
-          }}
-        >
-          {/* Top Tagline */}
-          <p className="text-xs sm:text-[13px] text-slate-400 font-normal tracking-wide text-center max-w-[430px] relative z-20">
-            Sistem kasir & manajemen pintar – solusi operasional kuliner Bahtera Biru.
-          </p>
-
-          {/* Concentric Subtle Circles + Headline */}
-          <div className="relative flex items-center justify-center my-auto py-8 sm:py-12 w-full">
-            {/* Ambient Blue Glow */}
-            <div className="w-[260px] h-[260px] rounded-full bg-[#2563EB]/15 blur-3xl absolute pointer-events-none" />
-            {/* Outer Ring */}
-            <div className="w-[310px] h-[310px] sm:w-[380px] sm:h-[380px] rounded-full border border-white/[0.04] absolute pointer-events-none" />
-            {/* Middle Ring */}
-            <div className="w-[230px] h-[230px] sm:w-[280px] sm:h-[280px] rounded-full border border-blue-400/[0.08] absolute pointer-events-none" />
-            {/* Inner Ring */}
-            <div className="w-[150px] h-[150px] sm:w-[185px] sm:h-[185px] rounded-full border border-white/[0.05] absolute pointer-events-none" />
-
-            <h2 className="text-[42px] sm:text-[54px] xl:text-[60px] font-medium text-white tracking-[-0.025em] leading-[1.1] text-center relative z-10">
-              Kelola bisnis
-              <br />
-              lebih cerdas
-            </h2>
-          </div>
-
-          {/* 3D Tilted Phone & Hand Composition at Bottom */}
-          <div className="relative w-full h-[290px] sm:h-[340px] xl:h-[370px] flex items-end justify-center z-20 pointer-events-none">
-            {/* Ambient Dark Glow Behind Phone */}
-            <div className="w-80 h-80 rounded-full bg-black/60 blur-3xl absolute -bottom-14 left-1/2 -translate-x-1/2" />
-
-            {/* Stylized Hand Silhouette Holding Phone (Left Side) */}
-            <div
-              className="absolute -bottom-14 left-[15%] sm:left-[22%] xl:left-[25%] w-[230px] h-[280px] rounded-tr-[72px] z-10"
-              style={{
-                background:
-                  "linear-gradient(145deg, #334155 0%, #1E293B 45%, #090D16 100%)",
-                transform: "rotate(12deg)",
-                boxShadow: "inset 4px 6px 18px rgba(148,163,184,0.18)",
-              }}
-            />
-            {/* Thumb Grip Overlays on Left Edge of Phone */}
-            <div
-              className="absolute bottom-[86px] left-[22%] sm:left-[28%] xl:left-[31%] w-[54px] h-[30px] rounded-full z-30"
-              style={{
-                background:
-                  "linear-gradient(135deg, #475569 0%, #1E293B 70%, #0F172A 100%)",
-                transform: "rotate(-22deg)",
-                boxShadow: "0 6px 14px rgba(0,0,0,0.65)",
-              }}
-            />
-            <div
-              className="absolute bottom-[42px] left-[20%] sm:left-[26%] xl:left-[29%] w-[50px] h-[28px] rounded-full z-30"
-              style={{
-                background:
-                  "linear-gradient(135deg, #334155 0%, #1E293B 75%, #090D16 100%)",
-                transform: "rotate(-18deg)",
-                boxShadow: "0 6px 14px rgba(0,0,0,0.65)",
-              }}
-            />
-
-            {/* Tilted Smartphone Frame */}
-            <div
-              className="relative z-20 w-[235px] sm:w-[258px] bg-[#090D16] rounded-[40px] p-[6px] border-[3px] border-[#475569] shadow-[22px_28px_65px_rgba(0,0,0,0.88)]"
-              style={{
-                transform: "rotate(14deg) translateY(24px)",
-              }}
-            >
-              {/* Metallic Right Side Highlight & Button */}
-              <div className="absolute -right-[4px] top-20 w-[3px] h-12 bg-[#64748B] rounded-r-sm" />
-
-              {/* Inner Screen */}
-              <div className="w-full bg-[#0B0F19] rounded-[33px] overflow-hidden flex flex-col">
-                {/* Top White Card inside Phone (POS Revenue Preview) */}
-                <div className="bg-[#F8FAFC] rounded-[28px] px-4 pt-2.5 pb-3.5 text-slate-900 shadow-sm">
-                  {/* Dynamic Island */}
-                  <div className="w-14 h-3.5 bg-[#0B0F19] rounded-full mx-auto mb-2.5 flex items-center justify-end pr-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#2563EB]" />
-                  </div>
-
-                  {/* Date / Status Row */}
-                  <div className="flex items-center justify-between text-[8px] text-slate-400 font-semibold mb-0.5">
-                    <span>Omzet Mingguan • POS</span>
-                    <span className="w-4 h-4 rounded-md bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563EB]">
-                      <TrendingUp className="w-2.5 h-2.5" />
-                    </span>
-                  </div>
-
-                  {/* Main Balance (Rupiah POS) */}
-                  <div className="flex items-baseline gap-1 mb-2.5">
-                    <span className="text-[10px] font-bold text-[#2563EB]">
-                      Rp
-                    </span>
-                    <span className="text-[21px] font-extrabold tracking-tight text-slate-900 leading-none">
-                      2.890.000
-                    </span>
-                  </div>
-
-                  {/* 7-Bar Mini Chart (Royal Blue FinPay Theme) */}
-                  <div className="flex items-end justify-between gap-1.5 h-[66px] pt-2 px-0.5">
-                    {phoneChartBars.map((bar) => (
-                      <div
-                        key={bar.day}
-                        className="flex-1 flex flex-col items-center gap-1"
-                      >
-                        <div
-                          className="w-full bg-slate-200/90 rounded-t-[4px] rounded-b-[2px] relative flex items-end overflow-visible"
-                          style={{ height: `${bar.totalH * 0.68}px` }}
-                        >
-                          <div
-                            className="w-full rounded-t-[4px] rounded-b-[2px]"
-                            style={{
-                              height: `${bar.activeH * 0.68}px`,
-                              background:
-                                "linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%)",
-                            }}
-                          />
-                          {bar.badge && (
-                            <span className="absolute -bottom-1 -left-1.5 px-1 py-[1px] rounded-full bg-[#2563EB] text-white text-[5.5px] font-bold leading-none shadow">
-                              {bar.badge}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[6.5px] text-slate-400 font-medium leading-none">
-                          {bar.day}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Bottom Dark Area inside Phone (Menu Categories) */}
-                <div className="px-3.5 pt-3 pb-2.5 bg-[#0B0F19] text-white">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[8.5px] text-slate-300 font-medium">
-                      Kategori Menu
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="w-3.5 h-3.5 rounded-full bg-white/10 flex items-center justify-center text-[7px] text-slate-300">
-                        ↑
-                      </span>
-                      <span className="w-3.5 h-3.5 rounded-full bg-white/10 flex items-center justify-center text-[7px] text-slate-300">
-                        ⊞
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* 3 Category Mini Cards (Food, Rice Bowl, Drink) */}
-                  <div className="grid grid-cols-3 gap-1.5 items-end mb-3">
-                    {/* Card 1 */}
-                    <div className="bg-gradient-to-b from-white/[0.09] to-sky-500/20 border border-white/10 rounded-xl p-2 h-[74px] flex flex-col justify-between">
-                      <span className="text-[7.5px] font-bold text-white text-center">
-                        142 Porsi
-                      </span>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-[6px] text-sky-300 font-medium leading-tight">
-                            Rice Bowl
-                          </div>
-                          <div className="text-[5px] text-slate-400">
-                            Terlaris
-                          </div>
-                        </div>
-                        <span className="w-3.5 h-3.5 rounded-full bg-white/15 flex items-center justify-center text-[6.5px]">
-                          🍚
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Card 2 (Elevated Center) */}
-                    <div className="bg-gradient-to-b from-white/[0.14] to-blue-600/30 border border-blue-400/25 rounded-xl p-2 h-[86px] flex flex-col justify-between -translate-y-1 shadow-md">
-                      <span className="text-[8px] font-bold text-white text-center">
-                        {menuItems.length} Menu
-                      </span>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-[6px] text-blue-300 font-medium leading-tight">
-                            Stok Aktif
-                          </div>
-                          <div className="text-[5px] text-slate-400">
-                            Siap Jual
-                          </div>
-                        </div>
-                        <span className="w-3.5 h-3.5 rounded-full bg-blue-500/30 flex items-center justify-center text-[6.5px]">
-                          🔥
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Card 3 */}
-                    <div className="bg-gradient-to-b from-white/[0.08] to-indigo-500/20 border border-white/10 rounded-xl p-2 h-[66px] flex flex-col justify-between">
-                      <span className="text-[7.5px] font-bold text-white text-center">
-                        98 Cup
-                      </span>
-                      <div>
-                        <div className="text-[6px] text-indigo-300 font-medium leading-tight">
-                          Minuman
-                        </div>
-                        <div className="text-[5px] text-slate-400">
-                          & Snack
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Phone Bottom Navigation with Bahtera Biru Blue Ring */}
-                  <div className="flex items-center justify-between px-1.5 pt-1.5 border-t border-white/5">
-                    <span className="w-4 h-4 rounded-full bg-white/5 flex items-center justify-center text-[7px] text-slate-400">
-                      ⌂
-                    </span>
-                    <span className="w-4 h-4 rounded-full bg-white/5 flex items-center justify-center text-[7px] text-slate-400">
-                      🧾
-                    </span>
-                    {/* Signature Royal Blue Ring Center Button */}
-                    <div
-                      className="w-6 h-6 rounded-full p-[2px] flex items-center justify-center shadow-[0_0_12px_rgba(37,99,235,0.65)]"
-                      style={{
-                        background:
-                          "conic-gradient(from 180deg, #2563EB, #38BDF8, #6366F1, #1D4ED8, #38BDF8, #2563EB)",
-                      }}
-                    >
-                      <div className="w-full h-full rounded-full bg-[#0B0F19]" />
-                    </div>
-                    <span className="w-4 h-4 rounded-full bg-white/5 flex items-center justify-center text-[7px] text-slate-400">
-                      ⊟
-                    </span>
-                    <span className="w-4 h-4 rounded-full bg-white/5 flex items-center justify-center text-[7px] text-slate-400">
-                      ☷
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom-Right Small Royal Blue Star Badge */}
-            <div className="absolute bottom-8 right-2 sm:right-6 w-7 h-7 rounded-full border border-blue-400/40 bg-blue-500/10 flex items-center justify-center text-blue-400 text-xs">
-              ★
-            </div>
-          </div>
-        </div>
-
-        {/* ================================================================
-            RIGHT WHITE PANEL: Full-Height Clean Sign In Panel (Bahtera Biru)
-        ================================================================ */}
-        <div className="w-full lg:w-[52%] xl:w-[53%] min-h-[540px] lg:h-full bg-white rounded-t-[36px] lg:rounded-t-none lg:rounded-l-[44px] p-8 sm:p-12 lg:p-16 flex flex-col justify-between shadow-[-20px_0_60px_rgba(0,0,0,0.32)] relative z-30">
-          {/* Top Header: Brand Logo + Back to POS Link */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Bahtera Biru Conic Gradient Ring */}
-              <div
-                className="w-7 h-7 rounded-full p-[3px] flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(37,99,235,0.25)]"
-                style={{
-                  background:
-                    "conic-gradient(from 200deg, #1D4ED8, #2563EB, #38BDF8, #6366F1, #2563EB, #1D4ED8)",
-                }}
-              >
-                <div className="w-full h-full rounded-full bg-white" />
-              </div>
-              <span className="text-[21px] font-extrabold tracking-tight text-slate-900">
-                BahteraBiru
-              </span>
-            </div>
-
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#2563EB] transition"
-            >
-              <span className="w-6 h-6 rounded-full border border-slate-200 flex items-center justify-center text-slate-500">
-                <UtensilsCrossed className="w-3 h-3" />
-              </span>
-              <span>Halaman Kasir</span>
-            </Link>
-          </div>
-
-          {/* Center Sign In Form */}
-          <div className="w-full max-w-[380px] mx-auto my-auto py-8">
-            <h1 className="text-[32px] sm:text-[36px] font-semibold text-slate-900 tracking-tight mb-2">
-              Sign In
-            </h1>
-            <p className="text-xs text-slate-400 mb-7">
-              Masuk ke portal manajemen menu, stok produk, dan laporan keuangan.
-            </p>
-
-            {loginError && (
-              <div className="mb-5 px-4 py-3 rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-600 text-xs font-medium text-center">
-                {loginError}
-              </div>
-            )}
-
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
-              {/* Username Admin Pill Input */}
-              <div>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Username Admin"
-                  required
-                  autoComplete="username"
-                  className="w-full rounded-full bg-white border border-slate-200/90 px-6 py-4 text-[13px] font-normal text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 transition"
-                />
-              </div>
-
-              {/* Password Pill Input */}
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Password"
-                  required
-                  autoComplete="current-password"
-                  className="w-full rounded-full bg-white border border-slate-200/90 pl-6 pr-12 py-4 text-[13px] font-normal text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/10 transition"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
-                  aria-label="Toggle password visibility"
-                >
-                  {showPassword ? (
-                    <Eye className="w-4 h-4" />
-                  ) : (
-                    <EyeOff className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-
-              {/* Forgot Password */}
-              <div className="pt-0.5 pb-2.5 pl-4">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setLoginError(
-                      "Silakan hubungi pemilik toko atau cek variabel ADMIN_PASSWORD pada pengaturan server (.env)."
-                    )
-                  }
-                  className="text-xs font-semibold text-[#2563EB] hover:text-blue-700 transition cursor-pointer"
-                >
-                  Lupa password?
-                </button>
-              </div>
-
-              {/* Royal Blue Gradient Pill Sign In Button */}
-              <button
-                type="submit"
-                disabled={isLoggingIn}
-                className="w-full py-4 px-6 rounded-full text-white font-semibold text-[13px] flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99] disabled:opacity-60 disabled:cursor-wait"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #1D4ED8 0%, #2563EB 50%, #3B82F6 100%)",
-                  boxShadow: "0 14px 30px -6px rgba(37, 99, 235, 0.48)",
-                }}
-              >
-                <svg
-                  className="w-4 h-4 shrink-0"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
-                  <polyline points="10 17 15 12 10 7" />
-                  <line x1="15" y1="12" x2="3" y2="12" />
-                </svg>
-                <span>
-                  {isLoggingIn ? "Memverifikasi..." : "Masuk ke Dashboard"}
-                </span>
-              </button>
-            </form>
-          </div>
-
-          {/* Bottom Footer */}
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2">
-            <span>© 2026 Bahtera Biru POS.</span>
-            <div className="flex items-center gap-6 text-slate-600 font-medium">
-              <span className="flex items-center gap-1 text-slate-500">
-                Indonesia
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <AdminLoginView
+        username={username}
+        setUsername={setUsername}
+        password={password}
+        setPassword={setPassword}
+        showPassword={showPassword}
+        setShowPassword={setShowPassword}
+        loginError={loginError}
+        isLoggingIn={isLoggingIn}
+        handleLoginSubmit={handleLoginSubmit}
+        menuCount={menuItems.length}
+      />
     );
   }
 
@@ -862,22 +438,22 @@ export function AdminDashboard() {
   const liveBarPct =
     totalIncome > 0
       ? Math.min(
-          100,
-          Math.max(
-            18,
-            Math.round((totalIncome / Math.max(1, dailyTargetAmount)) * 100)
-          )
+        100,
+        Math.max(
+          18,
+          Math.round((totalIncome / Math.max(1, dailyTargetAmount)) * 100)
         )
+      )
       : 4;
   const expBarPct =
     totalExpenses > 0
       ? Math.min(
-          100,
-          Math.max(
-            15,
-            Math.round((totalExpenses / Math.max(1, dailyTargetAmount)) * 100)
-          )
+        100,
+        Math.max(
+          15,
+          Math.round((totalExpenses / Math.max(1, dailyTargetAmount)) * 100)
         )
+      )
       : 4;
 
   // Bidirectional Bar Chart Datasets (Per Hari, Minggu, Bulan)
@@ -1094,13 +670,12 @@ export function AdminDashboard() {
           1. LEFT SIDEBAR (Exact FinPay Sidebar Layout — Drawer on < lg, Docked on lg+)
          ===================================================================== */}
       <aside
-        className={`${
-          isMobileSidebarOpen
+        className={`${isMobileSidebarOpen
             ? "fixed inset-y-0 left-0 z-50 flex w-[256px] shadow-2xl"
             : isAdminSidebarOpen
-            ? "hidden lg:flex lg:w-[235px] xl:w-[242px]"
-            : "hidden"
-        } bg-white border-r border-slate-200/80 px-4 py-5 flex-col justify-between shrink-0 h-full overflow-y-auto custom-scrollbar z-20`}
+              ? "hidden lg:flex lg:w-[235px] xl:w-[242px]"
+              : "hidden"
+          } bg-white border-r border-slate-200/80 px-4 py-5 flex-col justify-between shrink-0 h-full overflow-y-auto custom-scrollbar z-20`}
       >
         <div>
           {/* Brand Logo + Collapse Button */}
@@ -1159,16 +734,14 @@ export function AdminDashboard() {
                       setActivePage(item.id as AdminPageTab);
                       setIsMobileSidebarOpen(false);
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${
-                      isActive
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${isActive
                         ? "bg-[#F1F5F9] text-[#2563EB] font-bold"
                         : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium"
-                    }`}
+                      }`}
                   >
                     <Icon
-                      className={`w-4 h-4 ${
-                        isActive ? "text-[#2563EB]" : "text-slate-400"
-                      }`}
+                      className={`w-4 h-4 ${isActive ? "text-[#2563EB]" : "text-slate-400"
+                        }`}
                     />
                     <span>{item.label}</span>
                   </button>
@@ -1542,11 +1115,10 @@ export function AdminDashboard() {
                               </span>
                             </div>
                             <span
-                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                                profitPerPcs >= 0
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${profitPerPcs >= 0
                                   ? "bg-emerald-50 text-emerald-600"
                                   : "bg-rose-50 text-rose-600"
-                              }`}
+                                }`}
                             >
                               {profitPerPcs >= 0 ? "Untung +" : "Rugi "}
                               {formatRupiah(profitPerPcs)}/pcs
@@ -1712,11 +1284,10 @@ export function AdminDashboard() {
                             setSelectedBarIndex(4);
                             setHoveredBarIndex(null);
                           }}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-                            revenueTimeframe === tf.id
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${revenueTimeframe === tf.id
                               ? "bg-white text-[#2563EB] shadow-2xs"
                               : "text-slate-500 hover:text-slate-800"
-                          }`}
+                            }`}
                         >
                           {tf.label}
                         </button>
@@ -1827,13 +1398,12 @@ export function AdminDashboard() {
                                   )} | Laba Bersih ${formatRupiah(netBarProfit)} (${marginPct}%)`
                                 );
                               }}
-                              className={`h-full flex flex-col items-center justify-center relative z-10 cursor-pointer group rounded-xl transition-colors ${
-                                isHovered
+                              className={`h-full flex flex-col items-center justify-center relative z-10 cursor-pointer group rounded-xl transition-colors ${isHovered
                                   ? "bg-blue-50/80"
                                   : isSelected
-                                  ? "bg-slate-50/80"
-                                  : ""
-                              }`}
+                                    ? "bg-slate-50/80"
+                                    : ""
+                                }`}
                             >
                               {/* Floating Hover Tooltip directly on the hovered bar */}
                               {isHovered && (
@@ -1852,11 +1422,10 @@ export function AdminDashboard() {
                               <div className="w-full h-1/2 flex items-end justify-center pb-[1px]">
                                 <div
                                   style={{ height: `${bar.inPct}%` }}
-                                  className={`w-full max-w-[20px] rounded-t-md transition-all duration-300 ${
-                                    isSelected
+                                  className={`w-full max-w-[20px] rounded-t-md transition-all duration-300 ${isSelected
                                       ? "bg-[#1D4ED8] ring-2 ring-blue-300 scale-x-105"
                                       : "bg-[#2563EB] group-hover:bg-[#1D4ED8]"
-                                  }`}
+                                    }`}
                                 />
                               </div>
 
@@ -1864,11 +1433,10 @@ export function AdminDashboard() {
                               <div className="w-full h-1/2 flex items-start justify-center pt-[1px]">
                                 <div
                                   style={{ height: `${bar.exPct}%` }}
-                                  className={`w-full max-w-[20px] rounded-b-md transition-all duration-300 ${
-                                    isSelected
+                                  className={`w-full max-w-[20px] rounded-b-md transition-all duration-300 ${isSelected
                                       ? "bg-[#60A5FA] scale-x-105"
                                       : "bg-[#93C5FD] group-hover:bg-[#60A5FA]"
-                                  }`}
+                                    }`}
                                 />
                               </div>
                             </div>
@@ -1890,11 +1458,10 @@ export function AdminDashboard() {
                             onMouseEnter={() => setHoveredBarIndex(idx)}
                             onMouseLeave={() => setHoveredBarIndex(null)}
                             onClick={() => setSelectedBarIndex(idx)}
-                            className={`text-[10px] font-semibold cursor-pointer transition ${
-                              idx === displayBarIdx
+                            className={`text-[10px] font-semibold cursor-pointer transition ${idx === displayBarIdx
                                 ? "text-[#2563EB] font-extrabold underline underline-offset-4"
                                 : "text-slate-400 hover:text-slate-700"
-                            }`}
+                              }`}
                           >
                             {bar.label}
                           </button>
@@ -1929,7 +1496,7 @@ export function AdminDashboard() {
                           ];
                           const next =
                             cycle[
-                              (cycle.indexOf(txStatusFilter) + 1) % cycle.length
+                            (cycle.indexOf(txStatusFilter) + 1) % cycle.length
                             ];
                           setTxStatusFilter(next);
                         }}
@@ -2043,13 +1610,12 @@ export function AdminDashboard() {
                                       `Status ${ord.orderNumber} -> ${nextStatus}`
                                     );
                                   }}
-                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${
-                                    isCompletedLocked
+                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${isCompletedLocked
                                       ? "bg-emerald-50 text-emerald-600 cursor-default"
                                       : currentStatus === "Ready"
-                                      ? "bg-blue-50 text-[#2563EB] cursor-pointer hover:scale-105"
-                                      : "bg-amber-50 text-amber-600 cursor-pointer hover:scale-105"
-                                  }`}
+                                        ? "bg-blue-50 text-[#2563EB] cursor-pointer hover:scale-105"
+                                        : "bg-amber-50 text-amber-600 cursor-pointer hover:scale-105"
+                                    }`}
                                 >
                                   {isCompletedLocked
                                     ? "✓ Selesai"
@@ -2088,22 +1654,20 @@ export function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => setStatsSubTab("income")}
-                      className={`pb-2 font-bold transition cursor-pointer ${
-                        statsSubTab === "income"
+                      className={`pb-2 font-bold transition cursor-pointer ${statsSubTab === "income"
                           ? "text-slate-900 border-b-2 border-[#2563EB]"
                           : "text-slate-400 hover:text-slate-600"
-                      }`}
+                        }`}
                     >
                       Omzet • {formatRupiah(totalCategoryRevenue)}
                     </button>
                     <button
                       type="button"
                       onClick={() => setStatsSubTab("sold")}
-                      className={`pb-2 font-bold transition cursor-pointer ${
-                        statsSubTab === "sold"
+                      className={`pb-2 font-bold transition cursor-pointer ${statsSubTab === "sold"
                           ? "text-slate-900 border-b-2 border-[#2563EB]"
                           : "text-slate-400 hover:text-slate-600"
-                      }`}
+                        }`}
                     >
                       Terjual • {totalSoldUnits} Pcs
                     </button>
@@ -2166,8 +1730,8 @@ export function AdminDashboard() {
                               {activeSeg
                                 ? `${activeSeg.category} (${activeSeg.pct}%)`
                                 : statsSubTab === "income"
-                                ? "Total Kategori"
-                                : "Unit Terjual"}
+                                  ? "Total Kategori"
+                                  : "Unit Terjual"}
                             </span>
                             <span className="text-sm sm:text-base font-extrabold text-slate-900 tabular-nums mt-0.5">
                               {activeSeg
@@ -2175,8 +1739,8 @@ export function AdminDashboard() {
                                   ? formatRupiah(activeSeg.revenue)
                                   : `${activeSeg.sold} Pcs`
                                 : statsSubTab === "income"
-                                ? formatRupiah(totalCategoryRevenue)
-                                : `${totalSoldUnits} Pcs`}
+                                  ? formatRupiah(totalCategoryRevenue)
+                                  : `${totalSoldUnits} Pcs`}
                             </span>
                             {activeSeg && (
                               <span className="text-[9.5px] font-bold text-[#2563EB] mt-0.5">
@@ -2201,11 +1765,10 @@ export function AdminDashboard() {
                                   setSelectedCategoryDetail(seg.category)
                                 }
                                 title={`Klik untuk melihat daftar menu dan stok kategori ${seg.category}`}
-                                className={`flex items-center justify-between text-xs p-2 rounded-xl transition cursor-pointer ${
-                                  isHovered
+                                className={`flex items-center justify-between text-xs p-2 rounded-xl transition cursor-pointer ${isHovered
                                     ? "bg-blue-50/80 ring-1 ring-blue-200"
                                     : "hover:bg-slate-50"
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center gap-2.5">
                                   <span
@@ -2213,11 +1776,10 @@ export function AdminDashboard() {
                                     className="w-3.5 h-3.5 rounded-md inline-block shrink-0"
                                   />
                                   <span
-                                    className={`font-semibold ${
-                                      isHovered
+                                    className={`font-semibold ${isHovered
                                         ? "text-[#2563EB] font-bold"
                                         : "text-slate-700"
-                                    }`}
+                                      }`}
                                   >
                                     {seg.category}{" "}
                                     <span className="text-slate-400 font-normal">
@@ -2261,9 +1823,8 @@ export function AdminDashboard() {
                       <div className="space-y-2.5 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
                         {[
                           {
-                            title: `Order baru ${
-                              recentOrders[0]?.orderNumber || "#F8371"
-                            } diterima`,
+                            title: `Order baru ${recentOrders[0]?.orderNumber || "#F8371"
+                              } diterima`,
                             desc: "Klik untuk melihat struk pesanan terbaru",
                             time: "14:05",
                             onClick: () => {
@@ -2399,11 +1960,10 @@ export function AdminDashboard() {
                     type="button"
                     key={cat}
                     onClick={() => setCrudCategoryFilter(cat)}
-                    className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition cursor-pointer shrink-0 ${
-                      crudCategoryFilter === cat
+                    className={`px-3 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition cursor-pointer shrink-0 ${crudCategoryFilter === cat
                         ? "bg-[#2563EB] text-white"
                         : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100"
-                    }`}
+                      }`}
                   >
                     {cat}
                   </button>
@@ -2417,11 +1977,10 @@ export function AdminDashboard() {
                     type="button"
                     key={cols}
                     onClick={() => setMobileCrudCols(cols)}
-                    className={`px-2 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer ${
-                      mobileCrudCols === cols
+                    className={`px-2 py-1 rounded-lg text-[10px] font-extrabold transition cursor-pointer ${mobileCrudCols === cols
                         ? "bg-[#2563EB] text-white"
                         : "text-slate-500"
-                    }`}
+                      }`}
                     title={`Tampilkan ${cols} produk per baris`}
                   >
                     {cols}x
@@ -2432,9 +1991,8 @@ export function AdminDashboard() {
 
             {/* Responsive Multi-Column CRUD Cards Grid (2-3 on Mobile, 3 on Tablet, 4 on Desktop) */}
             <div
-              className={`grid ${
-                mobileCrudCols === 3 ? "grid-cols-3" : "grid-cols-2"
-              } sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 pb-8`}
+              className={`grid ${mobileCrudCols === 3 ? "grid-cols-3" : "grid-cols-2"
+                } sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-4 pb-8`}
             >
               {crudFilteredItems.map((item) => {
                 const effectivePrice = getEffectivePrice(item);
@@ -2494,11 +2052,10 @@ export function AdminDashboard() {
                             <div className="flex items-center justify-between text-slate-500">
                               <span>Beli: {formatRupiah(costVal)}</span>
                               <span
-                                className={`font-extrabold ${
-                                  profitPerUnit >= 0
+                                className={`font-extrabold ${profitPerUnit >= 0
                                     ? "text-emerald-600"
                                     : "text-rose-600"
-                                }`}
+                                  }`}
                               >
                                 {profitPerUnit >= 0 ? "+" : ""}
                                 {formatRupiah(profitPerUnit)}/pcs
@@ -2523,11 +2080,10 @@ export function AdminDashboard() {
                             Stok
                           </span>
                           <span
-                            className={`text-[10.5px] sm:text-xs font-extrabold ${
-                              item.stock <= 0
+                            className={`text-[10.5px] sm:text-xs font-extrabold ${item.stock <= 0
                                 ? "text-rose-600"
                                 : "text-slate-900"
-                            }`}
+                              }`}
                           >
                             {item.stock} pcs
                           </span>
@@ -2764,17 +2320,17 @@ export function AdminDashboard() {
                           currentStatus === "Completed";
                         const statusConfig = isCompletedLocked
                           ? {
-                              label: "Selesai",
-                              bg: "bg-emerald-50 text-emerald-600 border-emerald-200 cursor-default",
-                              dot: "bg-emerald-500",
-                            }
+                            label: "Selesai",
+                            bg: "bg-emerald-50 text-emerald-600 border-emerald-200 cursor-default",
+                            dot: "bg-emerald-500",
+                          }
                           : currentStatus === "Ready"
-                          ? {
+                            ? {
                               label: "Siap Diambil",
                               bg: "bg-blue-50 text-[#2563EB] border-blue-200 hover:bg-blue-100 cursor-pointer",
                               dot: "bg-[#2563EB]",
                             }
-                          : {
+                            : {
                               label: "Pending",
                               bg: "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 cursor-pointer",
                               dot: "bg-amber-500",
@@ -2839,10 +2395,9 @@ export function AdminDashboard() {
                                 if (isCompletedLocked) return;
                                 updateOrderStatus(order.id, nextStatus);
                                 showToast(
-                                  `Status ${order.orderNumber} diubah ke ${
-                                    nextStatus === "Completed"
-                                      ? "Selesai"
-                                      : nextStatus
+                                  `Status ${order.orderNumber} diubah ke ${nextStatus === "Completed"
+                                    ? "Selesai"
+                                    : nextStatus
                                   }`
                                 );
                               }}
@@ -2990,9 +2545,8 @@ export function AdminDashboard() {
                 type="button"
                 key={tab.id}
                 onClick={() => setActivePage(tab.id as AdminPageTab)}
-                className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition cursor-pointer ${
-                  isActive ? "text-[#2563EB] bg-blue-50/70" : "text-slate-400"
-                }`}
+                className={`flex flex-col items-center justify-center py-1 rounded-xl text-[10px] font-bold transition cursor-pointer ${isActive ? "text-[#2563EB] bg-blue-50/70" : "text-slate-400"
+                  }`}
               >
                 <Icon className="w-4 h-4 mb-0.5" />
                 <span>{tab.label}</span>
@@ -3149,20 +2703,18 @@ export function AdminDashboard() {
                 const isProfit = unitProfit >= 0;
                 return (
                   <div
-                    className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between gap-2 text-xs ${
-                      isProfit
+                    className={`p-3 rounded-2xl border flex flex-wrap items-center justify-between gap-2 text-xs ${isProfit
                         ? "bg-emerald-50/70 border-emerald-200/80 text-emerald-900"
                         : "bg-rose-50/70 border-rose-200/80 text-rose-900"
-                    }`}
+                      }`}
                   >
                     <div>
                       <span className="font-bold">
                         {isProfit ? "Estimasi Untung / Pcs:" : "Peringatan Rugi / Pcs:"}
                       </span>{" "}
                       <strong
-                        className={`font-extrabold ${
-                          isProfit ? "text-emerald-700" : "text-rose-600"
-                        }`}
+                        className={`font-extrabold ${isProfit ? "text-emerald-700" : "text-rose-600"
+                          }`}
                       >
                         {isProfit ? "+" : ""}
                         {formatRupiah(unitProfit)}
@@ -3215,16 +2767,14 @@ export function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setFormUseVariants(false)}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                      !formUseVariants
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${!formUseVariants
                         ? "bg-white border-[#2563EB] ring-1 ring-[#2563EB]/20"
                         : "bg-white/60 border-slate-200 text-slate-500 hover:bg-white"
-                    }`}
+                      }`}
                   >
                     <p
-                      className={`text-xs font-extrabold ${
-                        !formUseVariants ? "text-[#2563EB]" : "text-slate-700"
-                      }`}
+                      className={`text-xs font-extrabold ${!formUseVariants ? "text-[#2563EB]" : "text-slate-700"
+                        }`}
                     >
                       Hanya Jumlah Pcs
                     </p>
@@ -3236,16 +2786,14 @@ export function AdminDashboard() {
                   <button
                     type="button"
                     onClick={() => setFormUseVariants(true)}
-                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${
-                      formUseVariants
+                    className={`p-2.5 rounded-xl border text-left transition cursor-pointer ${formUseVariants
                         ? "bg-white border-[#2563EB] ring-1 ring-[#2563EB]/20"
                         : "bg-white/60 border-slate-200 text-slate-500 hover:bg-white"
-                    }`}
+                      }`}
                   >
                     <p
-                      className={`text-xs font-extrabold ${
-                        formUseVariants ? "text-[#2563EB]" : "text-slate-700"
-                      }`}
+                      className={`text-xs font-extrabold ${formUseVariants ? "text-[#2563EB]" : "text-slate-700"
+                        }`}
                     >
                       Pakai Pilihan Varian / Detail
                     </p>
@@ -3339,11 +2887,10 @@ export function AdminDashboard() {
                         handleUploadProductImage(droppedFile);
                       }
                     }}
-                    className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition cursor-pointer ${
-                      isDragOverUpload
+                    className={`flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed p-6 text-center transition cursor-pointer ${isDragOverUpload
                         ? "border-[#2563EB] bg-blue-50/60"
                         : "border-slate-300 bg-[#F8FAFC] hover:border-[#2563EB] hover:bg-blue-50/30"
-                    }`}
+                      }`}
                   >
                     <div className="w-11 h-11 rounded-2xl bg-blue-100/80 text-[#2563EB] flex items-center justify-center">
                       <Plus className="w-5 h-5" />
@@ -3377,20 +2924,20 @@ export function AdminDashboard() {
                               {uploadedImageMeta.webpKb} KB
                               {uploadedImageMeta.originalKb >
                                 uploadedImageMeta.webpKb && (
-                                <span className="text-emerald-600 ml-1">
-                                  (Hemat{" "}
-                                  {Math.max(
-                                    1,
-                                    Math.round(
-                                      ((uploadedImageMeta.originalKb -
-                                        uploadedImageMeta.webpKb) /
-                                        uploadedImageMeta.originalKb) *
+                                  <span className="text-emerald-600 ml-1">
+                                    (Hemat{" "}
+                                    {Math.max(
+                                      1,
+                                      Math.round(
+                                        ((uploadedImageMeta.originalKb -
+                                          uploadedImageMeta.webpKb) /
+                                          uploadedImageMeta.originalKb) *
                                         100
-                                    )
-                                  )}
-                                  % dari {uploadedImageMeta.originalKb} KB)
-                                </span>
-                              )}
+                                      )
+                                    )}
+                                    % dari {uploadedImageMeta.originalKb} KB)
+                                  </span>
+                                )}
                             </span>
                           )}
                         </div>
@@ -3684,20 +3231,18 @@ export function AdminDashboard() {
                             status: st,
                           });
                           showToast(
-                            `Status ${selectedOrderDetail.orderNumber} -> ${
-                              st === "Completed" ? "Selesai" : st
+                            `Status ${selectedOrderDetail.orderNumber} -> ${st === "Completed" ? "Selesai" : st
                             }`
                           );
                         }}
-                        className={`py-2 rounded-xl text-xs font-bold transition ${
-                          active
+                        className={`py-2 rounded-xl text-xs font-bold transition ${active
                             ? st === "Completed"
                               ? "bg-emerald-600 text-white cursor-default"
                               : "bg-[#2563EB] text-white cursor-pointer"
                             : isLocked
-                            ? "bg-slate-100 text-slate-300 cursor-not-allowed"
-                            : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100 cursor-pointer"
-                        }`}
+                              ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                              : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100 cursor-pointer"
+                          }`}
                       >
                         {st === "Completed" ? "Selesai" : st}
                       </button>
@@ -3841,11 +3386,10 @@ export function AdminDashboard() {
                               </td>
                               <td className="py-2.5 px-2.5 tabular-nums">
                                 <span
-                                  className={`font-bold ${
-                                    unitProfit >= 0
+                                  className={`font-bold ${unitProfit >= 0
                                       ? "text-emerald-600"
                                       : "text-rose-600"
-                                  }`}
+                                    }`}
                                 >
                                   {unitProfit >= 0 ? "+" : ""}
                                   {formatRupiah(unitProfit)}
