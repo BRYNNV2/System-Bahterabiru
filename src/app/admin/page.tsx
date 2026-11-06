@@ -1,20 +1,7 @@
-"use client";
+import { notFound } from "next/navigation";
 
-import React from "react";
-import dynamic from "next/dynamic";
-
-const AdminDashboard = dynamic(
-  () =>
-    import("@/components/admin/AdminDashboard").then(
-      (mod) => mod.AdminDashboard
-    ),
-  {
-    ssr: false,
-    loading: () => <div className="h-[100dvh] w-screen bg-[#F7F8FA]" />,
-  }
-);
-
-export default function AdminPortalPage() {
-  return <AdminDashboard />;
+// Rute default /admin sengaja dinonaktifkan untuk keamanan
+// Akses admin dipindahkan ke URL rahasia pengelola: /portal-bahtera
+export default function AdminForbiddenPage() {
+  notFound();
 }
-

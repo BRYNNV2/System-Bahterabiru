@@ -131,7 +131,10 @@ export async function readNeonDbOrFallback(
       updatedAt: Date.now(),
     };
 
-    writeLocalFallbackDb(result);
+    // Simpan cadangan lokal hanya jika data transaksi lengkap (agar file cadangan tidak terpotong)
+    if (fetchAll || (skip === 0 && orderRows.length >= totalOrdersCount)) {
+      writeLocalFallbackDb(result);
+    }
     return result;
   } catch {
     return readLocalFallbackDb(options);

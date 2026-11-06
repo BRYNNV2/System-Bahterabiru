@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { INITIAL_MENU_ITEMS } from "@/data/initialMenu";
 import { prisma } from "@/lib/prisma";
+import { isAdminRequest } from "@/lib/adminAuth";
 
 export async function GET() {
   try {
@@ -37,6 +38,9 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
+  if (!isAdminRequest(req)) {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
   try {
     const { productId, stock } = await req.json();
     const updated = await prisma.product.update({

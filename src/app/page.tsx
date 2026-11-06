@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Menu, Flame, ShoppingBag } from "lucide-react";
 import { SidebarRail } from "@/components/pos/SidebarRail";
 import { HeaderBar } from "@/components/pos/HeaderBar";
@@ -24,6 +25,37 @@ export default function PosTerminalPage() {
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
+  const secretTapCount = useRef(0);
+  const secretTapTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Shortcut rahasia pengelola: Ctrl + Shift + A untuk membuka /portal-bahtera
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "a") {
+        e.preventDefault();
+        router.push("/portal-bahtera");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [router]);
+
+  const handleSecretLogoClick = () => {
+    setActiveSidebarGroup("Food");
+    secretTapCount.current += 1;
+    if (secretTapTimer.current) clearTimeout(secretTapTimer.current);
+
+    if (secretTapCount.current >= 5) {
+      secretTapCount.current = 0;
+      router.push("/portal-bahtera");
+      return;
+    }
+
+    secretTapTimer.current = setTimeout(() => {
+      secretTapCount.current = 0;
+    }, 2500);
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -99,7 +131,7 @@ export default function PosTerminalPage() {
 
             <button
               type="button"
-              onClick={() => setActiveSidebarGroup("Food")}
+              onClick={handleSecretLogoClick}
               className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group"
             >
               <div className="w-8 h-8 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">

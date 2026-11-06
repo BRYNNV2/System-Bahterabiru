@@ -85,9 +85,13 @@ interface PosState {
   setIsMobileCartOpen: (open: boolean) => void;
   setIsModalBlurActive: (active: boolean) => void;
 
-  // Admin Auth
-  loginAdmin: (username: string, password: string) => boolean;
-  logoutAdmin: () => void;
+  // Admin Auth (diverifikasi di server, sesi via cookie httpOnly)
+  loginAdmin: (
+    username: string,
+    password: string
+  ) => Promise<{ ok: boolean; error?: string }>;
+  logoutAdmin: () => Promise<void>;
+  checkAdminSession: () => Promise<boolean>;
 
   // Cart
   addToCart: (productId: string) => void;
@@ -126,8 +130,15 @@ async function sendSyncMutation(
     const res = await fetch("/api/pos-sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ action, payload }),
     });
+    if (res.status === 401) {
+      // Sesi admin habis / tidak valid → paksa login ulang
+      usePosStore.setState({ isAdminAuthenticated: false });
+      void usePosStore.getState().syncFromServer();
+      return;
+    }
     if (res.ok && pendingMutations === 1 && onSuccess) {
       const data = await res.json();
       onSuccess(data);
@@ -188,21 +199,57 @@ export const usePosStore = create<PosState>()(
       setIsMobileCartOpen: (isMobileCartOpen) => set({ isMobileCartOpen }),
       setIsModalBlurActive: (isModalBlurActive) => set({ isModalBlurActive }),
 
-      loginAdmin: (username, password) => {
-        const cleanUser = username.trim().toLowerCase();
-        if (
-          (cleanUser === "admin" ||
-            cleanUser === "admin@coca.com" ||
-            cleanUser === "admin@bahterabiru.com") &&
-          password === "admin123"
-        ) {
-          set({ isAdminAuthenticated: true });
-          return true;
+      loginAdmin: async (username, password) => {
+        try {
+          const res = await fetch("/api/admin-auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ username, password }),
+          });
+          const data = (await res.json().catch(() => ({}))) as {
+            success?: boolean;
+            error?: string;
+          };
+          if (res.ok && data.success) {
+            set({ isAdminAuthenticated: true });
+            void get().syncFromServer();
+            return { ok: true };
+          }
+          set({ isAdminAuthenticated: false });
+          return { ok: false, error: data.error || "Login gagal." };
+        } catch {
+          return { ok: false, error: "Tidak dapat terhubung ke server." };
         }
-        return false;
       },
 
-      logoutAdmin: () => set({ isAdminAuthenticated: false }),
+      logoutAdmin: async () => {
+        set({ isAdminAuthenticated: false, recentOrders: [] });
+        try {
+          await fetch("/api/admin-auth", {
+            method: "DELETE",
+            credentials: "same-origin",
+          });
+        } catch {
+          // abaikan
+        }
+      },
+
+      checkAdminSession: async () => {
+        try {
+          const res = await fetch("/api/admin-auth", {
+            cache: "no-store",
+            credentials: "same-origin",
+          });
+          const data = (await res.json()) as { authenticated?: boolean };
+          const ok = Boolean(data.authenticated);
+          set({ isAdminAuthenticated: ok });
+          return ok;
+        } catch {
+          set({ isAdminAuthenticated: false });
+          return false;
+        }
+      },
 
       addToCart: (productId) => {
         const { menuItems, cart } = get();
@@ -455,9 +502,16 @@ export const usePosStore = create<PosState>()(
       name: "coca-pos-storage-v3",
       partialize: (state) => ({
         menuItems: state.menuItems,
-        recentOrders: state.recentOrders,
-        isAdminAuthenticated: state.isAdminAuthenticated,
       }),
+      // Status login admin TIDAK pernah dipulihkan dari localStorage (hanya dari cookie server)
+      merge: (persisted, current) => {
+        const p = (persisted || {}) as Partial<PosState>;
+        return {
+          ...current,
+          ...(Array.isArray(p.menuItems) ? { menuItems: p.menuItems } : {}),
+          isAdminAuthenticated: false,
+        };
+      },
     }
   )
 );

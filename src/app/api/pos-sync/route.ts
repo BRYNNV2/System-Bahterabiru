@@ -7,12 +7,33 @@ import {
 } from "@/lib/serverDb";
 import { MenuItem } from "@/data/initialMenu";
 import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
+import { isAdminRequest } from "@/lib/adminAuth";
 
 export const dynamic = "force-dynamic";
 
+// Aksi yang hanya boleh dijalankan admin yang sudah login
+const ADMIN_ONLY_ACTIONS = new Set([
+  "UPDATE_STOCK",
+  "ADD_MENU",
+  "UPDATE_MENU",
+  "DELETE_MENU",
+  "UPDATE_ORDER_STATUS",
+  "DELETE_ORDER",
+]);
+
+/** Hapus data sensitif (harga modal) dari menu untuk pengunjung umum */
+function toPublicMenu(items: MenuItem[]): MenuItem[] {
+  return items.map((item) => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { costPrice, ...rest } = item;
+    return rest;
+  });
+}
+
 export async function GET(req: NextRequest) {
+  const isAdmin = isAdminRequest(req);
   const { searchParams } = new URL(req.url);
-  const all = searchParams.get("all") === "true";
+  const all = isAdmin && searchParams.get("all") === "true";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(
     100,
@@ -24,22 +45,49 @@ export async function GET(req: NextRequest) {
     all ? { allOrders: true } : { ordersLimit: limit, ordersSkip: skip }
   );
 
-  return NextResponse.json({
-    success: true,
-    menuItems: db.menuItems,
-    recentOrders: db.recentOrders,
-    totalOrdersCount: db.totalOrdersCount,
-    currentPage: page,
-    pageSize: limit,
-    totalPages: Math.max(1, Math.ceil(db.totalOrdersCount / limit)),
-    updatedAt: db.updatedAt,
-  });
+  // Pengunjung umum hanya menerima katalog menu (tanpa harga modal & data transaksi)
+  if (!isAdmin) {
+    return NextResponse.json(
+      {
+        success: true,
+        menuItems: toPublicMenu(db.menuItems),
+        recentOrders: [],
+        totalOrdersCount: 0,
+        currentPage: 1,
+        pageSize: limit,
+        totalPages: 1,
+        updatedAt: db.updatedAt,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  return NextResponse.json(
+    {
+      success: true,
+      menuItems: db.menuItems,
+      recentOrders: db.recentOrders,
+      totalOrdersCount: db.totalOrdersCount,
+      currentPage: page,
+      pageSize: limit,
+      totalPages: Math.max(1, Math.ceil(db.totalOrdersCount / limit)),
+      updatedAt: db.updatedAt,
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { action, payload } = body;
+
+    if (ADMIN_ONLY_ACTIONS.has(action) && !isAdminRequest(req)) {
+      return NextResponse.json(
+        { success: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
     switch (action) {
       case "CREATE_ORDER": {
@@ -85,10 +133,10 @@ export async function POST(req: NextRequest) {
             },
           });
 
-          const saved = await readNeonDbOrFallback();
-          return NextResponse.json({ success: true, ...saved });
+          // Jangan kirim balik data seluruh transaksi ke pembeli
+          return NextResponse.json({ success: true, orderId: order.id });
         } catch {
-          const db = readLocalFallbackDb();
+          const db = readLocalFallbackDb({ allOrders: true });
           const updatedMenu = db.menuItems.map((item) => {
             const line = order.items.find((i) => i.product.id === item.id);
             if (!line) return item;
@@ -102,12 +150,12 @@ export async function POST(req: NextRequest) {
           const updatedOrders = exists
             ? db.recentOrders
             : [order, ...db.recentOrders];
-          const saved = writeLocalFallbackDb({
+          writeLocalFallbackDb({
             menuItems: updatedMenu,
             recentOrders: updatedOrders,
             updatedAt: Date.now(),
           });
-          return NextResponse.json({ success: true, ...saved });
+          return NextResponse.json({ success: true, orderId: order.id });
         }
       }
 
@@ -125,7 +173,7 @@ export async function POST(req: NextRequest) {
           const saved = await readNeonDbOrFallback();
           return NextResponse.json({ success: true, ...saved });
         } catch {
-          const db = readLocalFallbackDb();
+          const db = readLocalFallbackDb({ allOrders: true });
           const saved = writeLocalFallbackDb({
             ...db,
             menuItems: db.menuItems.map((item) =>
@@ -178,7 +226,7 @@ export async function POST(req: NextRequest) {
           const saved = await readNeonDbOrFallback();
           return NextResponse.json({ success: true, ...saved });
         } catch {
-          const db = readLocalFallbackDb();
+          const db = readLocalFallbackDb({ allOrders: true });
           const saved = writeLocalFallbackDb({
             ...db,
             menuItems: [newItem, ...db.menuItems],
@@ -232,7 +280,7 @@ export async function POST(req: NextRequest) {
           const saved = await readNeonDbOrFallback();
           return NextResponse.json({ success: true, ...saved });
         } catch {
-          const db = readLocalFallbackDb();
+          const db = readLocalFallbackDb({ allOrders: true });
           const saved = writeLocalFallbackDb({
             ...db,
             menuItems: db.menuItems.map((item) =>
@@ -252,7 +300,7 @@ export async function POST(req: NextRequest) {
           const saved = await readNeonDbOrFallback();
           return NextResponse.json({ success: true, ...saved });
         } catch {
-          const db = readLocalFallbackDb();
+          const db = readLocalFallbackDb({ allOrders: true });
           const saved = writeLocalFallbackDb({
             ...db,
             menuItems: db.menuItems.filter((item) => item.id !== id),
@@ -279,7 +327,7 @@ export async function POST(req: NextRequest) {
           const saved = await readNeonDbOrFallback();
           return NextResponse.json({ success: true, ...saved });
         } catch {
-          const db = readLocalFallbackDb();
+          const db = readLocalFallbackDb({ allOrders: true });
           const saved = writeLocalFallbackDb({
             ...db,
             recentOrders: db.recentOrders.map((ord) =>
@@ -301,7 +349,7 @@ export async function POST(req: NextRequest) {
           const saved = await readNeonDbOrFallback();
           return NextResponse.json({ success: true, ...saved });
         } catch {
-          const db = readLocalFallbackDb();
+          const db = readLocalFallbackDb({ allOrders: true });
           const saved = writeLocalFallbackDb({
             ...db,
             recentOrders: db.recentOrders.filter((ord) => ord.id !== orderId),
@@ -315,12 +363,19 @@ export async function POST(req: NextRequest) {
     }
 
     const currentDb = await readNeonDbOrFallback();
+    if (!isAdminRequest(req)) {
+      return NextResponse.json({
+        success: true,
+        menuItems: toPublicMenu(currentDb.menuItems),
+        recentOrders: [],
+      });
+    }
     return NextResponse.json({ success: true, ...currentDb });
-  } catch (err) {
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error: err instanceof Error ? err.message : "Sync error",
+        error: "Sync error",
       },
       { status: 500 }
     );

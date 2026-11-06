@@ -114,6 +114,7 @@ export function AdminDashboard() {
     updateOrderStatus,
     deleteOrder,
     syncFromServer,
+    checkAdminSession,
   } = usePosStore();
 
   // Login State
@@ -121,6 +122,8 @@ export function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isSessionChecked, setIsSessionChecked] = useState(false);
 
   // Sidebar & Page Navigation State
   const [isMounted, setIsMounted] = useState(false);
@@ -128,8 +131,14 @@ export function AdminDashboard() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [activePage, setActivePage] = useState<AdminPageTab>("dashboard");
 
+  // Verifikasi sesi admin ke server (cookie httpOnly) saat halaman dibuka
   useEffect(() => {
     setIsMounted(true);
+    void checkAdminSession().finally(() => setIsSessionChecked(true));
+  }, [checkAdminSession]);
+
+  useEffect(() => {
+    if (!isAdminAuthenticated) return;
     void syncFromServer();
 
     const interval = setInterval(() => {
@@ -145,7 +154,7 @@ export function AdminDashboard() {
       clearInterval(interval);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [syncFromServer]);
+  }, [syncFromServer, isAdminAuthenticated]);
 
   // Timeframe & Chart State
   const [revenueTimeframe, setRevenueTimeframe] =
@@ -292,15 +301,19 @@ export function AdminDashboard() {
     img.src = objectUrl;
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ok = loginAdmin(username, password);
-    if (!ok) {
-      setLoginError(
-        "Username atau password salah. Gunakan admin / admin123 untuk masuk."
-      );
+    if (isLoggingIn) return;
+    setIsLoggingIn(true);
+    setLoginError("");
+    const result = await loginAdmin(username, password);
+    setIsLoggingIn(false);
+    if (!result.ok) {
+      setLoginError(result.error || "Username atau password salah.");
+      setPassword("");
     } else {
       setLoginError("");
+      setPassword("");
     }
   };
 
@@ -409,7 +422,7 @@ export function AdminDashboard() {
   // ============================================================================
   // 1. ADMIN LOGIN GATE (FinPay Royal Blue & White Style)
   // ============================================================================
-  if (!isMounted) {
+  if (!isMounted || !isSessionChecked) {
     return <div className="h-[100dvh] w-screen bg-[#F7F8FA]" />;
   }
 
@@ -484,29 +497,12 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1">
-              <span className="text-[11px] text-slate-400">
-                Demo: <strong className="text-slate-700">admin</strong> /{" "}
-                <strong className="text-slate-700">admin123</strong>
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  setUsername("admin");
-                  setPassword("admin123");
-                  setLoginError("");
-                }}
-                className="text-[11px] font-bold text-[#2563EB] hover:underline cursor-pointer"
-              >
-                Isi Otomatis
-              </button>
-            </div>
-
             <button
               type="submit"
-              className="w-full py-3.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white font-bold text-xs transition cursor-pointer active:scale-[0.99] mt-2 shadow-[0_8px_20px_rgba(37,99,235,0.25)]"
+              disabled={isLoggingIn}
+              className="w-full py-3.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 disabled:opacity-60 disabled:cursor-wait text-white font-bold text-xs transition cursor-pointer active:scale-[0.99] mt-2 shadow-[0_8px_20px_rgba(37,99,235,0.25)]"
             >
-              Sign In to Dashboard
+              {isLoggingIn ? "Memverifikasi..." : "Sign In to Dashboard"}
             </button>
           </form>
         </div>
