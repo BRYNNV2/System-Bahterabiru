@@ -29,8 +29,10 @@ import {
   UtensilsCrossed,
   Clock,
   History,
+  Lock,
 } from "lucide-react";
 import { AdminLoginView } from "@/components/admin/AdminLoginView";
+import { AdminPinModal } from "@/components/admin/AdminPinModal";
 import { TransactionHistory } from "@/components/admin/TransactionHistory";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
@@ -189,6 +191,52 @@ export function AdminDashboard() {
     setTimeout(() => setToastMsg(null), 2600);
   };
 
+  // PIN Supervisor / Owner Protection State (5 menit sesi buka kunci)
+  const [pinUnlockedUntil, setPinUnlockedUntil] = useState<number>(0);
+  const [pinModalState, setPinModalState] = useState<{
+    isOpen: boolean;
+    actionLabel: string;
+    onConfirm: (() => void) | null;
+  }>({
+    isOpen: false,
+    actionLabel: "",
+    onConfirm: null,
+  });
+
+  const isPinUnlocked = pinUnlockedUntil > Date.now();
+
+  const requirePin = (actionLabel: string, action: () => void) => {
+    if (pinUnlockedUntil > Date.now()) {
+      action();
+      return;
+    }
+    setPinModalState({
+      isOpen: true,
+      actionLabel,
+      onConfirm: action,
+    });
+  };
+
+  const handleProtectedStockUpdate = (item: MenuItem, nextStock: number) => {
+    requirePin(`mengubah stok "${item.name}"`, () => {
+      updateProductStock(item.id, nextStock);
+    });
+  };
+
+  const handleProtectedDeleteMenu = (item: MenuItem) => {
+    requirePin(`menghapus menu "${item.name}"`, () => {
+      deleteMenuItem(item.id);
+      showToast(`Menu "${item.name}" telah dihapus.`);
+    });
+  };
+
+  const handleProtectedDeleteOrder = (order: CompletedOrder) => {
+    requirePin(`menghapus transaksi ${order.orderNumber}`, () => {
+      deleteOrder(order.id);
+      showToast(`Transaksi ${order.orderNumber} telah dihapus.`);
+    });
+  };
+
   // Automatic Client-Side Image -> WebP Compression & Resize
   const handleUploadProductImage = (file?: File | null) => {
     if (!file) return;
@@ -285,56 +333,60 @@ export function AdminDashboard() {
   };
 
   const openCreateModal = () => {
-    setEditingItem(null);
-    setFormName("");
-    setFormCategory("Rice bowl");
-    setFormGroup("Food");
-    setFormCostPrice(3000);
-    setFormPrice(4000);
-    setFormStock(20);
-    setFormDesc("");
-    setFormImage("");
-    setUploadedImageMeta(null);
-    setFormFeatured(false);
-    setFormUseVariants(false);
-    setFormVariantsText("Porsi Reguler, Pedas Normal, Pedas Ekstra");
-    setIsCrudModalOpen(true);
+    requirePin("menambah menu baru", () => {
+      setEditingItem(null);
+      setFormName("");
+      setFormCategory("Rice bowl");
+      setFormGroup("Food");
+      setFormCostPrice(3000);
+      setFormPrice(4000);
+      setFormStock(20);
+      setFormDesc("");
+      setFormImage("");
+      setUploadedImageMeta(null);
+      setFormFeatured(false);
+      setFormUseVariants(false);
+      setFormVariantsText("Porsi Reguler, Pedas Normal, Pedas Ekstra");
+      setIsCrudModalOpen(true);
+    });
   };
 
   const openEditModal = (item: MenuItem) => {
-    setEditingItem(item);
-    setFormName(item.name);
-    setFormCategory(item.category);
-    setFormGroup(item.group);
-    setFormCostPrice(item.costPrice ?? 0);
-    setFormPrice(getEffectivePrice(item));
-    setFormStock(item.stock);
-    const isLegacyDesc =
-      item.description?.startsWith("Hidangan spesial racikan dapur utama") &&
-      (item.category === "Snack" || item.group === "Snack");
-    setFormDesc(isLegacyDesc ? "" : item.description || "");
-    setFormImage(item.imageUrl);
-    setUploadedImageMeta(null);
-    setFormFeatured(Boolean(item.featured));
+    requirePin(`mengedit menu & stok "${item.name}"`, () => {
+      setEditingItem(item);
+      setFormName(item.name);
+      setFormCategory(item.category);
+      setFormGroup(item.group);
+      setFormCostPrice(item.costPrice ?? 0);
+      setFormPrice(getEffectivePrice(item));
+      setFormStock(item.stock);
+      const isLegacyDesc =
+        item.description?.startsWith("Hidangan spesial racikan dapur utama") &&
+        (item.category === "Snack" || item.group === "Snack");
+      setFormDesc(isLegacyDesc ? "" : item.description || "");
+      setFormImage(item.imageUrl);
+      setUploadedImageMeta(null);
+      setFormFeatured(Boolean(item.featured));
 
-    const rawOpts = item.servingOptions || [];
-    const isOldPlaceholder =
-      rawOpts.length === 3 &&
-      rawOpts[0] === "Porsi Reguler" &&
-      rawOpts[1] === "Pedas Normal" &&
-      rawOpts[2] === "Extra Bumbu" &&
-      (item.category === "Snack" ||
-        item.group === "Snack" ||
-        item.category === "Bread" ||
-        item.group === "Bread");
-    const effectiveOpts = isOldPlaceholder ? [] : rawOpts;
-    setFormUseVariants(effectiveOpts.length > 0);
-    setFormVariantsText(
-      effectiveOpts.length > 0
-        ? effectiveOpts.join(", ")
-        : "Porsi Reguler, Pedas Normal, Pedas Ekstra"
-    );
-    setIsCrudModalOpen(true);
+      const rawOpts = item.servingOptions || [];
+      const isOldPlaceholder =
+        rawOpts.length === 3 &&
+        rawOpts[0] === "Porsi Reguler" &&
+        rawOpts[1] === "Pedas Normal" &&
+        rawOpts[2] === "Extra Bumbu" &&
+        (item.category === "Snack" ||
+          item.group === "Snack" ||
+          item.category === "Bread" ||
+          item.group === "Bread");
+      const effectiveOpts = isOldPlaceholder ? [] : rawOpts;
+      setFormUseVariants(effectiveOpts.length > 0);
+      setFormVariantsText(
+        effectiveOpts.length > 0
+          ? effectiveOpts.join(", ")
+          : "Porsi Reguler, Pedas Normal, Pedas Ekstra"
+      );
+      setIsCrudModalOpen(true);
+    });
   };
 
   const handleSaveMenu = (e: React.FormEvent) => {
@@ -851,6 +903,22 @@ export function AdminDashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Tombol Kunci PIN Kembali jika Sesi PIN Owner sedang terbuka */}
+            {isPinUnlocked && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPinUnlockedUntil(0);
+                  showToast("Akses PIN CRUD & Hapus telah dikunci kembali.");
+                }}
+                title="Klik untuk mengunci kembali akses PIN CRUD & Hapus"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 text-[11px] font-bold transition cursor-pointer shrink-0"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Kunci PIN</span>
+              </button>
+            )}
+
             {/* Search Box with ⌘K badge */}
             <div className="relative flex items-center bg-[#F8FAFC] border border-slate-200/80 rounded-xl px-2.5 sm:px-3 py-1.5 w-36 sm:w-64">
               <Search className="w-3.5 h-3.5 text-slate-400 mr-1.5 sm:mr-2 shrink-0" />
@@ -2105,7 +2173,7 @@ export function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateProductStock(item.id, item.stock - 1)
+                              handleProtectedStockUpdate(item, item.stock - 1)
                             }
                             className="w-6 h-6 rounded-md sm:rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 flex items-center justify-center cursor-pointer"
                           >
@@ -2114,7 +2182,7 @@ export function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateProductStock(item.id, item.stock + 1)
+                              handleProtectedStockUpdate(item, item.stock + 1)
                             }
                             className="w-6 h-6 rounded-md sm:rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white flex items-center justify-center cursor-pointer"
                           >
@@ -2123,7 +2191,7 @@ export function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateProductStock(item.id, item.stock + 10)
+                              handleProtectedStockUpdate(item, item.stock + 10)
                             }
                             className="px-1.5 sm:px-2 py-0.5 rounded-md sm:rounded-lg bg-white border border-slate-200 hover:border-blue-400 text-slate-700 font-semibold text-[9px] sm:text-[10px] cursor-pointer"
                           >
@@ -2145,10 +2213,7 @@ export function AdminDashboard() {
 
                       <button
                         type="button"
-                        onClick={() => {
-                          deleteMenuItem(item.id);
-                          showToast(`Menu "${item.name}" telah dihapus.`);
-                        }}
+                        onClick={() => handleProtectedDeleteMenu(item)}
                         className="py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-[#F8FAFC] hover:bg-rose-50 text-slate-500 hover:text-rose-600 font-semibold text-[10.5px] sm:text-xs flex items-center justify-center gap-1 transition cursor-pointer"
                       >
                         <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
@@ -2168,6 +2233,7 @@ export function AdminDashboard() {
             orders={recentOrders}
             menuItems={menuItems}
             onOpenDetail={(order) => setSelectedOrderDetail(order)}
+            onDeleteOrder={(order) => handleProtectedDeleteOrder(order)}
           />
         ) : (
           /* ===================================================================
@@ -2449,13 +2515,10 @@ export function AdminDashboard() {
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    deleteOrder(order.id);
-                                    showToast(
-                                      `Transaksi ${order.orderNumber} telah dihapus.`
-                                    );
-                                  }}
-                                  title="Hapus Transaksi"
+                                  onClick={() =>
+                                    handleProtectedDeleteOrder(order)
+                                  }
+                                  title="Hapus Transaksi (Wajib PIN)"
                                   className="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -3084,7 +3147,7 @@ export function AdminDashboard() {
                       <button
                         type="button"
                         onClick={() =>
-                          updateProductStock(item.id, item.stock - 1)
+                          handleProtectedStockUpdate(item, item.stock - 1)
                         }
                         className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 cursor-pointer"
                       >
@@ -3096,7 +3159,7 @@ export function AdminDashboard() {
                       <button
                         type="button"
                         onClick={() =>
-                          updateProductStock(item.id, item.stock + 1)
+                          handleProtectedStockUpdate(item, item.stock + 1)
                         }
                         className="w-6 h-6 rounded-lg bg-[#2563EB] text-white flex items-center justify-center hover:bg-blue-700 cursor-pointer"
                       >
@@ -3472,6 +3535,23 @@ export function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* =====================================================================
+          MODAL OTORISASI PIN OWNER / SUPERVISOR (CRUD Stok & Hapus Transaksi)
+         ===================================================================== */}
+      <AdminPinModal
+        isOpen={pinModalState.isOpen}
+        actionLabel={pinModalState.actionLabel}
+        onClose={() =>
+          setPinModalState({ isOpen: false, actionLabel: "", onConfirm: null })
+        }
+        onSuccess={() => {
+          const pendingAction = pinModalState.onConfirm;
+          setPinUnlockedUntil(Date.now() + 5 * 60 * 1000);
+          setPinModalState({ isOpen: false, actionLabel: "", onConfirm: null });
+          if (pendingAction) pendingAction();
+        }}
+      />
     </div>
   );
 }

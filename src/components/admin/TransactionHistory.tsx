@@ -16,6 +16,7 @@ import {
   Banknote,
   QrCode,
   CreditCard,
+  Trash2,
   X,
 } from "lucide-react";
 import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
@@ -30,6 +31,7 @@ interface TransactionHistoryProps {
   orders: CompletedOrder[];
   menuItems: MenuItem[];
   onOpenDetail: (order: CompletedOrder) => void;
+  onDeleteOrder?: (order: CompletedOrder) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -416,6 +418,7 @@ export function TransactionHistory({
   orders,
   menuItems,
   onOpenDetail,
+  onDeleteOrder,
 }: TransactionHistoryProps) {
   const [period, setPeriod] = useState<PeriodFilter>("all");
   const [customFrom, setCustomFrom] = useState<string>("");
@@ -1353,16 +1356,30 @@ export function TransactionHistory({
                                           </span>
                                         )}
                                       </div>
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          onOpenDetail(order);
-                                        }}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200/80 hover:border-[#2563EB] hover:text-[#2563EB] text-[11px] font-bold text-slate-600 transition cursor-pointer"
-                                      >
-                                        <Receipt className="w-3.5 h-3.5" /> Lihat Struk
-                                      </button>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onOpenDetail(order);
+                                          }}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200/80 hover:border-[#2563EB] hover:text-[#2563EB] text-[11px] font-bold text-slate-600 transition cursor-pointer"
+                                        >
+                                          <Receipt className="w-3.5 h-3.5" /> Lihat Struk
+                                        </button>
+                                        {onDeleteOrder && (
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              onDeleteOrder(order);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-rose-200/80 hover:bg-rose-50 text-[11px] font-bold text-rose-600 transition cursor-pointer"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" /> Hapus (PIN)
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                 </td>

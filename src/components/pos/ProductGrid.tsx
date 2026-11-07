@@ -92,7 +92,9 @@ export function ProductGrid() {
         return (
           item.name.toLowerCase().includes(q) ||
           item.category.toLowerCase().includes(q) ||
-          item.group.toLowerCase().includes(q)
+          item.group.toLowerCase().includes(q) ||
+          item.id.toLowerCase().includes(q) ||
+          (item.description || "").toLowerCase().includes(q)
         );
       }
 

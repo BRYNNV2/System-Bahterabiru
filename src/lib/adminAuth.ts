@@ -68,6 +68,12 @@ export function isAdminLoginConfigured(): boolean {
   return getAdminCredentials() !== null;
 }
 
+export function verifyAdminPin(pin: string): boolean {
+  const configuredPin = process.env.ADMIN_PIN?.trim() || (!isProd ? "123456" : "");
+  if (!configuredPin) return false;
+  return safeEqual(pin.trim(), configuredPin);
+}
+
 // ---------------------------------------------------------------------------
 // Token sesi
 // ---------------------------------------------------------------------------
