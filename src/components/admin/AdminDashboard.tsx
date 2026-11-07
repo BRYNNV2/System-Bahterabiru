@@ -48,7 +48,12 @@ import {
   MenuItem,
 } from "@/data/initialMenu";
 
-type AdminPageTab = "dashboard" | "transactions" | "history" | "crud";
+type AdminPageTab =
+  | "dashboard"
+  | "transactions"
+  | "history"
+  | "crud"
+  | "settings";
 type RevenueTimeframe = "daily" | "weekly" | "monthly";
 
 // Helper component for the signature FinPay striped progress bar
@@ -193,9 +198,80 @@ export function AdminDashboard() {
     setTimeout(() => setToastMsg(null), 3200);
   };
 
-  // Sound Alert / Bell Chime Notifikasi Pesanan Baru (Web Audio API)
+  // Sound Alert / Bell Chime & Pusat Notifikasi Pesanan Baru (Web Audio API)
   const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
+  const [isNotifPanelOpen, setIsNotifPanelOpen] = useState<boolean>(false);
+  const [notifFilterTab, setNotifFilterTab] = useState<
+    "all" | "orders" | "stock"
+  >("all");
+  const [readNotifIds, setReadNotifIds] = useState<string[]>([]);
+  const [dismissedNotifIds, setDismissedNotifIds] = useState<string[]>([]);
+  const notifPanelRef = useRef<HTMLDivElement | null>(null);
   const knownOrderIdsRef = useRef<Set<string> | null>(null);
+
+  // Muat daftar notifikasi yang sudah dihapus & pengaturan admin dari localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("pos-dismissed-notifs-v1");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) setDismissedNotifIds(parsed);
+      }
+      const savedSettings = localStorage.getItem("pos-admin-settings-v1");
+      if (savedSettings) {
+        const parsedSettings = JSON.parse(savedSettings);
+        if (typeof parsedSettings.dailyTargetAmount === "number") {
+          setDailyTargetAmount(parsedSettings.dailyTargetAmount);
+        }
+        if (typeof parsedSettings.customExpenses === "number") {
+          setCustomExpenses(parsedSettings.customExpenses);
+        }
+        if (typeof parsedSettings.isSoundEnabled === "boolean") {
+          setIsSoundEnabled(parsedSettings.isSoundEnabled);
+        }
+      }
+    } catch {
+      // Abaikan jika localStorage tidak tersedia
+    }
+  }, []);
+
+  const saveAdminSettings = (
+    updates: Partial<{
+      dailyTargetAmount: number;
+      customExpenses: number;
+      isSoundEnabled: boolean;
+    }>
+  ) => {
+    const next = {
+      dailyTargetAmount:
+        updates.dailyTargetAmount !== undefined
+          ? updates.dailyTargetAmount
+          : dailyTargetAmount,
+      customExpenses:
+        updates.customExpenses !== undefined
+          ? updates.customExpenses
+          : customExpenses,
+      isSoundEnabled:
+        updates.isSoundEnabled !== undefined
+          ? updates.isSoundEnabled
+          : isSoundEnabled,
+    };
+    try {
+      localStorage.setItem("pos-admin-settings-v1", JSON.stringify(next));
+    } catch {
+      // Abaikan
+    }
+  };
+
+  const saveDismissedNotifs = (nextIds: string[]) => {
+    const unique = Array.from(new Set(nextIds));
+    setDismissedNotifIds(unique);
+    try {
+      localStorage.setItem("pos-dismissed-notifs-v1", JSON.stringify(unique));
+    } catch {
+      // Abaikan
+    }
+  };
 
   const playNewOrderChime = () => {
     try {
@@ -284,6 +360,21 @@ export function AdminDashboard() {
   });
 
   const isPinUnlocked = pinUnlockedUntil > Date.now();
+
+  // Tutup panel notifikasi saat klik di luar area dropdown (kecuali saat modal PIN sedang terbuka)
+  useEffect(() => {
+    if (!isNotifPanelOpen || pinModalState.isOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        notifPanelRef.current &&
+        !notifPanelRef.current.contains(e.target as Node)
+      ) {
+        setIsNotifPanelOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isNotifPanelOpen, pinModalState.isOpen]);
 
   const requirePin = (actionLabel: string, action: () => void) => {
     if (pinUnlockedUntil > Date.now()) {
@@ -894,12 +985,22 @@ export function AdminDashboard() {
               <button
                 type="button"
                 onClick={() => {
-                  setActivePage("crud");
+                  setActivePage("settings");
                   setIsMobileSidebarOpen(false);
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium transition cursor-pointer"
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs transition cursor-pointer ${
+                  activePage === "settings"
+                    ? "bg-[#F1F5F9] text-[#2563EB] font-bold"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-medium"
+                }`}
               >
-                <Settings className="w-4 h-4 text-slate-400" />
+                <Settings
+                  className={`w-4 h-4 ${
+                    activePage === "settings"
+                      ? "text-[#2563EB]"
+                      : "text-slate-400"
+                  }`}
+                />
                 <span>Settings & Katalog</span>
               </button>
 
@@ -957,7 +1058,7 @@ export function AdminDashboard() {
          ===================================================================== */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden relative">
         {/* TOP HEADER BAR (Exact FinPay Header + Responsive Toggle) */}
-        <header className="h-14 sm:h-16 bg-white border-b border-slate-200/80 px-3.5 sm:px-6 flex items-center justify-between shrink-0 z-10 gap-2">
+        <header className="h-14 sm:h-16 bg-white border-b border-slate-200/80 px-3.5 sm:px-6 flex items-center justify-between shrink-0 z-40 gap-2 relative">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             {/* Mobile Drawer Button (< lg) */}
             <button
@@ -1042,8 +1143,8 @@ export function AdminDashboard() {
               }}
               className={`w-9 h-9 rounded-xl border flex items-center justify-center transition cursor-pointer shrink-0 ${
                 isSoundEnabled
-                  ? "border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-[#2563EB]"
-                  : "border-slate-200/80 bg-white hover:bg-slate-50 text-slate-400"
+                  ? "border-slate-200/90 bg-white hover:bg-slate-50 text-slate-700"
+                  : "border-slate-200/70 bg-slate-50 text-slate-400"
               }`}
               title={
                 isSoundEnabled
@@ -1058,17 +1159,424 @@ export function AdminDashboard() {
               )}
             </button>
 
-            <button
-              type="button"
-              onClick={() =>
-                showToast(`${recentOrders.length} transaksi tercatat hari ini.`)
-              }
-              className="w-9 h-9 rounded-xl border border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600 flex items-center justify-center transition cursor-pointer relative shrink-0"
-              title="Notifikasi Pesanan"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="w-2 h-2 rounded-full bg-[#2563EB] absolute top-2 right-2" />
-            </button>
+            {/* Pusat Notifikasi Dropdown (Pesanan Masuk & Peringatan Stok - Warna Kalem/Netral) */}
+            {(() => {
+              const visibleOrderNotifs = recentOrders.filter(
+                (o) => !dismissedNotifIds.includes(`ord-${o.id}`)
+              );
+              const visibleStockNotifs = menuItems.filter(
+                (m) =>
+                  m.stock <= 5 &&
+                  !dismissedNotifIds.includes(`stk-${m.id}-${m.stock}`)
+              );
+
+              const unreadOrdersCount = visibleOrderNotifs.filter(
+                (o) => !readNotifIds.includes(`ord-${o.id}`)
+              ).length;
+              const unreadStockCount = visibleStockNotifs.filter(
+                (m) => !readNotifIds.includes(`stk-${m.id}-${m.stock}`)
+              ).length;
+              const totalUnreadCount = unreadOrdersCount + unreadStockCount;
+              const totalVisibleCount =
+                visibleOrderNotifs.length + visibleStockNotifs.length;
+              const pendingOrdersCount = visibleOrderNotifs.filter(
+                (o) => (o.status || "Preparing") !== "Completed"
+              ).length;
+
+              const markAllAsRead = () => {
+                const allIds = [
+                  ...readNotifIds,
+                  ...visibleOrderNotifs.map((o) => `ord-${o.id}`),
+                  ...visibleStockNotifs.map((m) => `stk-${m.id}-${m.stock}`),
+                ];
+                setReadNotifIds(Array.from(new Set(allIds)));
+              };
+
+              const handleClearAllNotifs = () => {
+                requirePin("menghapus semua daftar notifikasi", () => {
+                  saveDismissedNotifs([
+                    ...dismissedNotifIds,
+                    ...visibleOrderNotifs.map((o) => `ord-${o.id}`),
+                    ...visibleStockNotifs.map((m) => `stk-${m.id}-${m.stock}`),
+                  ]);
+                  showToast("Semua daftar notifikasi telah dihapus.");
+                });
+              };
+
+              return (
+                <div ref={notifPanelRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsNotifPanelOpen((prev) => !prev)}
+                    className={`w-9 h-9 rounded-xl border flex items-center justify-center transition cursor-pointer relative ${
+                      isNotifPanelOpen
+                        ? "border-slate-300 bg-slate-100 text-slate-900"
+                        : "border-slate-200/80 bg-white hover:bg-slate-50 text-slate-600"
+                    }`}
+                    title="Buka Daftar Notifikasi"
+                  >
+                    <Bell className="w-4 h-4" />
+                    {totalUnreadCount > 0 ? (
+                      <span className="min-w-[17px] h-[17px] px-1 rounded-full bg-slate-800 text-white text-[9.5px] font-bold flex items-center justify-center absolute -top-1 -right-1 shadow-xs">
+                        {totalUnreadCount > 99 ? "99+" : totalUnreadCount}
+                      </span>
+                    ) : pendingOrdersCount > 0 ? (
+                      <span className="w-2 h-2 rounded-full bg-slate-500 absolute top-2 right-2" />
+                    ) : null}
+                  </button>
+
+                  {isNotifPanelOpen && (
+                    <div className="fixed sm:absolute right-2.5 sm:right-0 top-16 sm:top-11 w-[calc(100vw-20px)] sm:w-[390px] bg-white rounded-2xl border border-slate-200 shadow-[0_18px_45px_rgba(15,23,42,0.14)] z-[90] overflow-hidden">
+                      {/* Header Panel Notifikasi */}
+                      <div className="px-4 py-3 bg-[#F8FAFC] border-b border-slate-200/80 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xs sm:text-sm font-bold text-slate-800">
+                            Pusat Notifikasi
+                          </h3>
+                          {totalUnreadCount > 0 && (
+                            <span className="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 text-[10px] font-bold">
+                              {totalUnreadCount} baru
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {totalUnreadCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={markAllAsRead}
+                              className="text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:underline cursor-pointer"
+                            >
+                              Tandai dibaca
+                            </button>
+                          )}
+                          {totalVisibleCount > 0 && (
+                            <button
+                              type="button"
+                              onClick={handleClearAllNotifs}
+                              title="Hapus semua notifikasi (Wajib PIN)"
+                              className="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-200/60 hover:bg-slate-200 text-slate-700 text-[10.5px] font-semibold transition cursor-pointer"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Hapus Semua</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setIsNotifPanelOpen(false)}
+                            className="w-6 h-6 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 flex items-center justify-center cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Filter Tab (Semua / Pesanan / Stok) */}
+                      <div className="px-3.5 py-2 border-b border-slate-100 flex items-center gap-1.5 bg-white">
+                        {[
+                          {
+                            id: "all",
+                            label: `Semua (${totalVisibleCount})`,
+                          },
+                          {
+                            id: "orders",
+                            label: `Pesanan (${visibleOrderNotifs.length})`,
+                          },
+                          {
+                            id: "stock",
+                            label: `Stok (${visibleStockNotifs.length})`,
+                          },
+                        ].map((t) => {
+                          const active = notifFilterTab === t.id;
+                          return (
+                            <button
+                              type="button"
+                              key={t.id}
+                              onClick={() =>
+                                setNotifFilterTab(
+                                  t.id as "all" | "orders" | "stock"
+                                )
+                              }
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                                active
+                                  ? "bg-slate-800 text-white"
+                                  : "bg-slate-100 text-slate-600 hover:bg-slate-200/70"
+                              }`}
+                            >
+                              {t.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Daftar Isi Notifikasi */}
+                      <div className="max-h-[360px] overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
+                        {/* 1. Notifikasi Peringatan Stok Habis / Menipis */}
+                        {(notifFilterTab === "all" ||
+                          notifFilterTab === "stock") &&
+                          visibleStockNotifs.map((item) => {
+                            const notifKey = `stk-${item.id}-${item.stock}`;
+                            const isUnread = !readNotifIds.includes(notifKey);
+                            const isOut = item.stock === 0;
+                            return (
+                              <div
+                                key={notifKey}
+                                onClick={() => {
+                                  if (isUnread) {
+                                    setReadNotifIds((prev) => [
+                                      ...prev,
+                                      notifKey,
+                                    ]);
+                                  }
+                                  setIsNotifPanelOpen(false);
+                                  setActivePage("crud");
+                                }}
+                                className={`p-3.5 hover:bg-slate-50 transition cursor-pointer flex items-start justify-between gap-2.5 ${
+                                  isUnread ? "bg-slate-50/70" : "bg-white"
+                                }`}
+                              >
+                                <div className="flex items-start gap-2.5 min-w-0">
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.name}
+                                    className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0 mt-0.5"
+                                  />
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 text-[9.5px] font-bold uppercase">
+                                        {isOut ? "Stok Habis" : "Stok Menipis"}
+                                      </span>
+                                      <span className="text-[10.5px] font-medium text-slate-400">
+                                        {item.category}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
+                                      {item.name}
+                                    </p>
+                                    <p className="text-[11px] text-slate-500">
+                                      Sisa stok:{" "}
+                                      <strong className="text-slate-700">
+                                        {item.stock} pcs
+                                      </strong>{" "}
+                                      • Klik untuk atur stok
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  {isUnread && (
+                                    <span className="w-2 h-2 rounded-full bg-slate-500 shrink-0" />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      requirePin(
+                                        `menghapus notifikasi stok "${item.name}"`,
+                                        () => {
+                                          saveDismissedNotifs([
+                                            ...dismissedNotifIds,
+                                            notifKey,
+                                          ]);
+                                          showToast(
+                                            `Notifikasi stok "${item.name}" dihapus.`
+                                          );
+                                        }
+                                      );
+                                    }}
+                                    title="Hapus notifikasi ini (Wajib PIN)"
+                                    className="w-7 h-7 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 flex items-center justify-center transition cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                        {/* 2. Daftar Semua Notifikasi Pesanan Masuk */}
+                        {(notifFilterTab === "all" ||
+                          notifFilterTab === "orders") &&
+                          visibleOrderNotifs.map((ord) => {
+                            const notifKey = `ord-${ord.id}`;
+                            const isUnread = !readNotifIds.includes(notifKey);
+                            const st = ord.status || "Preparing";
+                            const itemSummary = ord.items
+                              .map((i) => `${i.quantity}x ${i.product.name}`)
+                              .join(", ");
+
+                            return (
+                              <div
+                                key={ord.id}
+                                className={`p-3.5 hover:bg-slate-50 transition ${
+                                  isUnread ? "bg-slate-50/70" : "bg-white"
+                                }`}
+                              >
+                                <div
+                                  onClick={() => {
+                                    if (isUnread) {
+                                      setReadNotifIds((prev) => [
+                                        ...prev,
+                                        notifKey,
+                                      ]);
+                                    }
+                                    setSelectedOrderDetail(ord);
+                                    setIsNotifPanelOpen(false);
+                                  }}
+                                  className="cursor-pointer"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 text-slate-700 text-[10px] font-bold shrink-0">
+                                        {ord.orderNumber}
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-800 truncate">
+                                        {ord.customerName}
+                                      </span>
+                                      {isUnread && (
+                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500 shrink-0" />
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-600 text-[10px] font-semibold">
+                                        {st === "Completed"
+                                          ? "Selesai"
+                                          : st === "Ready"
+                                          ? "Siap Diambil"
+                                          : "Diproses"}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          requirePin(
+                                            `menghapus notifikasi pesanan ${ord.orderNumber}`,
+                                            () => {
+                                              saveDismissedNotifs([
+                                                ...dismissedNotifIds,
+                                                notifKey,
+                                              ]);
+                                              showToast(
+                                                `Notifikasi pesanan ${ord.orderNumber} dihapus.`
+                                              );
+                                            }
+                                          );
+                                        }}
+                                        title="Hapus notifikasi ini (Wajib PIN)"
+                                        className="w-6 h-6 rounded-lg hover:bg-slate-200/70 text-slate-400 hover:text-slate-700 flex items-center justify-center transition cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <p className="text-[11px] text-slate-500 line-clamp-1 mt-1">
+                                    {itemSummary}
+                                  </p>
+
+                                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-1">
+                                    <span>
+                                      {ord.createdAt} • {ord.paymentMethod}
+                                    </span>
+                                    <span className="font-bold text-slate-800 tabular-nums">
+                                      {formatRupiah(ord.totalAmount)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Tombol Aksi Cepat di dalam Notifikasi */}
+                                {st !== "Completed" && (
+                                  <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
+                                    {st === "Preparing" && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          updateOrderStatus(ord.id, "Ready");
+                                          if (isUnread) {
+                                            setReadNotifIds((prev) => [
+                                              ...prev,
+                                              notifKey,
+                                            ]);
+                                          }
+                                          showToast(
+                                            `Pesanan ${ord.orderNumber} ditandai Siap Diambil!`
+                                          );
+                                        }}
+                                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-[10.5px] font-semibold transition cursor-pointer"
+                                      >
+                                        Tandai Siap Diambil
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateOrderStatus(ord.id, "Completed");
+                                        if (isUnread) {
+                                          setReadNotifIds((prev) => [
+                                            ...prev,
+                                            notifKey,
+                                          ]);
+                                        }
+                                        showToast(
+                                          `Pesanan ${ord.orderNumber} Selesai!`
+                                        );
+                                      }}
+                                      className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[10.5px] font-semibold transition cursor-pointer"
+                                    >
+                                      Selesaikan Pesanan
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+
+                        {/* Empty State */}
+                        {((notifFilterTab === "all" &&
+                          totalVisibleCount === 0) ||
+                          (notifFilterTab === "orders" &&
+                            visibleOrderNotifs.length === 0) ||
+                          (notifFilterTab === "stock" &&
+                            visibleStockNotifs.length === 0)) && (
+                          <div className="py-10 px-4 text-center">
+                            <Bell className="w-7 h-7 text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs font-bold text-slate-700">
+                              Belum ada notifikasi
+                            </p>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Semua pesanan baru & peringatan stok akan tampil di
+                              sini.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Footer Navigasi Cepat */}
+                      <div className="p-2.5 bg-[#F8FAFC] border-t border-slate-200/80 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsNotifPanelOpen(false);
+                            setActivePage("transactions");
+                          }}
+                          className="py-2 px-3 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-semibold transition cursor-pointer"
+                        >
+                          Semua Transaksi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsNotifPanelOpen(false);
+                            setActivePage("history");
+                          }}
+                          className="py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-[11px] font-semibold transition cursor-pointer"
+                        >
+                          History Transaksi →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </header>
 
@@ -2349,6 +2857,496 @@ export function AdminDashboard() {
             onOpenDetail={(order) => setSelectedOrderDetail(order)}
             onDeleteOrder={(order) => handleProtectedDeleteOrder(order)}
           />
+        ) : activePage === "settings" ? (
+          /* ===================================================================
+              VIEW D: HALAMAN SETTINGS & KATALOG (Konfigurasi Kantin & Katalog Cepat)
+             =================================================================== */
+          <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 pb-20 lg:pb-8 custom-scrollbar space-y-5 max-w-[1400px] w-full mx-auto">
+            {/* Header Banner Settings & Katalog */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[10px] font-bold uppercase tracking-wider">
+                  Konfigurasi Sistem & Katalog
+                </span>
+                <h2 className="text-base sm:text-lg font-extrabold text-slate-900 mt-1">
+                  Settings & Manajemen Katalog Pembeli
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Atur target harian, biaya operasional, suara kasir, serta visibilitas & diskon katalog pembeli.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href="/"
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Lihat Katalog Pembeli</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setActivePage("crud")}
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                  <span>Buka Menu CRUD</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Ringkasan Status Katalog */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/80">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Total Menu Katalog
+                </span>
+                <p className="text-xl font-extrabold text-slate-900 mt-1">
+                  {menuItems.length} Produk
+                </p>
+                <span className="text-[10.5px] text-slate-400">
+                  Tampil aktif di halaman pembeli
+                </span>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/80">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Menu Unggulan (Featured)
+                </span>
+                <p className="text-xl font-extrabold text-slate-900 mt-1">
+                  {menuItems.filter((m) => m.featured).length} Produk
+                </p>
+                <span className="text-[10.5px] text-slate-400">
+                  Ditandai badge Featured
+                </span>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/80">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Menu Sedang Diskon
+                </span>
+                <p className="text-xl font-extrabold text-slate-900 mt-1">
+                  {
+                    menuItems.filter(
+                      (m) => (m.discountPercent || 0) > 0
+                    ).length
+                  }{" "}
+                  Produk
+                </p>
+                <span className="text-[10.5px] text-slate-400">
+                  Potongan harga otomatis
+                </span>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 border border-slate-200/80">
+                <span className="text-[11px] font-semibold text-slate-400">
+                  Stok Menipis / Habis
+                </span>
+                <p className="text-xl font-extrabold text-slate-900 mt-1">
+                  {menuItems.filter((m) => m.stock <= 5).length} Produk
+                </p>
+                <span className="text-[10.5px] text-slate-400">
+                  {menuItems.filter((m) => m.stock === 0).length} produk stok 0 pcs
+                </span>
+              </div>
+            </div>
+
+            {/* Grid 2 Kolom: Pengaturan Operasional & Aksi Cepat Katalog */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* Kolom Kiri: Pengaturan Operasional & Notifikasi */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 space-y-4">
+                <div className="border-b border-slate-100 pb-3">
+                  <h3 className="text-sm font-extrabold text-slate-900">
+                    Pengaturan Operasional & Kasir
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Sesuaikan target pendapatan harian, biaya operasional tambahan, dan suara kasir
+                  </p>
+                </div>
+
+                {/* Target Pendapatan Harian */}
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Target Pendapatan Harian (Rp)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={100000}
+                      step={100000}
+                      value={dailyTargetAmount}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value) || 0);
+                        setDailyTargetAmount(val);
+                        saveAdminSettings({ dailyTargetAmount: val });
+                      }}
+                      className="flex-1 rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-slate-400"
+                    />
+                    <span className="text-xs font-bold text-slate-600 shrink-0">
+                      {formatRupiah(dailyTargetAmount)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {[500000, 1000000, 2000000, 3000000, 5000000].map(
+                      (preset) => (
+                        <button
+                          type="button"
+                          key={preset}
+                          onClick={() => {
+                            setDailyTargetAmount(preset);
+                            saveAdminSettings({ dailyTargetAmount: preset });
+                            showToast(
+                              `Target harian diatur ke ${formatRupiah(preset)}`
+                            );
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border transition cursor-pointer ${
+                            dailyTargetAmount === preset
+                              ? "bg-slate-800 text-white border-slate-800"
+                              : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                          }`}
+                        >
+                          {formatRupiah(preset)}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
+
+                {/* Biaya Operasional Tambahan */}
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Biaya Operasional Tambahan Harian (Gas, Kemasan, Es, Listrik)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={0}
+                      step={5000}
+                      value={customExpenses}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value) || 0);
+                        setCustomExpenses(val);
+                        saveAdminSettings({ customExpenses: val });
+                      }}
+                      className="flex-1 rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2 text-xs font-bold text-slate-900 focus:outline-none focus:bg-white focus:border-slate-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomExpenses(0);
+                        saveAdminSettings({ customExpenses: 0 });
+                        showToast("Biaya operasional tambahan di-reset ke Rp 0.");
+                      }}
+                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                    >
+                      Reset Rp 0
+                    </button>
+                  </div>
+                </div>
+
+                {/* Suara Lonceng Notifikasi */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">
+                      Suara Lonceng Pesanan Baru
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Bunyikan bel otomatis saat pesanan pembeli masuk
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playNewOrderChime();
+                        showToast("🔔 Tes bunyi lonceng kasir.");
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold cursor-pointer"
+                    >
+                      Tes Suara
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !isSoundEnabled;
+                        setIsSoundEnabled(next);
+                        saveAdminSettings({ isSoundEnabled: next });
+                        if (next) playNewOrderChime();
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        isSoundEnabled
+                          ? "bg-slate-800 text-white"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {isSoundEnabled ? "Aktif" : "Mati"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Kolom Kanan: Aksi Cepat Stok Massal & Keamanan PIN */}
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/80 space-y-4 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="border-b border-slate-100 pb-3">
+                    <h3 className="text-sm font-extrabold text-slate-900">
+                      Aksi Cepat Stok Massal & Proteksi PIN
+                    </h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Kelola stok seluruh katalog sekaligus (dilindungi PIN 6 digit Owner)
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const outItems = menuItems.filter((m) => m.stock === 0);
+                        if (outItems.length === 0) {
+                          showToast("Tidak ada produk yang kehabisan stok (0 pcs).");
+                          return;
+                        }
+                        requirePin(
+                          `mengisi ulang ${outItems.length} produk stok habis menjadi 20 pcs`,
+                          () => {
+                            outItems.forEach((item) =>
+                              updateProductStock(item.id, 20)
+                            );
+                            showToast(
+                              `${outItems.length} produk habis telah diisi ulang ke 20 pcs.`
+                            );
+                          }
+                        );
+                      }}
+                      className="p-3.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:bg-slate-100/80 text-left transition cursor-pointer"
+                    >
+                      <p className="text-xs font-extrabold text-slate-800">
+                        Restock Menu Habis → 20 pcs
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Isi otomatis semua menu yang stoknya 0 pcs
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const lowItems = menuItems.filter((m) => m.stock < 15);
+                        if (lowItems.length === 0) {
+                          showToast("Semua menu sudah memiliki stok ≥ 15 pcs.");
+                          return;
+                        }
+                        requirePin(
+                          `menyetel stok minimum 15 pcs untuk ${lowItems.length} produk`,
+                          () => {
+                            lowItems.forEach((item) =>
+                              updateProductStock(item.id, 15)
+                            );
+                            showToast(
+                              `${lowItems.length} produk berhasil disetel minimal 15 pcs.`
+                            );
+                          }
+                        );
+                      }}
+                      className="p-3.5 rounded-xl border border-slate-200 bg-[#F8FAFC] hover:bg-slate-100/80 text-left transition cursor-pointer"
+                    >
+                      <p className="text-xs font-extrabold text-slate-800">
+                        Setel Stok Minimum → 15 pcs
+                      </p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Naikkan semua menu di bawah 15 pcs menjadi 15 pcs
+                      </p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Status Keamanan PIN Owner */}
+                <div className="p-3.5 rounded-xl bg-[#F8FAFC] border border-slate-200/80 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-slate-200/70 text-slate-700 flex items-center justify-center shrink-0">
+                      <Lock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">
+                        Status Akses PIN Owner:{" "}
+                        <span className="underline">
+                          {isPinUnlocked ? "Terbuka Sementara" : "Terkunci Aman"}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        CRUD menu, stok, hapus transaksi & notifikasi wajib PIN
+                      </p>
+                    </div>
+                  </div>
+                  {isPinUnlocked ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPinUnlockedUntil(0);
+                        showToast("Akses PIN telah dikunci kembali.");
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 text-white text-xs font-semibold cursor-pointer shrink-0"
+                    >
+                      Kunci Sekarang
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        requirePin("membuka kunci sesi PIN selama 5 menit", () => {
+                          showToast("Sesi PIN dibuka selama 5 menit.");
+                        })
+                      }
+                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 text-xs font-semibold cursor-pointer shrink-0"
+                    >
+                      Buka PIN
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Tabel Pengaturan Cepat Katalog Pembeli (Featured & Diskon Cepat) */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden">
+              <div className="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+                    Pengaturan Tampilan Katalog & Diskon Cepat
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Atur menu unggulan (Featured), potongan diskon, atau stok langsung untuk halaman katalog pembeli
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer self-start sm:self-auto"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Tambah Menu Baru</span>
+                </button>
+              </div>
+
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-left border-collapse min-w-[680px]">
+                  <thead>
+                    <tr className="bg-[#F8FAFC] border-b border-slate-200/70 text-[11px] font-bold text-slate-500">
+                      <th className="py-3 px-4">Produk</th>
+                      <th className="py-3 px-3">Kategori</th>
+                      <th className="py-3 px-3">Harga Normal</th>
+                      <th className="py-3 px-3">Harga Aktif</th>
+                      <th className="py-3 px-3">Diskon Cepat</th>
+                      <th className="py-3 px-3">Featured</th>
+                      <th className="py-3 px-4 text-right">Stok</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {menuItems.map((item) => {
+                      const activePrice = getEffectivePrice(item);
+                      const disc = item.discountPercent || 0;
+                      return (
+                        <tr
+                          key={item.id}
+                          className="hover:bg-slate-50/80 transition"
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-9 h-9 rounded-xl object-cover border border-slate-200 shrink-0"
+                              />
+                              <span className="font-bold text-slate-800">
+                                {item.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 text-slate-500">
+                            {item.category}
+                          </td>
+                          <td className="py-3 px-3 text-slate-500 tabular-nums">
+                            {formatRupiah(item.price)}
+                          </td>
+                          <td className="py-3 px-3 font-extrabold text-slate-900 tabular-nums">
+                            {formatRupiah(activePrice)}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="inline-flex items-center gap-1">
+                              {[0, 10, 20].map((pct) => (
+                                <button
+                                  type="button"
+                                  key={pct}
+                                  onClick={() => {
+                                    requirePin(
+                                      `mengatur diskon "${item.name}" ke ${pct}%`,
+                                      () => {
+                                        const discountedPrice =
+                                          pct > 0
+                                            ? Math.round(
+                                                (item.price * (100 - pct)) / 100
+                                              )
+                                            : undefined;
+                                        updateMenuItem(item.id, {
+                                          discountPercent:
+                                            pct > 0 ? pct : undefined,
+                                          discountedPrice,
+                                        });
+                                        showToast(
+                                          pct > 0
+                                            ? `Diskon ${pct}% diterapkan pada "${item.name}".`
+                                            : `Harga "${item.name}" dikembalikan normal.`
+                                        );
+                                      }
+                                    );
+                                  }}
+                                  className={`px-2 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
+                                    disc === pct
+                                      ? "bg-slate-800 text-white"
+                                      : "bg-slate-100 text-slate-600 hover:bg-slate-200/70"
+                                  }`}
+                                >
+                                  {pct === 0 ? "Normal" : `-${pct}%`}
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                requirePin(
+                                  `mengubah status Featured "${item.name}"`,
+                                  () => {
+                                    updateMenuItem(item.id, {
+                                      featured: !item.featured,
+                                    });
+                                    showToast(
+                                      !item.featured
+                                        ? `"${item.name}" ditandai Featured.`
+                                        : `Badge Featured "${item.name}" dilepas.`
+                                    );
+                                  }
+                                );
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[10.5px] font-bold transition cursor-pointer ${
+                                item.featured
+                                  ? "bg-slate-800 text-white"
+                                  : "bg-slate-100 text-slate-500 hover:bg-slate-200/70"
+                              }`}
+                            >
+                              {item.featured ? "Featured ★" : "Biasa"}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 text-right font-bold text-slate-800 tabular-nums">
+                            {item.stock} pcs
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </main>
         ) : (
           /* ===================================================================
               VIEW C: HALAMAN TRANSAKSI LENGKAP (Table Layout — FinPay Blue & White)
@@ -3379,12 +4377,6 @@ export function AdminDashboard() {
                 <span>Subtotal</span>
                 <span className="font-bold text-slate-800">
                   {formatRupiah(selectedOrderDetail.subtotal)}
-                </span>
-              </div>
-              <div className="flex justify-between text-slate-500">
-                <span>Pajak (10%)</span>
-                <span className="font-bold text-slate-800">
-                  {formatRupiah(selectedOrderDetail.taxTotal)}
                 </span>
               </div>
               <div className="flex justify-between text-sm font-extrabold text-slate-900 pt-1 border-t border-slate-100">

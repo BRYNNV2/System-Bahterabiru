@@ -1330,12 +1330,6 @@ export function TransactionHistory({
                                           </span>
                                         )}
                                         <span>
-                                          Pajak{" "}
-                                          <b className="text-slate-800">
-                                            {formatRupiah(order.taxTotal)}
-                                          </b>
-                                        </span>
-                                        <span>
                                           Total{" "}
                                           <b className="text-[#2563EB]">
                                             {formatRupiah(order.totalAmount)}
