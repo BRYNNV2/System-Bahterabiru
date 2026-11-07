@@ -1164,13 +1164,17 @@ export function AdminDashboard() {
                  ------------------------------------------------------------- */}
               <div className="lg:col-span-8 xl:col-span-6 space-y-4 sm:space-y-5">
                 {/* 1. Top 3 KPI Cards: Total Income, Total Expenses, Net Profit (Interactive on Hover & Click) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 relative z-20">
                   {/* Total Income */}
                   <div
                     onClick={() => setIsFinanceModalOpen("income")}
                     className="group relative bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-[#2563EB] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
                   >
-                    <div className="hidden group-hover:block absolute -top-10 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                    <div
+                      style={{ top: "calc(100% + 10px)" }}
+                      className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 z-40 w-max max-w-[210px] text-center leading-snug bg-slate-900 text-white text-[10px] font-semibold px-3 py-2 rounded-xl shadow-xl pointer-events-none"
+                    >
+                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-slate-900" />
                       Akumulasi omzet kotor + pesanan baru • Klik untuk rincian
                     </div>
                     <div className="flex items-center justify-between mb-4">
@@ -1199,7 +1203,11 @@ export function AdminDashboard() {
                     onClick={() => setIsFinanceModalOpen("expenses")}
                     className="group relative bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-[#2563EB] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
                   >
-                    <div className="hidden group-hover:block absolute -top-10 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                    <div
+                      style={{ top: "calc(100% + 10px)" }}
+                      className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 z-40 w-max max-w-[210px] text-center leading-snug bg-slate-900 text-white text-[10px] font-semibold px-3 py-2 rounded-xl shadow-xl pointer-events-none"
+                    >
+                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-slate-900" />
                       HPP bahan baku & operasional • Klik untuk sesuaikan biaya
                     </div>
                     <div className="flex items-center justify-between mb-4">
@@ -1228,7 +1236,11 @@ export function AdminDashboard() {
                     onClick={() => setIsFinanceModalOpen("profit")}
                     className="group relative bg-white rounded-2xl p-4 border border-slate-200/80 hover:border-[#2563EB] hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
                   >
-                    <div className="hidden group-hover:block absolute -top-10 left-1/2 -translate-x-1/2 z-30 bg-slate-900 text-white text-[10px] font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+                    <div
+                      style={{ top: "calc(100% + 10px)" }}
+                      className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 z-40 w-max max-w-[210px] text-center leading-snug bg-slate-900 text-white text-[10px] font-semibold px-3 py-2 rounded-xl shadow-xl pointer-events-none"
+                    >
+                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-slate-900" />
                       Selisih Pendapatan dikurangi Biaya • Klik analisis margin
                     </div>
                     <div className="flex items-center justify-between mb-4">
