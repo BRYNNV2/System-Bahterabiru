@@ -18,6 +18,7 @@ const ATTEMPT_WINDOW_MS = 15 * 60 * 1000; // jendela hitung gagal 15 menit
 const isProd = process.env.NODE_ENV === "production";
 
 const globalForAuth = globalThis as unknown as {
+  adminFallbackSecret?: string;
   adminLoginAttempts?: Map<string, { count: number; firstAt: number; lockedUntil: number }>;
 };
 
@@ -25,15 +26,22 @@ function getSessionSecret(): string {
   const fromEnv = process.env.ADMIN_SESSION_SECRET;
   if (fromEnv && fromEnv.length >= 32) return fromEnv;
   const creds = getAdminCredentials();
-  return createHmac("sha256", "bahterabiru-pos-default-session-secret-2026")
-    .update(`${creds.username}:${creds.password}`)
-    .digest("hex");
+  if (creds) {
+    return createHmac("sha256", "bahterabiru-pos-session-secret")
+      .update(`${creds.username}:${creds.password}`)
+      .digest("hex");
+  }
+  if (!globalForAuth.adminFallbackSecret) {
+    globalForAuth.adminFallbackSecret = randomBytes(48).toString("hex");
+  }
+  return globalForAuth.adminFallbackSecret;
 }
 
-function getAdminCredentials(): { username: string; password: string } {
-  const username = process.env.ADMIN_USERNAME?.trim() || "admin";
-  const password = process.env.ADMIN_PASSWORD || "admin123";
-  return { username, password };
+function getAdminCredentials(): { username: string; password: string } | null {
+  const username = process.env.ADMIN_USERNAME?.trim();
+  const password = process.env.ADMIN_PASSWORD;
+  if (username && password) return { username, password };
+  return null;
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -44,17 +52,19 @@ function safeEqual(a: string, b: string): boolean {
 
 export function verifyAdminCredentials(username: string, password: string): boolean {
   const creds = getAdminCredentials();
+  if (!creds) return false;
   const userOk = safeEqual(username.trim().toLowerCase(), creds.username.toLowerCase());
   const passOk = safeEqual(password, creds.password);
   return userOk && passOk;
 }
 
 export function isAdminLoginConfigured(): boolean {
-  return true;
+  return getAdminCredentials() !== null;
 }
 
 export function verifyAdminPin(pin: string): boolean {
-  const configuredPin = process.env.ADMIN_PIN?.trim() || "123456";
+  const configuredPin = process.env.ADMIN_PIN?.trim();
+  if (!configuredPin) return false;
   return safeEqual(pin.trim(), configuredPin);
 }
 
