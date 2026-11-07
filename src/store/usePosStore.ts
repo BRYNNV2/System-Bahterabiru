@@ -62,6 +62,7 @@ interface PosState {
   selectedTable: string;
   orderNote: string;
   recentOrders: CompletedOrder[];
+  lastBuyerOrder: CompletedOrder | null;
   isFilterOpen: boolean;
   isSidebarOpen: boolean;
   isMobileCartOpen: boolean;
@@ -79,6 +80,7 @@ interface PosState {
   setCustomerName: (name: string) => void;
   setSelectedTable: (table: string) => void;
   setOrderNote: (note: string) => void;
+  setLastBuyerOrder: (order: CompletedOrder | null) => void;
   setIsFilterOpen: (open: boolean) => void;
   setIsSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
@@ -166,6 +168,7 @@ export const usePosStore = create<PosState>()(
       selectedTable: "",
       orderNote: "",
       recentOrders: [],
+      lastBuyerOrder: null,
       isFilterOpen: false,
       isSidebarOpen: true,
       isMobileCartOpen: false,
@@ -192,6 +195,7 @@ export const usePosStore = create<PosState>()(
       setCustomerName: (customerName) => set({ customerName }),
       setSelectedTable: (selectedTable) => set({ selectedTable }),
       setOrderNote: (orderNote) => set({ orderNote }),
+      setLastBuyerOrder: (lastBuyerOrder) => set({ lastBuyerOrder }),
       setIsFilterOpen: (isFilterOpen) => set({ isFilterOpen }),
       setIsSidebarOpen: (isSidebarOpen) => set({ isSidebarOpen }),
       toggleSidebar: () =>
@@ -390,7 +394,11 @@ export const usePosStore = create<PosState>()(
       syncFromServer: async () => {
         if (pendingMutations > 0) return;
         try {
-          const res = await fetch("/api/pos-sync", { cache: "no-store" });
+          const trackedId = get().lastBuyerOrder?.id;
+          const url = trackedId
+            ? `/api/pos-sync?orderId=${encodeURIComponent(trackedId)}`
+            : "/api/pos-sync";
+          const res = await fetch(url, { cache: "no-store" });
           if (!res.ok || pendingMutations > 0) return;
           const data = await res.json();
           if (
@@ -398,9 +406,30 @@ export const usePosStore = create<PosState>()(
             Array.isArray(data.menuItems) &&
             Array.isArray(data.recentOrders)
           ) {
-            set({
-              menuItems: data.menuItems,
-              recentOrders: data.recentOrders,
+            set((state) => {
+              let updatedBuyerOrder = state.lastBuyerOrder;
+              if (updatedBuyerOrder) {
+                const fromTracked = data.trackedOrder as
+                  | { id: string; status: OrderStatusType }
+                  | null
+                  | undefined;
+                const fromRecent = (data.recentOrders as CompletedOrder[]).find(
+                  (o) => o.id === updatedBuyerOrder?.id
+                );
+                const latestStatus =
+                  fromTracked?.status || fromRecent?.status;
+                if (latestStatus && latestStatus !== updatedBuyerOrder.status) {
+                  updatedBuyerOrder = {
+                    ...updatedBuyerOrder,
+                    status: latestStatus,
+                  };
+                }
+              }
+              return {
+                menuItems: data.menuItems,
+                recentOrders: data.recentOrders,
+                lastBuyerOrder: updatedBuyerOrder,
+              };
             });
           }
         } catch {
@@ -491,6 +520,7 @@ export const usePosStore = create<PosState>()(
           customerName: "",
           orderNote: "",
           recentOrders: [newOrder, ...recentOrders],
+          lastBuyerOrder: newOrder,
         });
 
         void sendSyncMutation("CREATE_ORDER", { order: newOrder });
@@ -502,6 +532,7 @@ export const usePosStore = create<PosState>()(
       name: "coca-pos-storage-v3",
       partialize: (state) => ({
         menuItems: state.menuItems,
+        lastBuyerOrder: state.lastBuyerOrder,
       }),
       // Status login admin TIDAK pernah dipulihkan dari localStorage (hanya dari cookie server)
       merge: (persisted, current) => {
@@ -509,6 +540,7 @@ export const usePosStore = create<PosState>()(
         return {
           ...current,
           ...(Array.isArray(p.menuItems) ? { menuItems: p.menuItems } : {}),
+          ...(p.lastBuyerOrder ? { lastBuyerOrder: p.lastBuyerOrder } : {}),
           isAdminAuthenticated: false,
         };
       },

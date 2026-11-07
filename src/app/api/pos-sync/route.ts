@@ -45,13 +45,25 @@ export async function GET(req: NextRequest) {
     all ? { allOrders: true } : { ordersLimit: limit, ordersSkip: skip }
   );
 
-  // Pengunjung umum hanya menerima katalog menu (tanpa harga modal & data transaksi)
+  // Pengunjung umum hanya menerima katalog menu (tanpa harga modal & data transaksi orang lain)
   if (!isAdmin) {
+    const trackedOrderId = searchParams.get("orderId")?.trim();
+    const matchedOrder = trackedOrderId
+      ? db.recentOrders.find((o) => o.id === trackedOrderId)
+      : undefined;
+
     return NextResponse.json(
       {
         success: true,
         menuItems: toPublicMenu(db.menuItems),
         recentOrders: [],
+        trackedOrder: matchedOrder
+          ? {
+              id: matchedOrder.id,
+              orderNumber: matchedOrder.orderNumber,
+              status: matchedOrder.status || "Preparing",
+            }
+          : null,
         totalOrdersCount: 0,
         currentPage: 1,
         pageSize: limit,

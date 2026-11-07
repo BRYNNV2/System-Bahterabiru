@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Home,
@@ -30,6 +30,8 @@ import {
   Clock,
   History,
   Lock,
+  Volume2,
+  VolumeX,
 } from "lucide-react";
 import { AdminLoginView } from "@/components/admin/AdminLoginView";
 import { AdminPinModal } from "@/components/admin/AdminPinModal";
@@ -188,8 +190,86 @@ export function AdminDashboard() {
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 2600);
+    setTimeout(() => setToastMsg(null), 3200);
   };
+
+  // Sound Alert / Bell Chime Notifikasi Pesanan Baru (Web Audio API)
+  const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
+  const knownOrderIdsRef = useRef<Set<string> | null>(null);
+
+  const playNewOrderChime = () => {
+    try {
+      if (typeof window === "undefined") return;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext })
+          .webkitAudioContext;
+      if (!AudioCtx) return;
+
+      const ctx = new AudioCtx();
+      const now = ctx.currentTime;
+
+      // Nada 1 (Ding - A5 880Hz)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(880, now);
+      gain1.gain.setValueAtTime(0.001, now);
+      gain1.gain.exponentialRampToValueAtTime(0.28, now + 0.02);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.36);
+
+      // Nada 2 (Dong - E6 1318.5Hz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = "sine";
+      osc2.frequency.setValueAtTime(1318.5, now + 0.14);
+      gain2.gain.setValueAtTime(0.001, now + 0.14);
+      gain2.gain.exponentialRampToValueAtTime(0.32, now + 0.16);
+      gain2.gain.exponentialRampToValueAtTime(0.0001, now + 0.85);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.14);
+      osc2.stop(now + 0.86);
+
+      setTimeout(() => {
+        void ctx.close().catch(() => {});
+      }, 1000);
+    } catch {
+      // Abaikan jika browser memblokir autoplay audio sebelum interaksi
+    }
+  };
+
+  // Deteksi otomatis pesanan baru yang masuk dari sinkronisasi server 3 detik
+  useEffect(() => {
+    if (!isAdminAuthenticated) {
+      knownOrderIdsRef.current = null;
+      return;
+    }
+
+    if (knownOrderIdsRef.current === null) {
+      knownOrderIdsRef.current = new Set(recentOrders.map((o) => o.id));
+      return;
+    }
+
+    const incomingNewOrders = recentOrders.filter(
+      (o) => !knownOrderIdsRef.current!.has(o.id)
+    );
+
+    if (incomingNewOrders.length > 0) {
+      incomingNewOrders.forEach((o) => knownOrderIdsRef.current!.add(o.id));
+      const newest = incomingNewOrders[0];
+      showToast(
+        `🔔 Pesanan Baru ${newest.orderNumber} dari ${newest.customerName} (${formatRupiah(newest.totalAmount)})`
+      );
+      if (isSoundEnabled) {
+        playNewOrderChime();
+      }
+    }
+  }, [recentOrders, isAdminAuthenticated, isSoundEnabled]);
 
   // PIN Supervisor / Owner Protection State (5 menit sesi buka kunci)
   const [pinUnlockedUntil, setPinUnlockedUntil] = useState<number>(0);
@@ -943,6 +1023,37 @@ export function AdminDashboard() {
                 </span>
               )}
             </div>
+
+            {/* Tombol Suara Bell Notifikasi Pesanan Baru */}
+            <button
+              type="button"
+              onClick={() => {
+                const next = !isSoundEnabled;
+                setIsSoundEnabled(next);
+                if (next) {
+                  playNewOrderChime();
+                  showToast("🔔 Suara notifikasi pesanan baru diaktifkan.");
+                } else {
+                  showToast("🔕 Suara notifikasi pesanan baru dibisukan.");
+                }
+              }}
+              className={`w-9 h-9 rounded-xl border flex items-center justify-center transition cursor-pointer shrink-0 ${
+                isSoundEnabled
+                  ? "border-blue-200 bg-blue-50/70 hover:bg-blue-100/80 text-[#2563EB]"
+                  : "border-slate-200/80 bg-white hover:bg-slate-50 text-slate-400"
+              }`}
+              title={
+                isSoundEnabled
+                  ? "Suara Notifikasi Pesanan Aktif (Klik untuk Mute)"
+                  : "Suara Notifikasi Pesanan Nonaktif (Klik untuk Aktifkan)"
+              }
+            >
+              {isSoundEnabled ? (
+                <Volume2 className="w-4 h-4" />
+              ) : (
+                <VolumeX className="w-4 h-4" />
+              )}
+            </button>
 
             <button
               type="button"

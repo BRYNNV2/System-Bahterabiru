@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, Flame, ShoppingBag } from "lucide-react";
+import { Menu, Flame, ShoppingBag, Receipt } from "lucide-react";
 import { SidebarRail } from "@/components/pos/SidebarRail";
 import { HeaderBar } from "@/components/pos/HeaderBar";
 import { CategoryCards } from "@/components/pos/CategoryCards";
@@ -19,9 +19,11 @@ export default function PosTerminalPage() {
     isModalBlurActive,
     cart,
     menuItems,
+    lastBuyerOrder,
     syncFromServer,
   } = usePosStore();
   const [isTransactionOpen, setIsTransactionOpen] = useState(false);
+  const [isReceiptViewerOpen, setIsReceiptViewerOpen] = useState(false);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -84,7 +86,8 @@ export default function PosTerminalPage() {
     }
   };
 
-  const isBackgroundBlurred = isModalBlurActive || isTransactionOpen;
+  const isBackgroundBlurred =
+    isModalBlurActive || isTransactionOpen || isReceiptViewerOpen;
 
   if (!isMounted) {
     return <div className="h-[100dvh] w-screen bg-[#F7F7F8]" />;
@@ -144,20 +147,55 @@ export default function PosTerminalPage() {
             </button>
           </div>
 
-          {/* Right (Mobile & Tablet < lg): Order / Cart Drawer Trigger */}
-          <button
-            type="button"
-            onClick={() => setIsMobileCartOpen(true)}
-            className="lg:hidden flex items-center gap-2 px-3.5 py-2 rounded-full bg-zinc-900 text-white text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
-          >
-            <ShoppingBag className="w-3.5 h-3.5" />
-            <span>Pesanan</span>
-            {isMounted && totalCartItems > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full bg-white text-zinc-900 text-[10px] font-extrabold leading-none">
-                {totalCartItems}
-              </span>
+          {/* Right: Live Digital Receipt & Order Tracker + Mobile Cart Drawer Trigger */}
+          <div className="flex items-center gap-2">
+            {isMounted && lastBuyerOrder && (
+              <button
+                type="button"
+                onClick={() => setIsReceiptViewerOpen(true)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition cursor-pointer active:scale-95 ${
+                  lastBuyerOrder.status === "Ready"
+                    ? "bg-blue-600 text-white border-blue-600 shadow-sm animate-pulse"
+                    : lastBuyerOrder.status === "Completed"
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                }`}
+                title="Lihat Struk Digital & Status Pesanan Anda"
+              >
+                <Receipt className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-extrabold">{lastBuyerOrder.orderNumber}</span>
+                <span
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-extrabold leading-none ${
+                    lastBuyerOrder.status === "Ready"
+                      ? "bg-white text-blue-700"
+                      : lastBuyerOrder.status === "Completed"
+                      ? "bg-emerald-600 text-white"
+                      : "bg-amber-500 text-white"
+                  }`}
+                >
+                  {lastBuyerOrder.status === "Ready"
+                    ? "Siap Diambil!"
+                    : lastBuyerOrder.status === "Completed"
+                    ? "Selesai"
+                    : "Diproses"}
+                </span>
+              </button>
             )}
-          </button>
+
+            <button
+              type="button"
+              onClick={() => setIsMobileCartOpen(true)}
+              className="lg:hidden flex items-center gap-2 px-3.5 py-2 rounded-full bg-zinc-900 text-white text-xs font-bold shadow-xs active:scale-95 transition cursor-pointer"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>Pesanan</span>
+              {isMounted && totalCartItems > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-white text-zinc-900 text-[10px] font-extrabold leading-none">
+                  {totalCartItems}
+                </span>
+              )}
+            </button>
+          </div>
         </header>
 
         {/* Main 3-Column Buyer Self-Ordering Workspace */}
@@ -230,6 +268,13 @@ export default function PosTerminalPage() {
       <TransactionModal
         isOpen={isTransactionOpen}
         onClose={() => setIsTransactionOpen(false)}
+      />
+
+      {/* Reopenable Digital Receipt & Real-Time Status Tracker Modal */}
+      <TransactionModal
+        isOpen={isReceiptViewerOpen}
+        onClose={() => setIsReceiptViewerOpen(false)}
+        viewReceiptOnly
       />
     </div>
   );
