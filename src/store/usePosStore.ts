@@ -385,9 +385,45 @@ export const usePosStore = create<PosState>()(
       },
 
       deleteOrder: (orderId) => {
-        set((state) => ({
-          recentOrders: state.recentOrders.filter((o) => o.id !== orderId),
-        }));
+        set((state) => {
+          const targetOrder = state.recentOrders.find((o) => o.id === orderId);
+          const remainingOrders = state.recentOrders.filter(
+            (o) => o.id !== orderId
+          );
+
+          // Hitung ulang soldCount dari sisa transaksi aktif & kembalikan stok pesanan yang dibatalkan/dihapus
+          const actualSoldMap = new Map<string, number>();
+          for (const ord of remainingOrders) {
+            for (const line of ord.items) {
+              const pid = line?.product?.id;
+              if (pid) {
+                actualSoldMap.set(
+                  pid,
+                  (actualSoldMap.get(pid) || 0) + (Number(line.quantity) || 0)
+                );
+              }
+            }
+          }
+
+          const updatedMenu = state.menuItems.map((item) => {
+            const cancelledLine = targetOrder?.items.find(
+              (i) => i.product.id === item.id
+            );
+            const restoredStock = cancelledLine
+              ? item.stock + cancelledLine.quantity
+              : item.stock;
+            return {
+              ...item,
+              stock: restoredStock,
+              soldCount: actualSoldMap.get(item.id) || 0,
+            };
+          });
+
+          return {
+            menuItems: updatedMenu,
+            recentOrders: remainingOrders,
+          };
+        });
         void sendSyncMutation("DELETE_ORDER", { orderId });
       },
 

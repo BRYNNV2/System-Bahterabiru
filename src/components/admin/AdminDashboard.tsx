@@ -543,21 +543,24 @@ export function AdminDashboard() {
   }
 
   // ============================================================================
-  // 2. DATA & ANALYTICS CALCULATIONS (Per-Product Cost Price vs Selling Price)
+  // 2. DATA & ANALYTICS CALCULATIONS (Dihitung dari Transaksi Aktif / Tidak Dihapus)
   // ============================================================================
-  const totalSoldUnits = menuItems.reduce((s, m) => s + m.soldCount, 0);
-  const totalProductSalesRevenue = menuItems.reduce(
-    (s, m) => s + getEffectivePrice(m) * m.soldCount,
+  const totalSoldUnits = recentOrders.reduce((s, o) => s + o.itemCount, 0);
+  const liveOrdersRevenue = recentOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const costLookupMap = new Map(menuItems.map((m) => [m.id, m.costPrice || 0]));
+  const totalProductCostOfGoodsSold = recentOrders.reduce(
+    (sum, ord) =>
+      sum +
+      ord.items.reduce((lineSum, line) => {
+        const unitCost =
+          typeof line.product.costPrice === "number" &&
+          line.product.costPrice > 0
+            ? line.product.costPrice
+            : costLookupMap.get(line.product.id) ?? 0;
+        return lineSum + unitCost * line.quantity;
+      }, 0),
     0
   );
-  const totalProductCostOfGoodsSold = menuItems.reduce(
-    (s, m) => s + (m.costPrice || 0) * m.soldCount,
-    0
-  );
-  const liveOrdersRevenue =
-    totalProductSalesRevenue > 0
-      ? totalProductSalesRevenue
-      : recentOrders.reduce((s, o) => s + o.totalAmount, 0);
 
   const totalIncome = liveOrdersRevenue;
   const totalExpenses = totalProductCostOfGoodsSold + customExpenses;

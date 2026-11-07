@@ -124,9 +124,51 @@ export async function readNeonDbOrFallback(
       prisma.posOrder.count(),
     ]);
 
+    const mappedOrders = orderRows.map(mapDbRowToOrder);
+    let mappedMenu = menuRows.map(mapDbRowToMenuItem);
+
+    // Sinkronkan soldCount produk berdasarkan transaksi aktif (agar transaksi yang sudah dihapus tidak ikut terhitung)
+    if (fetchAll || (skip === 0 && orderRows.length >= totalOrdersCount)) {
+      const actualSoldMap = new Map<string, number>();
+      for (const ord of mappedOrders) {
+        for (const line of ord.items) {
+          const pid = line?.product?.id;
+          if (pid) {
+            actualSoldMap.set(
+              pid,
+              (actualSoldMap.get(pid) || 0) + (Number(line.quantity) || 0)
+            );
+          }
+        }
+      }
+
+      const staleItems: { id: string; actualSold: number }[] = [];
+      mappedMenu = mappedMenu.map((item) => {
+        const actualSold = actualSoldMap.get(item.id) || 0;
+        if (item.soldCount !== actualSold) {
+          staleItems.push({ id: item.id, actualSold });
+          return { ...item, soldCount: actualSold };
+        }
+        return item;
+      });
+
+      if (staleItems.length > 0) {
+        void Promise.all(
+          staleItems.map((st) =>
+            prisma.posMenuItem
+              .update({
+                where: { id: st.id },
+                data: { soldCount: st.actualSold },
+              })
+              .catch(() => {})
+          )
+        );
+      }
+    }
+
     const result: PaginatedPosDatabase = {
-      menuItems: menuRows.map(mapDbRowToMenuItem),
-      recentOrders: orderRows.map(mapDbRowToOrder),
+      menuItems: mappedMenu,
+      recentOrders: mappedOrders,
       totalOrdersCount,
       updatedAt: Date.now(),
     };

@@ -355,6 +355,33 @@ export async function POST(req: NextRequest) {
       case "DELETE_ORDER": {
         const { orderId } = payload as { orderId: string };
         try {
+          const existingOrder = await prisma.posOrder.findUnique({
+            where: { id: orderId },
+          });
+
+          if (existingOrder && Array.isArray(existingOrder.items)) {
+            const lines =
+              existingOrder.items as unknown as CompletedOrder["items"];
+            for (const line of lines) {
+              const pid = line?.product?.id;
+              const qty = Number(line?.quantity) || 0;
+              if (pid && qty > 0) {
+                const menuRow = await prisma.posMenuItem.findUnique({
+                  where: { id: pid },
+                });
+                if (menuRow) {
+                  await prisma.posMenuItem.update({
+                    where: { id: pid },
+                    data: {
+                      stock: menuRow.stock + qty,
+                      soldCount: Math.max(0, menuRow.soldCount - qty),
+                    },
+                  });
+                }
+              }
+            }
+          }
+
           await prisma.posOrder.delete({
             where: { id: orderId },
           });
@@ -362,8 +389,24 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ success: true, ...saved });
         } catch {
           const db = readLocalFallbackDb({ allOrders: true });
+          const targetOrder = db.recentOrders.find((ord) => ord.id === orderId);
+          const updatedMenu = targetOrder
+            ? db.menuItems.map((item) => {
+                const line = targetOrder.items.find(
+                  (i) => i.product.id === item.id
+                );
+                if (!line) return item;
+                return {
+                  ...item,
+                  stock: item.stock + line.quantity,
+                  soldCount: Math.max(0, item.soldCount - line.quantity),
+                };
+              })
+            : db.menuItems;
+
           const saved = writeLocalFallbackDb({
             ...db,
+            menuItems: updatedMenu,
             recentOrders: db.recentOrders.filter((ord) => ord.id !== orderId),
           });
           return NextResponse.json({ success: true, ...saved });
