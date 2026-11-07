@@ -445,8 +445,8 @@ export const usePosStore = create<PosState>()(
           .filter(Boolean) as CompletedOrder["items"];
 
         const netSubtotal = Math.max(0, subtotal - discountTotal);
-        const taxTotal = Math.round(netSubtotal * 0.1);
-        const totalAmount = netSubtotal + taxTotal;
+        const taxTotal = 0;
+        const totalAmount = netSubtotal;
 
         const formattedCustomer = customerName.trim()
           ? selectedTable

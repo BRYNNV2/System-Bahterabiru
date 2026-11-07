@@ -96,7 +96,7 @@ export default function PosTerminalPage() {
     const prod = menuItems.find((m) => m.id === item.productId);
     return sum + (prod ? getEffectivePrice(prod) * item.quantity : 0);
   }, 0);
-  const finalTotal = subTotal + Math.round(subTotal * 0.1);
+  const finalTotal = subTotal;
 
   return (
     <div
@@ -208,7 +208,7 @@ export default function PosTerminalPage() {
                   </div>
                   <div className="text-left">
                     <span className="block text-[10px] text-zinc-400 font-medium leading-none">
-                      Total Pesanan (Termasuk Pajak)
+                      Total Pesanan
                     </span>
                     <span className="text-sm font-black text-white tabular-nums">
                       {formatRupiah(finalTotal)}

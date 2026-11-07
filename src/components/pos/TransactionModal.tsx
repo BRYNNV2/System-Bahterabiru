@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Check, Printer, RotateCcw, X, ShieldCheck } from "lucide-react";
 import { usePosStore, CompletedOrder } from "@/store/usePosStore";
-import { formatRupiah } from "@/data/initialMenu";
+import { formatRupiah, getEffectivePrice } from "@/data/initialMenu";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -11,13 +11,48 @@ interface TransactionModalProps {
 }
 
 export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
-  const { completeCheckout, paymentMethod, setPaymentMethod } = usePosStore();
+  const {
+    cart,
+    menuItems,
+    customerName,
+    orderMode,
+    orderNote,
+    completeCheckout,
+    paymentMethod,
+    setPaymentMethod,
+  } = usePosStore();
   const [completedOrder, setCompletedOrder] = useState<CompletedOrder | null>(
     null
   );
   const [isProcessing, setIsProcessing] = useState(false);
 
   if (!isOpen) return null;
+
+  const populatedCart = cart
+    .map((c) => {
+      const product = menuItems.find((m) => m.id === c.productId);
+      if (!product) return null;
+      const unitPrice = getEffectivePrice(product);
+      return {
+        ...c,
+        product,
+        unitPrice,
+        lineTotal: unitPrice * c.quantity,
+      };
+    })
+    .filter(Boolean) as {
+    productId: string;
+    quantity: number;
+    product: (typeof menuItems)[number];
+    unitPrice: number;
+    lineTotal: number;
+  }[];
+
+  const totalQty = populatedCart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPayment = populatedCart.reduce(
+    (sum, item) => sum + item.lineTotal,
+    0
+  );
 
   const handleConfirmOrder = async () => {
     setIsProcessing(true);
@@ -58,7 +93,11 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
     onClose();
   };
 
-  const paymentOptions: ("Cash" | "Debit" | "QRIS")[] = ["Cash", "Debit", "QRIS"];
+  const paymentOptions: ("Cash" | "Debit" | "QRIS")[] = [
+    "Cash",
+    "Debit",
+    "QRIS",
+  ];
 
   return (
     <div
@@ -94,32 +133,95 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
                 Metode Pembayaran
               </label>
               <div className="grid grid-cols-3 gap-2">
-                {paymentOptions.map((opt) => (
-                  <button
-                    key={opt}
-                    onClick={() => setPaymentMethod(opt)}
-                    className={`py-2 px-2 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                      paymentMethod === opt
-                        ? "bg-zinc-900 border-zinc-900 text-white"
-                        : "bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400"
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
+                {paymentOptions.map((opt) => {
+                  const isDebitOngoing = opt === "Debit";
+                  return (
+                    <button
+                      type="button"
+                      key={opt}
+                      disabled={isDebitOngoing}
+                      onClick={() => {
+                        if (!isDebitOngoing) setPaymentMethod(opt);
+                      }}
+                      title={
+                        isDebitOngoing
+                          ? "Pembayaran Debit sedang dalam pengembangan (On Going)"
+                          : `Pilih pembayaran ${opt}`
+                      }
+                      className={`relative py-2 px-2 rounded-xl text-xs font-bold border transition ${
+                        isDebitOngoing
+                          ? "bg-zinc-100/80 border-zinc-200/70 text-zinc-400 cursor-not-allowed"
+                          : paymentMethod === opt
+                          ? "bg-zinc-900 border-zinc-900 text-white cursor-pointer"
+                          : "bg-white border-zinc-200 text-zinc-600 hover:border-zinc-400 cursor-pointer"
+                      }`}
+                    >
+                      <span>{opt}</span>
+                      {isDebitOngoing && (
+                        <span className="block text-[8.5px] font-extrabold uppercase tracking-wider text-amber-600 leading-none mt-0.5">
+                          On Going
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <div className="mt-4 p-4 rounded-2xl bg-[#FAFAFA] border border-zinc-100 text-xs space-y-2">
+            {/* Customer & Order Items Breakdown */}
+            <div className="mt-4 p-4 rounded-2xl bg-[#FAFAFA] border border-zinc-100 text-xs space-y-2.5">
               <div className="flex justify-between text-zinc-500">
-                <span>Terminal</span>
-                <span className="font-semibold text-zinc-800">
-                  Kasir Kantin #01
+                <span>Nama Pembeli</span>
+                <span className="font-bold text-zinc-900">
+                  {customerName.trim() || "Pelanggan Kantin"}
                 </span>
               </div>
               <div className="flex justify-between text-zinc-500">
-                <span>Pajak Resto (10%)</span>
-                <span className="font-semibold text-zinc-800">Termasuk</span>
+                <span>Tipe Pesanan</span>
+                <span className="font-semibold text-zinc-800">
+                  {orderMode === "Reservation" ? "Reservasi" : "Beli Langsung"}
+                </span>
+              </div>
+              {orderNote.trim() && (
+                <div className="flex justify-between gap-3 text-zinc-500">
+                  <span className="shrink-0">Catatan</span>
+                  <span className="font-medium text-zinc-700 text-right truncate">
+                    {orderNote.trim()}
+                  </span>
+                </div>
+              )}
+
+              {/* Daftar Produk yang Dibeli */}
+              <div className="border-t border-zinc-200/80 pt-2.5 mt-1 space-y-2 max-h-44 overflow-y-auto custom-scrollbar pr-0.5">
+                <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                  Rincian Pesanan ({totalQty} Pcs)
+                </span>
+                {populatedCart.map((item) => (
+                  <div
+                    key={item.productId}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-bold text-zinc-800 truncate">
+                        {item.product.name}
+                      </p>
+                      <span className="text-[10.5px] text-zinc-400 tabular-nums">
+                        {item.quantity} x {formatRupiah(item.unitPrice)}
+                      </span>
+                    </div>
+                    <span className="font-extrabold text-zinc-900 tabular-nums shrink-0">
+                      {formatRupiah(item.lineTotal)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Total Bayar */}
+              <div className="border-t border-zinc-200/80 pt-2.5 flex items-center justify-between text-sm font-black text-zinc-900">
+                <span>Total Pembayaran</span>
+                <span className="tabular-nums">
+                  {formatRupiah(totalPayment)}
+                </span>
               </div>
             </div>
 
@@ -158,6 +260,12 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
 
             <div className="mt-4 bg-[#FAFAFA] rounded-2xl p-4 text-left text-xs space-y-2 border border-dashed border-zinc-200">
               <div className="flex justify-between text-zinc-500">
+                <span>Pembeli</span>
+                <span className="font-bold text-zinc-800">
+                  {completedOrder.customerName}
+                </span>
+              </div>
+              <div className="flex justify-between text-zinc-500">
                 <span>Waktu</span>
                 <span className="font-medium text-zinc-800">
                   {completedOrder.createdAt}
@@ -176,7 +284,7 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
                     <span className="text-zinc-600 truncate pr-2">
                       {item.quantity}x {item.product.name}
                     </span>
-                    <span className="font-bold text-zinc-900 shrink-0">
+                    <span className="font-bold text-zinc-900 shrink-0 tabular-nums">
                       {formatRupiah(item.lineTotal)}
                     </span>
                   </div>
@@ -185,7 +293,7 @@ export function TransactionModal({ isOpen, onClose }: TransactionModalProps) {
 
               <div className="border-t border-zinc-200/80 pt-2 flex justify-between font-extrabold text-sm text-zinc-900">
                 <span>Total Lunas</span>
-                <span className="text-zinc-900">
+                <span className="text-zinc-900 tabular-nums">
                   {formatRupiah(completedOrder.totalAmount)}
                 </span>
               </div>

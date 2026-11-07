@@ -66,10 +66,7 @@ export function DetailItemsSidebar({
     (sum, item) => sum + item.effectivePrice * item.quantity,
     0
   );
-
-  // 10% Tax matching the reference UI ("Tax (10%)")
-  const taxAmount = Math.round(subTotal * 0.1);
-  const finalTotal = subTotal + taxAmount;
+  const finalTotal = subTotal;
 
   return (
     <>
@@ -284,37 +281,46 @@ export function DetailItemsSidebar({
         {/* Compact Payment Method Selector */}
         <div className="grid grid-cols-3 gap-1.5">
           {(["Cash", "QRIS", "Debit"] as const).map((method) => {
-            const isSelected = paymentMethod === method;
+            const isDebitOngoing = method === "Debit";
+            const isSelected = paymentMethod === method && !isDebitOngoing;
             return (
               <button
                 type="button"
                 key={method}
-                onClick={() => setPaymentMethod(method)}
-                className={`py-1.5 rounded-full text-[11px] transition cursor-pointer ${
-                  isSelected
-                    ? "bg-zinc-900 border border-zinc-900 text-white font-bold"
-                    : "bg-[#F4F4F5] border border-transparent text-zinc-500 hover:bg-zinc-200/70 hover:text-zinc-900 font-medium"
+                disabled={isDebitOngoing}
+                onClick={() => {
+                  if (!isDebitOngoing) setPaymentMethod(method);
+                }}
+                title={
+                  isDebitOngoing
+                    ? "Pembayaran Debit sedang dalam pengembangan (On Going)"
+                    : `Pilih pembayaran ${method}`
+                }
+                className={`py-1.5 rounded-full text-[11px] transition flex items-center justify-center gap-1 ${
+                  isDebitOngoing
+                    ? "bg-zinc-100 border border-zinc-200/60 text-zinc-400 cursor-not-allowed"
+                    : isSelected
+                    ? "bg-zinc-900 border border-zinc-900 text-white font-bold cursor-pointer"
+                    : "bg-[#F4F4F5] border border-transparent text-zinc-500 hover:bg-zinc-200/70 hover:text-zinc-900 font-medium cursor-pointer"
                 }`}
               >
-                {method}
+                <span>{method}</span>
+                {isDebitOngoing && (
+                  <span className="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded bg-amber-100 text-amber-700 leading-tight">
+                    Soon
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* Sub Total, Tax (10%), Total */}
+        {/* Sub Total & Total */}
         <div className="space-y-1.5 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-zinc-400 font-medium">Sub Total</span>
             <span className="font-extrabold text-zinc-900 tabular-nums">
               {formatRupiah(subTotal)}
-            </span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-zinc-400 font-medium">Tax (10%)</span>
-            <span className="font-extrabold text-zinc-900 tabular-nums">
-              {formatRupiah(taxAmount)}
             </span>
           </div>
 
