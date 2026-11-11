@@ -32,15 +32,21 @@ import {
   Lock,
   Volume2,
   VolumeX,
+  ScanLine,
 } from "lucide-react";
 import { AdminLoginView } from "@/components/admin/AdminLoginView";
 import { AdminPinModal } from "@/components/admin/AdminPinModal";
+import {
+  BarcodeScannerModal,
+  ScannedKasirItem,
+} from "@/components/pos/BarcodeScannerModal";
 import { TransactionHistory } from "@/components/admin/TransactionHistory";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   usePosStore,
   OrderStatusType,
   CompletedOrder,
+  PaymentMethod,
 } from "@/store/usePosStore";
 import {
   formatRupiah,
@@ -176,6 +182,11 @@ export function AdminDashboard() {
   const [formCostPrice, setFormCostPrice] = useState<number>(3000);
   const [formPrice, setFormPrice] = useState<number>(4000);
   const [formStock, setFormStock] = useState<number>(20);
+  const [formBarcode, setFormBarcode] = useState<string>("");
+  const [scannerTarget, setScannerTarget] = useState<
+    "crud-form" | MenuItem | null
+  >(null);
+  const [isKasirScannerOpen, setIsKasirScannerOpen] = useState<boolean>(false);
   const [formDesc, setFormDesc] = useState("");
   const [formImage, setFormImage] = useState("");
   const [formFeatured, setFormFeatured] = useState(false);
@@ -401,6 +412,88 @@ export function AdminDashboard() {
     });
   };
 
+  // Handler Transaksi Kasir Langsung dari Hasil Scan Barcode Kemasan di Admin
+  const handleCompleteKasirScanCheckout = (payload: {
+    items: ScannedKasirItem[];
+    customerName: string;
+    paymentMethod: PaymentMethod;
+  }) => {
+    if (!payload.items || payload.items.length === 0) return;
+
+    let subtotal = 0;
+    let discountTotal = 0;
+    let itemCount = 0;
+
+    const detailedItems: CompletedOrder["items"] = payload.items.map((entry) => {
+      const effectiveUnit = getEffectivePrice(entry.product);
+      const originalLine = entry.product.price * entry.quantity;
+      const lineTotal = effectiveUnit * entry.quantity;
+      subtotal += originalLine;
+      discountTotal += originalLine - lineTotal;
+      itemCount += entry.quantity;
+      return {
+        product: entry.product,
+        quantity: entry.quantity,
+        unitPrice: effectiveUnit,
+        lineTotal,
+      };
+    });
+
+    const netSubtotal = Math.max(0, subtotal - discountTotal);
+    const newOrder: CompletedOrder = {
+      id: `ord-${Date.now()}`,
+      orderNumber: `#F${Math.floor(1000 + Math.random() * 9000)}`,
+      customerName: payload.customerName || "Pelanggan Kasir",
+      status: "Completed",
+      items: detailedItems,
+      itemCount,
+      subtotal: netSubtotal,
+      discountTotal,
+      taxTotal: 0,
+      totalAmount: netSubtotal,
+      paymentMethod: payload.paymentMethod,
+      createdAt: `Today, ${new Date().toLocaleTimeString("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+      })}`,
+      createdAtIso: new Date().toISOString(),
+    };
+
+    const currentStore = usePosStore.getState();
+    const updatedMenu = currentStore.menuItems.map((item) => {
+      const scanned = payload.items.find((s) => s.product.id === item.id);
+      if (!scanned) return item;
+      return {
+        ...item,
+        stock: Math.max(0, item.stock - scanned.quantity),
+        soldCount: item.soldCount + scanned.quantity,
+      };
+    });
+
+    if (knownOrderIdsRef.current) {
+      knownOrderIdsRef.current.add(newOrder.id);
+    }
+
+    usePosStore.setState({
+      menuItems: updatedMenu,
+      recentOrders: [newOrder, ...currentStore.recentOrders],
+    });
+
+    void fetch("/api/pos-sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        action: "CREATE_ORDER",
+        payload: { order: newOrder },
+      }),
+    }).catch(() => {});
+
+    showToast(
+      `Transaksi Scan Kasir ${newOrder.orderNumber} (${formatRupiah(newOrder.totalAmount)}) berhasil disimpan!`
+    );
+  };
+
   const handleProtectedDeleteOrder = (order: CompletedOrder) => {
     requirePin(`menghapus transaksi ${order.orderNumber}`, () => {
       deleteOrder(order.id);
@@ -512,6 +605,7 @@ export function AdminDashboard() {
       setFormCostPrice(3000);
       setFormPrice(4000);
       setFormStock(20);
+      setFormBarcode("");
       setFormDesc("");
       setFormImage("");
       setUploadedImageMeta(null);
@@ -531,6 +625,7 @@ export function AdminDashboard() {
       setFormCostPrice(item.costPrice ?? 0);
       setFormPrice(getEffectivePrice(item));
       setFormStock(item.stock);
+      setFormBarcode(item.barcode || "");
       const isLegacyDesc =
         item.description?.startsWith("Hidangan spesial racikan dapur utama") &&
         (item.category === "Snack" || item.group === "Snack");
@@ -585,6 +680,7 @@ export function AdminDashboard() {
         discountedPrice: undefined,
         discountPercent: undefined,
         stock: Math.max(0, Number(formStock) || 0),
+        barcode: formBarcode.trim() || undefined,
         description: formDesc.trim(),
         imageUrl: formImage.trim(),
         featured: formFeatured,
@@ -599,6 +695,7 @@ export function AdminDashboard() {
         costPrice: Math.max(0, Number(formCostPrice) || 0),
         price: Number(formPrice) || 500,
         stock: Math.max(0, Number(formStock) || 0),
+        barcode: formBarcode.trim() || undefined,
         description: formDesc.trim(),
         imageUrl: formImage.trim(),
         featured: formFeatured,
@@ -1128,6 +1225,17 @@ export function AdminDashboard() {
               )}
             </div>
 
+            {/* Tombol Scan Penjualan Produk (Khusus Admin untuk Scan Kemasan Jajan / Indomie & Jual Cepat) */}
+            <button
+              type="button"
+              onClick={() => setIsKasirScannerOpen(true)}
+              title="Scan Barcode / QR Kemasan Produk untuk Transaksi Penjualan Kasir"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer shrink-0 shadow-xs active:scale-95"
+            >
+              <ScanLine className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Scan Penjualan</span>
+            </button>
+
             {/* Tombol Suara Bell Notifikasi Pesanan Baru */}
             <button
               type="button"
@@ -1642,8 +1750,22 @@ export function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* 2. 4 Quick Action Buttons Row (with Hover Tooltips) */}
-                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 grid grid-cols-4 gap-2 text-center">
+                {/* 2. 5 Quick Action Buttons Row (with Scan Penjualan Produk) */}
+                <div className="bg-white rounded-2xl p-3.5 border border-slate-200/80 grid grid-cols-5 gap-1.5 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setIsKasirScannerOpen(true)}
+                    title="Scan barcode kemasan produk untuk langsung mencatat penjualan kasir"
+                    className="group relative flex flex-col items-center gap-1.5 py-1.5 rounded-xl bg-blue-50/60 hover:bg-blue-100/70 transition cursor-pointer"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-[#2563EB] text-white flex items-center justify-center shadow-2xs transition-transform group-hover:scale-105">
+                      <ScanLine className="w-4 h-4" />
+                    </div>
+                    <span className="text-[10px] font-extrabold text-[#2563EB]">
+                      Scan Jual
+                    </span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={openCreateModal}
@@ -2634,14 +2756,24 @@ export function AdminDashboard() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={openCreateModal}
-                className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Menu Baru</span>
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsKasirScannerOpen(true)}
+                  className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
+                  <ScanLine className="w-4 h-4" />
+                  <span>Scan Penjualan Produk</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Menu Baru</span>
+                </button>
+              </div>
             </div>
 
             {/* Category Filter Pills + Mobile 2/3 Column Switcher */}
@@ -3232,6 +3364,7 @@ export function AdminDashboard() {
                     <tr className="bg-[#F8FAFC] border-b border-slate-200/70 text-[11px] font-bold text-slate-500">
                       <th className="py-3 px-4">Produk</th>
                       <th className="py-3 px-3">Kategori</th>
+                      <th className="py-3 px-3">Barcode / QR Kemasan</th>
                       <th className="py-3 px-3">Harga Normal</th>
                       <th className="py-3 px-3">Harga Aktif</th>
                       <th className="py-3 px-3">Diskon Cepat</th>
@@ -3262,6 +3395,35 @@ export function AdminDashboard() {
                           </td>
                           <td className="py-3 px-3 text-slate-500">
                             {item.category}
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="flex items-center gap-1.5">
+                              {item.barcode ? (
+                                <span className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[10.5px] font-bold">
+                                  {item.barcode}
+                                </span>
+                              ) : (
+                                <span className="text-[11px] text-slate-400">
+                                  Belum ada
+                                </span>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  requirePin(
+                                    `mendaftarkan barcode kemasan "${item.name}"`,
+                                    () => {
+                                      setScannerTarget(item);
+                                    }
+                                  );
+                                }}
+                                title="Scan barcode dari bungkus produk"
+                                className="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[10px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                              >
+                                <ScanLine className="w-3 h-3" />
+                                <span>Scan</span>
+                              </button>
+                            </div>
                           </td>
                           <td className="py-3 px-3 text-slate-500 tabular-nums">
                             {formatRupiah(item.price)}
@@ -3385,6 +3547,25 @@ export function AdminDashboard() {
                 </div>
                 <div className="w-11 h-11 rounded-xl bg-[#F8FAFC] border border-slate-200/80 text-slate-600 flex items-center justify-center shrink-0">
                   <Receipt className="w-5 h-5" />
+                </div>
+              </div>
+
+              {/* Box 3: Scan Barcode Penjualan Produk (Kasir Cepat) */}
+              <div
+                onClick={() => setIsKasirScannerOpen(true)}
+                title="Klik untuk membuka kamera Scan Barcode Penjualan Produk"
+                className="group bg-gradient-to-r from-[#2563EB] to-[#1D4ED8] hover:from-[#1D4ED8] hover:to-[#1E40AF] rounded-2xl p-5 text-white shadow-sm hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+              >
+                <div>
+                  <span className="block text-xs font-semibold text-blue-100 mb-1">
+                    Kasir Barcode / QR Kemasan
+                  </span>
+                  <span className="text-base sm:text-lg font-extrabold tracking-tight block">
+                    Scan Penjualan Produk →
+                  </span>
+                </div>
+                <div className="w-11 h-11 rounded-xl bg-white/20 border border-white/30 text-white flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                  <ScanLine className="w-5 h-5" />
                 </div>
               </div>
             </div>
@@ -3790,6 +3971,35 @@ export function AdminDashboard() {
                   required
                   className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-medium text-slate-900 focus:outline-none focus:bg-white focus:border-[#2563EB]"
                 />
+              </div>
+
+              {/* Kolom Kode Barcode / QR Kemasan Produk (Seperti Indomaret/Alfamart) */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Kode Barcode / QR Kemasan (Opsional)
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Scan langsung dari bungkus jajan/minuman
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={formBarcode}
+                    onChange={(e) => setFormBarcode(e.target.value)}
+                    placeholder="Contoh: 8992761136017 (Kosongkan jika makanan racikan)"
+                    className="flex-1 rounded-xl bg-[#F8FAFC] border border-slate-200 px-3.5 py-2.5 font-mono text-xs font-semibold text-slate-900 focus:outline-none focus:bg-white focus:border-[#2563EB]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setScannerTarget("crud-form")}
+                    className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                  >
+                    <ScanLine className="w-3.5 h-3.5" />
+                    <span>Scan Kemasan</span>
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -4656,6 +4866,46 @@ export function AdminDashboard() {
           setPinUnlockedUntil(Date.now() + 5 * 60 * 1000);
           setPinModalState({ isOpen: false, actionLabel: "", onConfirm: null });
           if (pendingAction) pendingAction();
+        }}
+      />
+
+      {/* =====================================================================
+          MODAL SCANNER BARCODE / QR KEMASAN PRODUK (UNTUK REGISTRASI DI ADMIN)
+         ===================================================================== */}
+      <BarcodeScannerModal
+        isOpen={scannerTarget !== null}
+        onClose={() => setScannerTarget(null)}
+        mode="admin-register"
+        title={
+          scannerTarget && scannerTarget !== "crud-form"
+            ? `Scan Kemasan: ${scannerTarget.name}`
+            : "Scan Barcode / QR Kemasan Produk"
+        }
+        onDetectedCode={(code) => {
+          if (scannerTarget === "crud-form") {
+            setFormBarcode(code);
+            showToast(`Kode kemasan "${code}" berhasil dimasukkan ke form!`);
+          } else if (scannerTarget) {
+            updateMenuItem(scannerTarget.id, { barcode: code });
+            showToast(
+              `Kode kemasan "${code}" disimpan untuk "${scannerTarget.name}"!`
+            );
+          }
+        }}
+      />
+
+      {/* =====================================================================
+          MODAL SCANNER BARCODE / QR PENJUALAN PRODUK KASIR (KHUSUS ADMIN)
+         ===================================================================== */}
+      <BarcodeScannerModal
+        isOpen={isKasirScannerOpen}
+        onClose={() => setIsKasirScannerOpen(false)}
+        mode="pos-checkout"
+        title="Scan Barcode Penjualan Produk (Kasir Admin)"
+        menuItems={menuItems}
+        onCompleteAdminCheckout={handleCompleteKasirScanCheckout}
+        onQuickBindBarcode={(productId, barcode) => {
+          updateMenuItem(productId, { barcode });
         }}
       />
     </div>

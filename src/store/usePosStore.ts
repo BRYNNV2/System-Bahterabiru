@@ -14,6 +14,7 @@ export interface CartItem {
 }
 
 export type OrderStatusType = "Preparing" | "Ready" | "Completed";
+export type PaymentMethod = "Cash" | "Debit" | "QRIS";
 
 export interface CompletedOrder {
   id: string;

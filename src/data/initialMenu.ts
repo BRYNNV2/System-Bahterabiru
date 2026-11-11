@@ -21,6 +21,8 @@ export interface MenuItem {
   featured?: boolean;
   description: string;
   servingOptions?: string[];
+  /** Kode Barcode / QR asli dari kemasan produk (EAN-13, UPC, Code-128, atau QR) */
+  barcode?: string;
   imageUrl: string;
 }
 

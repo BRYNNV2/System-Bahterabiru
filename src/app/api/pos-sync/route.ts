@@ -4,6 +4,8 @@ import {
   readNeonDbOrFallback,
   readLocalFallbackDb,
   writeLocalFallbackDb,
+  encodeServingOptionsWithBarcode,
+  decodeServingOptionsAndBarcode,
 } from "@/lib/serverDb";
 import { MenuItem } from "@/data/initialMenu";
 import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
@@ -199,6 +201,10 @@ export async function POST(req: NextRequest) {
       case "ADD_MENU": {
         const newItem = payload.item as MenuItem;
         if (!newItem) break;
+        const encodedOptions = encodeServingOptionsWithBarcode(
+          newItem.servingOptions,
+          newItem.barcode
+        );
         try {
           await prisma.posMenuItem.upsert({
             where: { id: newItem.id },
@@ -214,7 +220,7 @@ export async function POST(req: NextRequest) {
               soldCount: newItem.soldCount,
               featured: Boolean(newItem.featured),
               description: newItem.description,
-              servingOptions: newItem.servingOptions ?? [],
+              servingOptions: encodedOptions,
               imageUrl: newItem.imageUrl,
             },
             create: {
@@ -230,7 +236,7 @@ export async function POST(req: NextRequest) {
               soldCount: newItem.soldCount,
               featured: Boolean(newItem.featured),
               description: newItem.description,
-              servingOptions: newItem.servingOptions ?? [],
+              servingOptions: encodedOptions,
               imageUrl: newItem.imageUrl,
               sortOrder: -1,
             },
@@ -253,6 +259,31 @@ export async function POST(req: NextRequest) {
           updates: Partial<MenuItem>;
         };
         try {
+          let nextServingOptions: string[] | undefined;
+          if (
+            updates.servingOptions !== undefined ||
+            updates.barcode !== undefined
+          ) {
+            const currentRow = await prisma.posMenuItem.findUnique({
+              where: { id },
+            });
+            const currentDecoded = decodeServingOptionsAndBarcode(
+              currentRow?.servingOptions
+            );
+            const mergedOptions =
+              updates.servingOptions !== undefined
+                ? updates.servingOptions
+                : currentDecoded.servingOptions;
+            const mergedBarcode =
+              updates.barcode !== undefined
+                ? updates.barcode
+                : currentDecoded.barcode;
+            nextServingOptions = encodeServingOptionsWithBarcode(
+              mergedOptions,
+              mergedBarcode
+            );
+          }
+
           await prisma.posMenuItem.update({
             where: { id },
             data: {
@@ -281,8 +312,8 @@ export async function POST(req: NextRequest) {
               ...(updates.description !== undefined
                 ? { description: updates.description }
                 : {}),
-              ...(updates.servingOptions !== undefined
-                ? { servingOptions: updates.servingOptions }
+              ...(nextServingOptions !== undefined
+                ? { servingOptions: nextServingOptions }
                 : {}),
               ...(updates.imageUrl !== undefined
                 ? { imageUrl: updates.imageUrl }

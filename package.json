@@ -12,8 +12,10 @@
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@ericblade/quagga2": "^1.13.0",
     "@prisma/client": "^5.22.0",
     "clsx": "^2.1.1",
+    "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.460.0",
     "next": "^15.1.7",
     "react": "^19.0.0",
@@ -33,4 +35,3 @@
     "typescript": "^5.7.2"
   }
 }
-

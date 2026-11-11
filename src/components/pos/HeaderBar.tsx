@@ -107,20 +107,20 @@ export function HeaderBar() {
       {/* Unified Search & Category Pill Bar */}
       <div className="bg-white rounded-2xl px-3.5 sm:px-4 py-2.5 border border-zinc-100 shadow-[0_2px_12px_rgba(0,0,0,0.02)] flex flex-col xl:flex-row xl:items-center justify-between gap-2.5 sm:gap-3">
         {/* Left: Search Input */}
-        <div className="relative flex-1 flex items-center border-b xl:border-b-0 xl:border-r border-zinc-100 pb-2 xl:pb-0 xl:pr-4">
+        <div className="relative flex-1 flex items-center gap-2 border-b xl:border-b-0 xl:border-r border-zinc-100 pb-2 xl:pb-0 xl:pr-4">
           <Search className="w-4 h-4 text-zinc-400 shrink-0 stroke-[2]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search menu or scan barcode..."
-            className="w-full bg-transparent text-zinc-800 placeholder:text-zinc-300 text-xs font-medium pl-2.5 pr-7 py-1 focus:outline-none"
+            placeholder="Cari menu makanan atau minuman..."
+            className="w-full bg-transparent text-zinc-800 placeholder:text-zinc-300 text-xs font-medium pl-1 pr-2 py-1 focus:outline-none"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="text-zinc-400 hover:text-zinc-800 cursor-pointer"
+              className="text-zinc-400 hover:text-zinc-800 cursor-pointer shrink-0"
               aria-label="Clear search"
             >
               <X className="w-3.5 h-3.5" />

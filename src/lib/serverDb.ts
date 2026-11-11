@@ -19,6 +19,47 @@ const globalForDb = globalThis as unknown as {
   posMemoryDb: ServerPosDatabase | undefined;
 };
 
+const BARCODE_PREFIX = "__BARCODE__:";
+
+export function encodeServingOptionsWithBarcode(
+  servingOptions?: string[],
+  barcode?: string
+): string[] {
+  const cleanOptions = Array.isArray(servingOptions)
+    ? servingOptions.filter(
+        (opt) => typeof opt === "string" && !opt.startsWith(BARCODE_PREFIX)
+      )
+    : [];
+  const trimmedBarcode = barcode?.trim();
+  if (trimmedBarcode) {
+    return [...cleanOptions, `${BARCODE_PREFIX}${trimmedBarcode}`];
+  }
+  return cleanOptions;
+}
+
+export function decodeServingOptionsAndBarcode(raw: unknown): {
+  servingOptions?: string[];
+  barcode?: string;
+} {
+  if (!Array.isArray(raw)) return {};
+  const cleanOptions: string[] = [];
+  let barcode: string | undefined;
+  for (const entry of raw) {
+    if (typeof entry === "string") {
+      if (entry.startsWith(BARCODE_PREFIX)) {
+        const code = entry.slice(BARCODE_PREFIX.length).trim();
+        if (code) barcode = code;
+      } else {
+        cleanOptions.push(entry);
+      }
+    }
+  }
+  return {
+    ...(cleanOptions.length > 0 ? { servingOptions: cleanOptions } : {}),
+    ...(barcode ? { barcode } : {}),
+  };
+}
+
 function mapDbRowToMenuItem(row: {
   id: string;
   name: string;
@@ -35,6 +76,7 @@ function mapDbRowToMenuItem(row: {
   servingOptions: unknown;
   imageUrl: string;
 }): MenuItem {
+  const decoded = decodeServingOptionsAndBarcode(row.servingOptions);
   return {
     id: row.id,
     name: row.name,
@@ -48,9 +90,8 @@ function mapDbRowToMenuItem(row: {
     soldCount: row.soldCount,
     featured: row.featured,
     description: row.description,
-    ...(Array.isArray(row.servingOptions)
-      ? { servingOptions: row.servingOptions as string[] }
-      : {}),
+    ...(decoded.servingOptions ? { servingOptions: decoded.servingOptions } : {}),
+    ...(decoded.barcode ? { barcode: decoded.barcode } : {}),
     imageUrl: row.imageUrl,
   };
 }
