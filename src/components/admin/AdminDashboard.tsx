@@ -40,6 +40,7 @@ import {
   BarcodeScannerModal,
   ScannedKasirItem,
 } from "@/components/pos/BarcodeScannerModal";
+import { PwaInstallButton } from "@/components/pos/PwaInstaller";
 import { TransactionHistory } from "@/components/admin/TransactionHistory";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
@@ -1224,6 +1225,9 @@ export function AdminDashboard() {
                 </span>
               )}
             </div>
+
+            {/* Tombol Install Aplikasi PWA (PC / HP) */}
+            <PwaInstallButton variant="admin" />
 
             {/* Tombol Scan Penjualan Produk (Khusus Admin untuk Scan Kemasan Jajan / Indomie & Jual Cepat) */}
             <button

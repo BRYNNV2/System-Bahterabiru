@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { CategoryType, SidebarGroupType } from "@/data/initialMenu";
+import { PwaInstallButton } from "@/components/pos/PwaInstaller";
 
 const FILTER_PILLS: { id: CategoryType; label: string }[] = [
   { id: "All Menu", label: "All" },
@@ -66,7 +67,7 @@ export function HeaderBar() {
 
   return (
     <div className="mb-4">
-      {/* Top Breadcrumb for Buyer Self-Ordering */}
+      {/* Top Breadcrumb for Buyer Self-Ordering + Install App Button */}
       <div className="flex items-center justify-between gap-2 mb-2.5 px-0.5">
         <div className="flex items-center gap-1.5 text-xs">
           <button
@@ -79,6 +80,8 @@ export function HeaderBar() {
           <span className="text-zinc-300">/</span>
           <span className="text-zinc-400 font-medium">{activeSidebarGroup}</span>
         </div>
+
+        <PwaInstallButton variant="buyer" />
       </div>
 
       {/* Mobile Horizontal Group Switcher (Visible on < md so phone users can switch groups with 1 tap) */}

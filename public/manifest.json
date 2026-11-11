@@ -1,0 +1,51 @@
+{
+  "id": "/",
+  "name": "Bahtera Biru — Sistem Kasir POS & Katalog Kantin",
+  "short_name": "Bahtera Biru POS",
+  "description": "Sistem Kasir POS, Pemindai Barcode Kemasan, & Pemesanan Mandiri Kantin Kampus Real-time",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
+  "background_color": "#F8FAFC",
+  "theme_color": "#2563EB",
+  "categories": ["business", "food", "shopping", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Katalog Menu Pembeli",
+      "short_name": "Menu Pembeli",
+      "description": "Buka halaman pemesanan mandiri pembeli",
+      "url": "/",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "Portal Admin & Scan Kasir",
+      "short_name": "Portal Admin",
+      "description": "Buka dashboard kasir admin & scan barcode kemasan",
+      "url": "/portal-bahtera",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
+
