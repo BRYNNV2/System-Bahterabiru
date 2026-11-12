@@ -38,6 +38,7 @@ import {
 import { AdminLoginView } from "@/components/admin/AdminLoginView";
 import { AdminPinModal } from "@/components/admin/AdminPinModal";
 import { ManualCashierModal } from "@/components/admin/ManualCashierModal";
+import { ProductInsightModal } from "@/components/admin/ProductInsightModal";
 import {
   BarcodeScannerModal,
   ScannedKasirItem,
@@ -191,6 +192,8 @@ export function AdminDashboard() {
   >(null);
   const [isKasirScannerOpen, setIsKasirScannerOpen] = useState<boolean>(false);
   const [isManualCashierOpen, setIsManualCashierOpen] =
+    useState<boolean>(false);
+  const [isProductInsightOpen, setIsProductInsightOpen] =
     useState<boolean>(false);
   const [formDesc, setFormDesc] = useState("");
   const [formImage, setFormImage] = useState("");
@@ -1879,20 +1882,33 @@ export function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* 4. Popular Items Card (Interactive Hover & Click to Edit Menu/Stock) */}
+                {/* 4. Popular Items Card (Interactive Hover & Click to Edit Menu/Stock + Laporan Kulakan) */}
                 <div className="bg-white rounded-2xl p-4 border border-slate-200/80 space-y-3.5">
                   <div className="flex items-center justify-between">
                     <h3 className="text-xs font-bold text-slate-900">
-                      Popular Items
+                      Popular Items &amp; Analisis Kulakan
                     </h3>
                     <button
                       type="button"
-                      onClick={() => setActivePage("crud")}
-                      className="text-[11px] font-bold text-slate-600 hover:text-[#2563EB] cursor-pointer"
+                      onClick={() => setIsProductInsightOpen(true)}
+                      className="text-[11px] font-extrabold text-[#2563EB] hover:underline cursor-pointer"
                     >
-                      + Kelola Menu
+                      Laporan Kulakan →
                     </button>
                   </div>
+
+                  {/* Tombol Buka Laporan Produk Paling Untung & Rekomendasi Kulakan */}
+                  <button
+                    type="button"
+                    onClick={() => setIsProductInsightOpen(true)}
+                    className="w-full py-2.5 px-3 rounded-xl bg-blue-50/80 hover:bg-blue-100/80 border border-blue-200/80 text-[#2563EB] text-xs font-extrabold flex items-center justify-between transition cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      <span>Cek Produk Paling Untung &amp; Saran Kulakan</span>
+                    </span>
+                    <span>→</span>
+                  </button>
 
                   <div>
                     <span className="block text-[10px] text-slate-400">
@@ -2777,6 +2793,14 @@ export function AdminDashboard() {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsProductInsightOpen(true)}
+                  className="w-full sm:w-auto justify-center px-4 py-2.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2563EB] text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  <span>Laporan Untung &amp; Kulakan</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setIsManualCashierOpen(true)}
@@ -4957,6 +4981,28 @@ export function AdminDashboard() {
         onQuickBindBarcode={(productId, barcode) => {
           updateMenuItem(productId, { barcode });
         }}
+      />
+
+      {/* =====================================================================
+          MODAL LAPORAN PRODUK PALING UNTUNG, PALING CEPAT HABIS, & SARAN KULAKAN
+         ===================================================================== */}
+      <ProductInsightModal
+        isOpen={isProductInsightOpen}
+        onClose={() => setIsProductInsightOpen(false)}
+        menuItems={menuItems}
+        recentOrders={recentOrders}
+        onQuickRestock={(item, addedQty) => {
+          requirePin(
+            `menambah stok kulakan +${addedQty} pcs untuk "${item.name}"`,
+            () => {
+              updateProductStock(item.id, item.stock + addedQty);
+              showToast(
+                `Stok "${item.name}" ditambah +${addedQty} pcs (Total: ${item.stock + addedQty} pcs)!`
+              );
+            }
+          );
+        }}
+        onEditProduct={(item) => openEditModal(item)}
       />
     </div>
   );
