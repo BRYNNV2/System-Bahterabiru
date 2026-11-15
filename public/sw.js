@@ -1,4 +1,4 @@
-const CACHE_NAME = "bahtera-biru-pwa-v1";
+const CACHE_NAME = "bahtera-biru-pwa-v2";
 const PRECACHE_URLS = [
   "/",
   "/portal-bahtera",
@@ -40,31 +40,43 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  // Di lingkungan lokal (localhost / 127.0.0.1), selalu muat langsung dari network
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+    return;
+  }
+
   // Jangan pernah cache endpoint API real-time (/api/pos-sync, /api/admin-auth, /api/admin-pin)
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // Untuk navigasi halaman HTML: gunakan Network-First, fallback ke cache jika offline
-  if (request.mode === "navigate") {
+  // Untuk navigasi halaman HTML dan bundle /_next/: gunakan Network-First agar update kode langsung aktif
+  if (request.mode === "navigate" || url.pathname.startsWith("/_next/")) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          if (response && response.status === 200) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          }
           return response;
         })
         .catch(() =>
           caches
             .match(request)
-            .then((cached) => cached || caches.match("/"))
+            .then((cached) =>
+              cached ||
+              (request.mode === "navigate"
+                ? caches.match("/").then((root) => root || Response.error())
+                : Response.error())
+            )
         )
     );
     return;
   }
 
-  // Untuk file statis (_next/static, ikon, gambar): Stale-While-Revalidate
+  // Untuk aset statis lain (ikon, manifest, gambar): Stale-While-Revalidate
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       const networkFetch = fetch(request)

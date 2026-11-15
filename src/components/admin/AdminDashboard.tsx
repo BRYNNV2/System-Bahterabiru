@@ -676,7 +676,10 @@ export function AdminDashboard() {
 
   const handleSaveMenu = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim()) return;
+    if (!formName.trim()) {
+      showToast("Silakan isi nama produk terlebih dahulu.");
+      return;
+    }
     if (!formImage.trim()) {
       showToast("Silakan upload foto produk terlebih dahulu.");
       return;
@@ -689,16 +692,20 @@ export function AdminDashboard() {
         .filter(Boolean)
       : [];
 
+    const safeCostPrice = Math.max(0, Math.round(Number(formCostPrice) || 0));
+    const safeSellPrice = Math.max(1, Math.round(Number(formPrice) || 0));
+    const safeStock = Math.max(0, Math.round(Number(formStock) || 0));
+
     if (editingItem) {
       updateMenuItem(editingItem.id, {
         name: formName.trim(),
         category: formCategory,
         group: formGroup,
-        costPrice: Math.max(0, Number(formCostPrice) || 0),
-        price: Number(formPrice) || 500,
+        costPrice: safeCostPrice,
+        price: safeSellPrice,
         discountedPrice: undefined,
         discountPercent: undefined,
-        stock: Math.max(0, Number(formStock) || 0),
+        stock: safeStock,
         barcode: formBarcode.trim() || undefined,
         description: formDesc.trim(),
         imageUrl: formImage.trim(),
@@ -711,9 +718,9 @@ export function AdminDashboard() {
         name: formName.trim(),
         category: formCategory,
         group: formGroup,
-        costPrice: Math.max(0, Number(formCostPrice) || 0),
-        price: Number(formPrice) || 500,
-        stock: Math.max(0, Number(formStock) || 0),
+        costPrice: safeCostPrice,
+        price: safeSellPrice,
+        stock: safeStock,
         barcode: formBarcode.trim() || undefined,
         description: formDesc.trim(),
         imageUrl: formImage.trim(),
@@ -4033,7 +4040,7 @@ export function AdminDashboard() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveMenu} className="space-y-4 text-xs">
+            <form onSubmit={handleSaveMenu} noValidate className="space-y-4 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">
                   Nama Makanan / Minuman
@@ -4158,7 +4165,7 @@ export function AdminDashboard() {
                   <input
                     type="number"
                     min={0}
-                    step={500}
+                    step="any"
                     value={formCostPrice}
                     onChange={(e) => setFormCostPrice(Number(e.target.value))}
                     required
@@ -4172,8 +4179,8 @@ export function AdminDashboard() {
                   </label>
                   <input
                     type="number"
-                    min={500}
-                    step={500}
+                    min={1}
+                    step="any"
                     value={formPrice}
                     onChange={(e) => setFormPrice(Number(e.target.value))}
                     required
@@ -4188,6 +4195,7 @@ export function AdminDashboard() {
                   <input
                     type="number"
                     min={0}
+                    step="any"
                     value={formStock}
                     onChange={(e) => setFormStock(Number(e.target.value))}
                     required
