@@ -12,6 +12,7 @@ import {
   Soup,
   Croissant,
   Cookie,
+  Package,
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { CategoryType, SidebarGroupType } from "@/data/initialMenu";
@@ -23,6 +24,10 @@ const FILTER_PILLS: { id: CategoryType; label: string }[] = [
   { id: "Seafood", label: "Seafood" },
   { id: "Pasta", label: "Pasta" },
   { id: "Rice bowl", label: "Rice bowl" },
+  { id: "Snack", label: "Snack" },
+  { id: "Tisu & Kebersihan", label: "Tisu & Kebersihan" },
+  { id: "Kebutuhan Harian", label: "Kebutuhan Harian" },
+  { id: "ATK & Lainnya", label: "ATK & Lainnya" },
 ];
 
 const MOBILE_GROUPS: {
@@ -37,6 +42,7 @@ const MOBILE_GROUPS: {
   { id: "Appetizer", label: "Appetizer", icon: Soup },
   { id: "Bread", label: "Bread", icon: Croissant },
   { id: "Snack", label: "Snack", icon: Cookie },
+  { id: "Kebutuhan", label: "Kebutuhan", icon: Package },
 ];
 
 export function HeaderBar() {
@@ -116,7 +122,7 @@ export function HeaderBar() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari menu makanan atau minuman..."
+            placeholder="Cari makanan, minuman, tisu, atau kebutuhan..."
             className="w-full bg-transparent text-zinc-800 placeholder:text-zinc-300 text-xs font-medium pl-1 pr-2 py-1 focus:outline-none"
           />
           {searchQuery && (

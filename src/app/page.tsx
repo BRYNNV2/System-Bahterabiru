@@ -59,24 +59,38 @@ export default function PosTerminalPage() {
     }, 2500);
   };
 
+  const hasActiveBuyerOrder = Boolean(
+    lastBuyerOrder && lastBuyerOrder.status !== "Completed"
+  );
+
   useEffect(() => {
     setIsMounted(true);
     void syncFromServer();
+  }, [syncFromServer]);
 
-    const interval = setInterval(() => {
-      void syncFromServer();
-    }, 3000);
-
-    const handleFocus = () => {
+  useEffect(() => {
+    const syncIfVisible = () => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
       void syncFromServer();
     };
-    window.addEventListener("focus", handleFocus);
+
+    const pollIntervalMs = hasActiveBuyerOrder ? 3500 : 5000;
+    const interval = setInterval(syncIfVisible, pollIntervalMs);
+
+    window.addEventListener("focus", syncIfVisible);
+    document.addEventListener("visibilitychange", syncIfVisible);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("focus", syncIfVisible);
+      document.removeEventListener("visibilitychange", syncIfVisible);
     };
-  }, [syncFromServer]);
+  }, [syncFromServer, hasActiveBuyerOrder]);
 
   const handleHamburgerClick = () => {
     if (typeof window !== "undefined" && window.innerWidth < 768) {

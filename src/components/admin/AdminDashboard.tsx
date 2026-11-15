@@ -634,9 +634,23 @@ export function AdminDashboard() {
       setFormPrice(getEffectivePrice(item));
       setFormStock(item.stock);
       setFormBarcode(item.barcode || "");
+      const isNonKitchenItem =
+        item.category === "Snack" ||
+        item.group === "Snack" ||
+        item.category === "Bread" ||
+        item.group === "Bread" ||
+        item.group === "Kebutuhan" ||
+        item.category === "Tisu & Kebersihan" ||
+        item.category === "Kebutuhan Harian" ||
+        item.category === "ATK & Lainnya";
       const isLegacyDesc =
         item.description?.startsWith("Hidangan spesial racikan dapur utama") &&
-        (item.category === "Snack" || item.group === "Snack");
+        (item.category === "Snack" ||
+          item.group === "Snack" ||
+          item.group === "Kebutuhan" ||
+          item.category === "Tisu & Kebersihan" ||
+          item.category === "Kebutuhan Harian" ||
+          item.category === "ATK & Lainnya");
       setFormDesc(isLegacyDesc ? "" : item.description || "");
       setFormImage(item.imageUrl);
       setUploadedImageMeta(null);
@@ -648,10 +662,7 @@ export function AdminDashboard() {
         rawOpts[0] === "Porsi Reguler" &&
         rawOpts[1] === "Pedas Normal" &&
         rawOpts[2] === "Extra Bumbu" &&
-        (item.category === "Snack" ||
-          item.group === "Snack" ||
-          item.category === "Bread" ||
-          item.group === "Bread");
+        isNonKitchenItem;
       const effectiveOpts = isOldPlaceholder ? [] : rawOpts;
       setFormUseVariants(effectiveOpts.length > 0);
       setFormVariantsText(
@@ -2841,6 +2852,9 @@ export function AdminDashboard() {
                   "Beverages",
                   "Appetizer",
                   "Snack",
+                  "Tisu & Kebersihan",
+                  "Kebutuhan Harian",
+                  "ATK & Lainnya",
                 ].map((cat) => (
                   <button
                     type="button"
@@ -4070,9 +4084,20 @@ export function AdminDashboard() {
                   </label>
                   <select
                     value={formGroup}
-                    onChange={(e) =>
-                      setFormGroup(e.target.value as MenuItem["group"])
-                    }
+                    onChange={(e) => {
+                      const nextGroup = e.target.value as MenuItem["group"];
+                      setFormGroup(nextGroup);
+                      if (nextGroup === "Kebutuhan") {
+                        if (
+                          formCategory !== "Tisu & Kebersihan" &&
+                          formCategory !== "Kebutuhan Harian" &&
+                          formCategory !== "ATK & Lainnya"
+                        ) {
+                          setFormCategory("Tisu & Kebersihan");
+                        }
+                        setFormUseVariants(false);
+                      }
+                    }}
                     className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3 py-2.5 font-medium text-slate-900 focus:outline-none focus:border-[#2563EB]"
                   >
                     <option value="Food">Food</option>
@@ -4081,6 +4106,7 @@ export function AdminDashboard() {
                     <option value="Appetizer">Appetizer</option>
                     <option value="Bread">Bread</option>
                     <option value="Snack">Snack</option>
+                    <option value="Kebutuhan">Kebutuhan (Tisu / Barang)</option>
                   </select>
                 </div>
 
@@ -4090,20 +4116,36 @@ export function AdminDashboard() {
                   </label>
                   <select
                     value={formCategory}
-                    onChange={(e) =>
-                      setFormCategory(e.target.value as MenuItem["category"])
-                    }
+                    onChange={(e) => {
+                      const nextCat = e.target.value as MenuItem["category"];
+                      setFormCategory(nextCat);
+                      if (
+                        nextCat === "Tisu & Kebersihan" ||
+                        nextCat === "Kebutuhan Harian" ||
+                        nextCat === "ATK & Lainnya"
+                      ) {
+                        setFormGroup("Kebutuhan");
+                        setFormUseVariants(false);
+                      }
+                    }}
                     className="w-full rounded-xl bg-[#F8FAFC] border border-slate-200 px-3 py-2.5 font-medium text-slate-900 focus:outline-none focus:border-[#2563EB]"
                   >
-                    <option value="Rice bowl">Rice bowl</option>
-                    <option value="Chicken">Chicken</option>
-                    <option value="Seafood">Seafood</option>
-                    <option value="Pasta">Pasta</option>
-                    <option value="Coffee">Coffee</option>
-                    <option value="Beverages">Beverages</option>
-                    <option value="Appetizer">Appetizer</option>
-                    <option value="Bread">Bread</option>
-                    <option value="Snack">Snack</option>
+                    <optgroup label="Makanan &amp; Minuman">
+                      <option value="Rice bowl">Rice bowl</option>
+                      <option value="Chicken">Chicken</option>
+                      <option value="Seafood">Seafood</option>
+                      <option value="Pasta">Pasta</option>
+                      <option value="Coffee">Coffee</option>
+                      <option value="Beverages">Beverages</option>
+                      <option value="Appetizer">Appetizer</option>
+                      <option value="Bread">Bread</option>
+                      <option value="Snack">Snack</option>
+                    </optgroup>
+                    <optgroup label="Kebutuhan &amp; Non-Makanan">
+                      <option value="Tisu & Kebersihan">Tisu &amp; Kebersihan</option>
+                      <option value="Kebutuhan Harian">Kebutuhan Harian</option>
+                      <option value="ATK & Lainnya">ATK &amp; Lainnya</option>
+                    </optgroup>
                   </select>
                 </div>
               </div>

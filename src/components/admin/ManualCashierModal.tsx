@@ -82,7 +82,11 @@ export function ManualCashierModal({
       const matchGroup =
         selectedGroup === "All" ||
         item.group === selectedGroup ||
-        item.category === selectedGroup;
+        item.category === selectedGroup ||
+        (selectedGroup === "Kebutuhan" &&
+          (item.category === "Tisu & Kebersihan" ||
+            item.category === "Kebutuhan Harian" ||
+            item.category === "ATK & Lainnya"));
       if (!matchGroup) return false;
       if (!q) return true;
       return (
@@ -407,7 +411,7 @@ export function ManualCashierModal({
                         }
                       }
                     }}
-                    placeholder="Cari nama makanan, minuman, gorengan, atau scan barcode..."
+                    placeholder="Cari makanan, minuman, tisu, kebutuhan, atau scan barcode..."
                     className="w-full bg-transparent text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none"
                   />
                   {searchQuery && (

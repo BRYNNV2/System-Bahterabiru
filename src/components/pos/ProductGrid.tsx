@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { Search, Eye, X, Plus, Minus, ShoppingBag } from "lucide-react";
+import { Search, Eye, X, Plus, Minus, ShoppingBag, Package } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import {
   formatRupiah,
   getEffectivePrice,
   MenuItem,
 } from "@/data/initialMenu";
+
+const PRODUCT_BATCH_SIZE = 24;
 
 export function ProductGrid() {
   const {
@@ -27,6 +29,8 @@ export function ProductGrid() {
   const [isQuickViewVisible, setIsQuickViewVisible] = useState<boolean>(false);
   const [selectedServing, setSelectedServing] = useState<string>("");
   const [buyQty, setBuyQty] = useState<number>(1);
+  const [visibleCount, setVisibleCount] = useState<number>(PRODUCT_BATCH_SIZE);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
 
   const getValidServingOptions = (item: MenuItem): string[] => {
     const raw = item.servingOptions || [];
@@ -45,7 +49,11 @@ export function ProductGrid() {
         item.category === "Beverages" ||
         item.group === "Beverages" ||
         item.category === "Coffee" ||
-        item.group === "Coffee")
+        item.group === "Coffee" ||
+        item.group === "Kebutuhan" ||
+        item.category === "Tisu & Kebersihan" ||
+        item.category === "Kebutuhan Harian" ||
+        item.category === "ATK & Lainnya")
     ) {
       return [];
     }
@@ -85,6 +93,15 @@ export function ProductGrid() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [quickViewItem]);
 
+  // Keep open Quick View modal synced when menuItems refreshes (stock/imageUrl)
+  useEffect(() => {
+    if (!quickViewItem) return;
+    const latest = menuItems.find((m) => m.id === quickViewItem.id);
+    if (latest && latest !== quickViewItem) {
+      setQuickViewItem(latest);
+    }
+  }, [menuItems, quickViewItem]);
+
   const filteredItems = [...menuItems]
     .filter((item) => {
       if (searchQuery.trim()) {
@@ -104,6 +121,14 @@ export function ProductGrid() {
       }
 
       if (activeSidebarGroup !== "All") {
+        if (activeSidebarGroup === "Kebutuhan") {
+          return (
+            item.group === "Kebutuhan" ||
+            item.category === "Tisu & Kebersihan" ||
+            item.category === "Kebutuhan Harian" ||
+            item.category === "ATK & Lainnya"
+          );
+        }
         return item.group === activeSidebarGroup;
       }
 
@@ -118,6 +143,37 @@ export function ProductGrid() {
       if (sortBy === "stock-desc") return b.stock - a.stock;
       return 0;
     });
+
+  useEffect(() => {
+    setVisibleCount(PRODUCT_BATCH_SIZE);
+  }, [selectedCategory, activeSidebarGroup, searchQuery, sortBy]);
+
+  const visibleItems = filteredItems.slice(0, visibleCount);
+  const hasMoreItems = visibleCount < filteredItems.length;
+
+  useEffect(() => {
+    if (!hasMoreItems) return;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || typeof IntersectionObserver === "undefined") return;
+
+    const scrollRoot = sentinel.closest("main");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleCount((prev) =>
+            Math.min(filteredItems.length, prev + PRODUCT_BATCH_SIZE)
+          );
+        }
+      },
+      {
+        root: scrollRoot,
+        rootMargin: "240px 0px",
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreItems, filteredItems.length, visibleCount]);
 
   return (
     <section className="pb-8">
@@ -143,90 +199,122 @@ export function ProductGrid() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
-          {filteredItems.map((item) => {
-            const qtyInCart = getItemQuantity(item.id);
-            const isOutOfStock = item.stock <= 0;
-            const finalPrice = getEffectivePrice(item);
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5">
+            {visibleItems.map((item) => {
+              const qtyInCart = getItemQuantity(item.id);
+              const isOutOfStock = item.stock <= 0;
+              const finalPrice = getEffectivePrice(item);
 
-            return (
-              <div
-                key={item.id}
-                onClick={() => handleOpenQuickView(item)}
-                className="group cursor-pointer select-none flex flex-col"
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => handleOpenQuickView(item)}
+                  className="group cursor-pointer select-none flex flex-col"
+                >
+                  {/* Rounded Image Card with Badges & Hover QUICK VIEW */}
+                  <div className="relative aspect-[4/4.2] w-full rounded-[18px] sm:rounded-[22px] overflow-hidden bg-[#ECEEF2] shadow-[0_4px_16px_rgba(0,0,0,0.04)] group-hover:shadow-[0_12px_28px_rgba(0,0,0,0.1)] transition-all duration-300">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+                          isOutOfStock ? "brightness-90 grayscale-[25%]" : ""
+                        }`}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 bg-zinc-200/70 text-zinc-400 animate-pulse">
+                        <Package className="w-6 h-6 stroke-[1.6]" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">
+                          Memuat...
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Subtle dark gradient at bottom on hover so Quick View pill pops */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+                    {/* Top-Left Badge: STOK HABIS or FEATURED (Clean Monochrome Pill) */}
+                    <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 flex flex-col gap-1.5">
+                      {isOutOfStock ? (
+                        <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-zinc-900/90 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
+                          STOK HABIS
+                        </span>
+                      ) : item.featured ? (
+                        <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/95 text-zinc-900 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
+                          FEATURED
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Top-Right Badge: Quantity already in cart */}
+                    {qtyInCart > 0 && (
+                      <div className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-zinc-900 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide shadow-md ring-2 ring-white/80">
+                        {qtyInCart} PCS
+                      </div>
+                    )}
+
+                    {/* Bottom-Center Hover Pill: QUICK VIEW */}
+                    <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                      <div className="bg-white hover:bg-zinc-50 text-zinc-900 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.22)] flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors">
+                        <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-zinc-600 stroke-[2.2]" />
+                        <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider">
+                          QUICK VIEW
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Card Metadata: Title + Price on row 1, Category + Sold info on row 2 */}
+                  <div className="pt-2.5 sm:pt-3 px-0.5">
+                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-0.5 sm:gap-2">
+                      <h3
+                        className="font-extrabold text-zinc-900 text-[12px] sm:text-[13.5px] uppercase tracking-tight truncate"
+                        title={item.name}
+                      >
+                        {item.name}
+                      </h3>
+                      <span className="font-extrabold text-zinc-900 text-[12px] sm:text-[13.5px] tabular-nums shrink-0">
+                        {formatRupiah(finalPrice)}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1 mt-0.5">
+                      <span className="text-[9.5px] sm:text-[10.5px] font-semibold text-zinc-400 uppercase tracking-widest truncate">
+                        {item.category}
+                      </span>
+                      <span className="text-[9.5px] sm:text-[10px] font-medium text-zinc-400 shrink-0">
+                        {isOutOfStock ? "Habis" : `Stok ${item.stock} Pcs`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {hasMoreItems && (
+            <div
+              ref={loadMoreSentinelRef}
+              className="flex justify-center pt-5 sm:pt-6"
+            >
+              <button
+                type="button"
+                onClick={() =>
+                  setVisibleCount((prev) =>
+                    Math.min(filteredItems.length, prev + PRODUCT_BATCH_SIZE)
+                  )
+                }
+                className="px-5 py-2.5 rounded-full bg-white border border-zinc-200 hover:bg-zinc-50 text-zinc-700 text-xs font-extrabold shadow-xs transition cursor-pointer active:scale-95"
               >
-                {/* Rounded Image Card with Badges & Hover QUICK VIEW */}
-                <div className="relative aspect-[4/4.2] w-full rounded-[18px] sm:rounded-[22px] overflow-hidden bg-[#ECEEF2] shadow-[0_4px_16px_rgba(0,0,0,0.04)] group-hover:shadow-[0_12px_28px_rgba(0,0,0,0.1)] transition-all duration-300">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${
-                      isOutOfStock ? "brightness-90 grayscale-[25%]" : ""
-                    }`}
-                    loading="lazy"
-                  />
-
-                  {/* Subtle dark gradient at bottom on hover so Quick View pill pops */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-                  {/* Top-Left Badge: STOK HABIS or FEATURED (Clean Monochrome Pill) */}
-                  <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 flex flex-col gap-1.5">
-                    {isOutOfStock ? (
-                      <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-zinc-900/90 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-xs">
-                        STOK HABIS
-                      </span>
-                    ) : item.featured ? (
-                      <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/95 text-zinc-900 text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-sm">
-                        FEATURED
-                      </span>
-                    ) : null}
-                  </div>
-
-                  {/* Top-Right Badge: Quantity already in cart */}
-                  {qtyInCart > 0 && (
-                    <div className="absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-zinc-900 text-white text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wide shadow-md ring-2 ring-white/80">
-                      {qtyInCart} PCS
-                    </div>
-                  )}
-
-                  {/* Bottom-Center Hover Pill: QUICK VIEW */}
-                  <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                    <div className="bg-white hover:bg-zinc-50 text-zinc-900 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-full shadow-[0_8px_24px_rgba(0,0,0,0.22)] flex items-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors">
-                      <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-zinc-600 stroke-[2.2]" />
-                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider">
-                        QUICK VIEW
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Card Metadata: Title + Price on row 1, Category + Sold info on row 2 */}
-                <div className="pt-2.5 sm:pt-3 px-0.5">
-                  <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-0.5 sm:gap-2">
-                    <h3
-                      className="font-extrabold text-zinc-900 text-[12px] sm:text-[13.5px] uppercase tracking-tight truncate"
-                      title={item.name}
-                    >
-                      {item.name}
-                    </h3>
-                    <span className="font-extrabold text-zinc-900 text-[12px] sm:text-[13.5px] tabular-nums shrink-0">
-                      {formatRupiah(finalPrice)}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between gap-1 mt-0.5">
-                    <span className="text-[9.5px] sm:text-[10.5px] font-semibold text-zinc-400 uppercase tracking-widest truncate">
-                      {item.category}
-                    </span>
-                    <span className="text-[9.5px] sm:text-[10px] font-medium text-zinc-400 shrink-0">
-                      {isOutOfStock ? "Habis" : `Stok ${item.stock} Pcs`}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                Tampilkan Lebih Banyak ({filteredItems.length - visibleCount}{" "}
+                menu lagi)
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* QUICK VIEW DETAIL MODAL (Portaled to document.body so background workspace blurs deeply) */}
@@ -274,11 +362,21 @@ export function ProductGrid() {
             {/* Left Column: Framed Dish Photo */}
             <div className="bg-[#F4F4F5] p-4 sm:p-8 flex items-center justify-center">
               <div className="w-full aspect-[16/11] sm:aspect-square rounded-2xl overflow-hidden shadow-md bg-white relative">
-                <img
-                  src={quickViewItem.imageUrl}
-                  alt={quickViewItem.name}
-                  className="w-full h-full object-cover"
-                />
+                {quickViewItem.imageUrl ? (
+                  <img
+                    src={quickViewItem.imageUrl}
+                    alt={quickViewItem.name}
+                    decoding="async"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-zinc-200/70 text-zinc-400 animate-pulse">
+                    <Package className="w-8 h-8 stroke-[1.6]" />
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Memuat...
+                    </span>
+                  </div>
+                )}
                 {quickViewItem.stock <= 0 && (
                   <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-zinc-900 text-white text-[10px] font-extrabold uppercase tracking-wider">
                     STOK HABIS
@@ -316,7 +414,11 @@ export function ProductGrid() {
                   const isLegacyPlaceholder =
                     desc.startsWith("Hidangan spesial racikan dapur utama") &&
                     (quickViewItem.category === "Snack" ||
-                      quickViewItem.group === "Snack");
+                      quickViewItem.group === "Snack" ||
+                      quickViewItem.group === "Kebutuhan" ||
+                      quickViewItem.category === "Tisu & Kebersihan" ||
+                      quickViewItem.category === "Kebutuhan Harian" ||
+                      quickViewItem.category === "ATK & Lainnya");
                   if (!desc || isLegacyPlaceholder) return null;
                   return (
                     <p className="text-xs text-zinc-500 leading-relaxed mb-4">

@@ -122,13 +122,37 @@ interface PosState {
 }
 
 let pendingMutations = 0;
+let mutationEpoch = 0;
+let lastSyncedImagesHash = "";
+
+function mergeMenuItemsPreservingImages(
+  incoming: MenuItem[],
+  existing: MenuItem[],
+  imagesOmitted?: boolean
+): MenuItem[] {
+  if (!imagesOmitted && existing.length === 0) return incoming;
+  const existingImgMap = new Map(existing.map((m) => [m.id, m.imageUrl]));
+  return incoming.map((item) => {
+    if (item.imageUrl) return item;
+    const cachedUrl = existingImgMap.get(item.id);
+    return cachedUrl ? { ...item, imageUrl: cachedUrl } : item;
+  });
+}
 
 async function sendSyncMutation(
   action: string,
   payload: unknown,
-  onSuccess?: (data: { menuItems?: MenuItem[]; recentOrders?: CompletedOrder[] }) => void
+  onSuccess?: (data: {
+    menuItems?: MenuItem[];
+    recentOrders?: CompletedOrder[];
+    imagesOmitted?: boolean;
+  }) => void
 ) {
   pendingMutations += 1;
+  mutationEpoch += 1;
+  if (action === "ADD_MENU" || action === "UPDATE_MENU" || action === "DELETE_MENU") {
+    lastSyncedImagesHash = "";
+  }
   try {
     const res = await fetch("/api/pos-sync", {
       method: "POST",
@@ -144,6 +168,13 @@ async function sendSyncMutation(
     }
     if (res.ok && pendingMutations === 1 && onSuccess) {
       const data = await res.json();
+      if (Array.isArray(data.menuItems)) {
+        data.menuItems = mergeMenuItemsPreservingImages(
+          data.menuItems,
+          usePosStore.getState().menuItems,
+          Boolean(data.imagesOmitted)
+        );
+      }
       onSuccess(data);
     }
   } catch {
@@ -430,20 +461,51 @@ export const usePosStore = create<PosState>()(
 
       syncFromServer: async () => {
         if (pendingMutations > 0) return;
+        const epochAtStart = mutationEpoch;
         try {
-          const trackedId = get().lastBuyerOrder?.id;
-          const url = trackedId
-            ? `/api/pos-sync?orderId=${encodeURIComponent(trackedId)}`
-            : "/api/pos-sync";
+          const currentState = get();
+          const trackedId = currentState.lastBuyerOrder?.id;
+          const hasFullImagesInMemory =
+            currentState.menuItems.length > 0 &&
+            currentState.menuItems.every((m) => Boolean(m.imageUrl));
+
+          const params = new URLSearchParams();
+          if (trackedId) params.set("orderId", trackedId);
+          if (hasFullImagesInMemory && lastSyncedImagesHash) {
+            params.set("imgHash", lastSyncedImagesHash);
+          }
+          const qs = params.toString();
+          const url = qs ? `/api/pos-sync?${qs}` : "/api/pos-sync";
+
           const res = await fetch(url, { cache: "no-store" });
-          if (!res.ok || pendingMutations > 0) return;
+          if (
+            !res.ok ||
+            pendingMutations > 0 ||
+            mutationEpoch !== epochAtStart
+          ) {
+            return;
+          }
           const data = await res.json();
+          if (pendingMutations > 0 || mutationEpoch !== epochAtStart) return;
           if (
             data &&
             Array.isArray(data.menuItems) &&
             Array.isArray(data.recentOrders)
           ) {
+            const imagesOmitted = Boolean(data.imagesOmitted);
+            if (typeof data.imagesHash === "string") {
+              lastSyncedImagesHash = data.imagesHash;
+            }
+
+            let mergedMenuSnapshot: MenuItem[] = [];
             set((state) => {
+              const mergedMenu = mergeMenuItemsPreservingImages(
+                data.menuItems as MenuItem[],
+                state.menuItems,
+                imagesOmitted
+              );
+              mergedMenuSnapshot = mergedMenu;
+
               let updatedBuyerOrder = state.lastBuyerOrder;
               if (updatedBuyerOrder) {
                 const fromTracked = data.trackedOrder as
@@ -463,11 +525,15 @@ export const usePosStore = create<PosState>()(
                 }
               }
               return {
-                menuItems: data.menuItems,
+                menuItems: mergedMenu,
                 recentOrders: data.recentOrders,
                 lastBuyerOrder: updatedBuyerOrder,
               };
             });
+
+            if (imagesOmitted && mergedMenuSnapshot.some((m) => !m.imageUrl)) {
+              lastSyncedImagesHash = "";
+            }
           }
         } catch {
           // Ignore network errors if offline
@@ -567,10 +633,40 @@ export const usePosStore = create<PosState>()(
     }),
     {
       name: "coca-pos-storage-v3",
-      partialize: (state) => ({
-        menuItems: state.menuItems,
-        lastBuyerOrder: state.lastBuyerOrder,
-      }),
+      partialize: (state) => {
+        const totalImageChars = state.menuItems.reduce(
+          (sum, item) => sum + (item.imageUrl?.length || 0),
+          0
+        );
+        const stripDataUrl = (url?: string) =>
+          url && url.startsWith("data:") ? "" : url || "";
+
+        const persistedMenuItems =
+          totalImageChars > 2_500_000
+            ? state.menuItems.map((item) => ({
+                ...item,
+                imageUrl: stripDataUrl(item.imageUrl),
+              }))
+            : state.menuItems;
+
+        const persistedLastBuyerOrder = state.lastBuyerOrder
+          ? {
+              ...state.lastBuyerOrder,
+              items: state.lastBuyerOrder.items.map((line) => ({
+                ...line,
+                product: {
+                  ...line.product,
+                  imageUrl: stripDataUrl(line.product.imageUrl),
+                },
+              })),
+            }
+          : null;
+
+        return {
+          menuItems: persistedMenuItems,
+          lastBuyerOrder: persistedLastBuyerOrder,
+        };
+      },
       // Status login admin TIDAK pernah dipulihkan dari localStorage (hanya dari cookie server)
       merge: (persisted, current) => {
         const p = (persisted || {}) as Partial<PosState>;

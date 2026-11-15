@@ -212,11 +212,18 @@ export function DetailItemsSidebar({
                 >
                   {/* Left: Rounded Square Dish Image */}
                   <div className="w-13 h-13 min-w-[52px] max-w-[52px] rounded-xl overflow-hidden bg-zinc-100 shrink-0">
-                    <img
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-zinc-200/70 text-zinc-400">
+                        <ShoppingBag className="w-4 h-4 stroke-[1.8]" />
+                      </div>
+                    )}
                   </div>
 
                   {/* Middle: Name, "Price" label, Monochrome price */}

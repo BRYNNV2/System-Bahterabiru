@@ -131,14 +131,52 @@ function mapDbRowToOrder(row: {
   };
 }
 
+export function computeMenuImagesHash(items: MenuItem[]): string {
+  let hash = 2166136261;
+  const feed = (str: string) => {
+    for (let i = 0; i < str.length; i += 1) {
+      hash ^= str.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+  };
+  feed(`${items.length}|`);
+  for (const item of items) {
+    const url = item.imageUrl || "";
+    feed(`${item.id}:${url.length}:${url.slice(0, 16)}:${url.slice(-16)}|`);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 export interface ReadDbOptions {
   ordersLimit?: number;
   ordersSkip?: number;
   allOrders?: boolean;
+  menuOnly?: boolean;
+  trackedOrderId?: string;
 }
 
 export interface PaginatedPosDatabase extends ServerPosDatabase {
   totalOrdersCount: number;
+  trackedOrder?: {
+    id: string;
+    orderNumber: string;
+    status: OrderStatusType;
+  } | null;
+}
+
+function pickTrackedOrder(
+  orders: CompletedOrder[],
+  trackedOrderId?: string
+): PaginatedPosDatabase["trackedOrder"] {
+  const targetId = trackedOrderId?.trim();
+  if (!targetId) return null;
+  const found = orders.find((o) => o.id === targetId);
+  if (!found) return null;
+  return {
+    id: found.id,
+    orderNumber: found.orderNumber,
+    status: found.status || "Preparing",
+  };
 }
 
 export async function readNeonDbOrFallback(
@@ -147,8 +185,38 @@ export async function readNeonDbOrFallback(
   const limit = options?.ordersLimit ?? 50;
   const skip = options?.ordersSkip ?? 0;
   const fetchAll = Boolean(options?.allOrders);
+  const menuOnly = Boolean(options?.menuOnly);
+  const trackedId = options?.trackedOrderId?.trim();
 
   try {
+    if (menuOnly) {
+      const [menuRows, trackedRow] = await Promise.all([
+        prisma.posMenuItem.findMany({
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        }),
+        trackedId
+          ? prisma.posOrder.findUnique({
+              where: { id: trackedId },
+              select: { id: true, orderNumber: true, status: true },
+            })
+          : Promise.resolve(null),
+      ]);
+
+      return {
+        menuItems: menuRows.map(mapDbRowToMenuItem),
+        recentOrders: [],
+        totalOrdersCount: 0,
+        trackedOrder: trackedRow
+          ? {
+              id: trackedRow.id,
+              orderNumber: trackedRow.orderNumber,
+              status: (trackedRow.status as OrderStatusType) || "Preparing",
+            }
+          : null,
+        updatedAt: Date.now(),
+      };
+    }
+
     const [menuRows, orderRows, totalOrdersCount] = await Promise.all([
       prisma.posMenuItem.findMany({
         orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
@@ -224,13 +292,45 @@ export async function readNeonDbOrFallback(
   }
 }
 
-export function readLocalFallbackDb(
+function buildLocalFallbackResponse(
+  source: ServerPosDatabase,
   options?: ReadDbOptions
 ): PaginatedPosDatabase {
   const limit = options?.ordersLimit ?? 50;
   const skip = options?.ordersSkip ?? 0;
   const fetchAll = Boolean(options?.allOrders);
+  const menuOnly = Boolean(options?.menuOnly);
+  const trackedOrder = pickTrackedOrder(
+    source.recentOrders,
+    options?.trackedOrderId
+  );
 
+  if (menuOnly) {
+    return {
+      menuItems: source.menuItems,
+      recentOrders: [],
+      totalOrdersCount: 0,
+      trackedOrder,
+      updatedAt: source.updatedAt || Date.now(),
+    };
+  }
+
+  const total = source.recentOrders.length;
+  const slice = fetchAll
+    ? source.recentOrders
+    : source.recentOrders.slice(skip, skip + limit);
+  return {
+    menuItems: source.menuItems,
+    recentOrders: slice,
+    totalOrdersCount: total,
+    trackedOrder,
+    updatedAt: source.updatedAt || Date.now(),
+  };
+}
+
+export function readLocalFallbackDb(
+  options?: ReadDbOptions
+): PaginatedPosDatabase {
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, "utf-8");
@@ -241,16 +341,7 @@ export function readLocalFallbackDb(
         Array.isArray(parsed.recentOrders)
       ) {
         globalForDb.posMemoryDb = parsed;
-        const total = parsed.recentOrders.length;
-        const slice = fetchAll
-          ? parsed.recentOrders
-          : parsed.recentOrders.slice(skip, skip + limit);
-        return {
-          menuItems: parsed.menuItems,
-          recentOrders: slice,
-          totalOrdersCount: total,
-          updatedAt: parsed.updatedAt || Date.now(),
-        };
+        return buildLocalFallbackResponse(parsed, options);
       }
     }
   } catch {
@@ -258,17 +349,7 @@ export function readLocalFallbackDb(
   }
 
   if (globalForDb.posMemoryDb) {
-    const mem = globalForDb.posMemoryDb;
-    const total = mem.recentOrders.length;
-    const slice = fetchAll
-      ? mem.recentOrders
-      : mem.recentOrders.slice(skip, skip + limit);
-    return {
-      menuItems: mem.menuItems,
-      recentOrders: slice,
-      totalOrdersCount: total,
-      updatedAt: mem.updatedAt || Date.now(),
-    };
+    return buildLocalFallbackResponse(globalForDb.posMemoryDb, options);
   }
 
   const initialDb: ServerPosDatabase = {
@@ -281,6 +362,7 @@ export function readLocalFallbackDb(
   return {
     ...initialDb,
     totalOrdersCount: 0,
+    trackedOrder: null,
   };
 }
 

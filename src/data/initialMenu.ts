@@ -10,8 +10,18 @@ export interface MenuItem {
     | "Beverages"
     | "Appetizer"
     | "Bread"
-    | "Snack";
-  group: "Food" | "Coffee" | "Beverages" | "Appetizer" | "Bread" | "Snack";
+    | "Snack"
+    | "Tisu & Kebersihan"
+    | "Kebutuhan Harian"
+    | "ATK & Lainnya";
+  group:
+    | "Food"
+    | "Coffee"
+    | "Beverages"
+    | "Appetizer"
+    | "Bread"
+    | "Snack"
+    | "Kebutuhan";
   costPrice?: number;
   price: number;
   discountPercent?: number;
@@ -34,6 +44,7 @@ export const SIDEBAR_GROUPS = [
   { id: "Appetizer", label: "Appetizer" },
   { id: "Bread", label: "Bread" },
   { id: "Snack", label: "Snack" },
+  { id: "Kebutuhan", label: "Kebutuhan" },
 ] as const;
 
 export type SidebarGroupType = (typeof SIDEBAR_GROUPS)[number]["id"];
@@ -47,6 +58,9 @@ export const CATEGORIES_WITH_META = [
   { id: "Coffee", label: "Coffee", count: 3, icon: "coffee" },
   { id: "Beverages", label: "Beverages", count: 3, icon: "cup-soda" },
   { id: "Snack", label: "Snack", count: 4, icon: "cookie" },
+  { id: "Tisu & Kebersihan", label: "Tisu & Kebersihan", count: 0, icon: "package" },
+  { id: "Kebutuhan Harian", label: "Kebutuhan Harian", count: 0, icon: "package" },
+  { id: "ATK & Lainnya", label: "ATK & Lainnya", count: 0, icon: "package" },
 ] as const;
 
 export type CategoryType = (typeof CATEGORIES_WITH_META)[number]["id"];

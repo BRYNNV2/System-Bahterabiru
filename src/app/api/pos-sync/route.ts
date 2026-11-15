@@ -6,6 +6,7 @@ import {
   writeLocalFallbackDb,
   encodeServingOptionsWithBarcode,
   decodeServingOptionsAndBarcode,
+  computeMenuImagesHash,
 } from "@/lib/serverDb";
 import { MenuItem } from "@/data/initialMenu";
 import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
@@ -32,40 +33,47 @@ function toPublicMenu(items: MenuItem[]): MenuItem[] {
   });
 }
 
+/** Hilangkan payload base64 imageUrl ketika hash gambar di client sudah sama */
+function prepareMenuResponse(items: MenuItem[], reqImgHash: string) {
+  const imagesHash = computeMenuImagesHash(items);
+  const imagesOmitted = Boolean(reqImgHash && reqImgHash === imagesHash);
+  const menuItems = imagesOmitted
+    ? items.map((item) => ({ ...item, imageUrl: "" }))
+    : items;
+  return { menuItems, imagesHash, imagesOmitted };
+}
+
 export async function GET(req: NextRequest) {
   const isAdmin = isAdminRequest(req);
   const { searchParams } = new URL(req.url);
-  const all = isAdmin && searchParams.get("all") === "true";
+  const reqImgHash = searchParams.get("imgHash")?.trim() || "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(
     100,
     Math.max(5, Number(searchParams.get("limit")) || 50)
   );
-  const skip = (page - 1) * limit;
 
-  const db = await readNeonDbOrFallback(
-    all ? { allOrders: true } : { ordersLimit: limit, ordersSkip: skip }
-  );
-
-  // Pengunjung umum hanya menerima katalog menu (tanpa harga modal & data transaksi orang lain)
+  // Pengunjung umum hanya membaca katalog menu + 1 status order miliknya (hemat query transaksi)
   if (!isAdmin) {
-    const trackedOrderId = searchParams.get("orderId")?.trim();
-    const matchedOrder = trackedOrderId
-      ? db.recentOrders.find((o) => o.id === trackedOrderId)
-      : undefined;
+    const trackedOrderId = searchParams.get("orderId")?.trim() || undefined;
+    const db = await readNeonDbOrFallback({
+      menuOnly: true,
+      trackedOrderId,
+    });
+    const publicMenu = toPublicMenu(db.menuItems);
+    const { menuItems, imagesHash, imagesOmitted } = prepareMenuResponse(
+      publicMenu,
+      reqImgHash
+    );
 
     return NextResponse.json(
       {
         success: true,
-        menuItems: toPublicMenu(db.menuItems),
+        menuItems,
+        imagesHash,
+        imagesOmitted,
         recentOrders: [],
-        trackedOrder: matchedOrder
-          ? {
-              id: matchedOrder.id,
-              orderNumber: matchedOrder.orderNumber,
-              status: matchedOrder.status || "Preparing",
-            }
-          : null,
+        trackedOrder: db.trackedOrder ?? null,
         totalOrdersCount: 0,
         currentPage: 1,
         pageSize: limit,
@@ -76,10 +84,22 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const all = searchParams.get("all") === "true";
+  const skip = (page - 1) * limit;
+  const db = await readNeonDbOrFallback(
+    all ? { allOrders: true } : { ordersLimit: limit, ordersSkip: skip }
+  );
+  const { menuItems, imagesHash, imagesOmitted } = prepareMenuResponse(
+    db.menuItems,
+    reqImgHash
+  );
+
   return NextResponse.json(
     {
       success: true,
-      menuItems: db.menuItems,
+      menuItems,
+      imagesHash,
+      imagesOmitted,
       recentOrders: db.recentOrders,
       totalOrdersCount: db.totalOrdersCount,
       currentPage: page,
@@ -109,9 +129,6 @@ export async function POST(req: NextRequest) {
         if (!order) break;
 
         try {
-          // Ensure DB is initialized
-          await readNeonDbOrFallback();
-
           // Deduct stock and increment soldCount in Neon Postgres
           for (const line of order.items) {
             const existing = await prisma.posMenuItem.findUnique({

@@ -9,6 +9,7 @@ import {
   Soup,
   Croissant,
   Cookie,
+  Package,
 } from "lucide-react";
 import { usePosStore } from "@/store/usePosStore";
 import { SidebarGroupType } from "@/data/initialMenu";
@@ -37,6 +38,7 @@ export function SidebarRail({
     { id: "Appetizer", label: "Appetizer", icon: Soup },
     { id: "Bread", label: "Bread", icon: Croissant },
     { id: "Snack", label: "Snack", icon: Cookie },
+    { id: "Kebutuhan", label: "Kebutuhan", icon: Package },
   ];
 
   return (
