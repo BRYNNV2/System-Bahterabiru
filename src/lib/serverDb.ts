@@ -14,10 +14,78 @@ const DB_FILE_PATH = path.join(process.cwd(), "prisma", "pos-database.json");
 
 export const DEFAULT_RECENT_ORDERS: CompletedOrder[] = [];
 
-// Global in-memory fallback in case offline or DB unreachable
+// Global in-memory cache & quota circuit breaker
+const NEON_CACHE_TTL_MS = 120_000; // 2 menit cache di RAM server
+const NEON_BACKOFF_MS = 600_000;   // 10 menit cooldown jika kuota Neon habis / unreachable
+
 const globalForDb = globalThis as unknown as {
   posMemoryDb: ServerPosDatabase | undefined;
+  neonCacheExpiresAt: number | undefined;
+  neonBackoffUntil: number | undefined;
+  ordersLoadedFromNeon: boolean | undefined;
+  allOrdersLoaded: boolean | undefined;
+  posTotalOrdersCount: number | undefined;
 };
+
+export function isNeonInBackoff(): boolean {
+  return Boolean(
+    globalForDb.neonBackoffUntil && Date.now() < globalForDb.neonBackoffUntil
+  );
+}
+
+export function markNeonQuotaOrError(err?: unknown): void {
+  const msg = err instanceof Error ? err.message : String(err || "");
+  const code =
+    err && typeof err === "object" && "code" in err
+      ? String((err as { code?: unknown }).code || "")
+      : "";
+  if (
+    code === "P2025" ||
+    msg.includes("Record to update not found") ||
+    msg.includes("Record to delete does not exist")
+  ) {
+    return;
+  }
+  globalForDb.neonBackoffUntil = Date.now() + NEON_BACKOFF_MS;
+}
+
+export function stripOrderItemImages(
+  items: CompletedOrder["items"]
+): CompletedOrder["items"] {
+  if (!Array.isArray(items)) return [];
+  return items.map((line) => {
+    if (!line?.product) return line;
+    const url = line.product.imageUrl || "";
+    if (!url.startsWith("data:")) return line;
+    return {
+      ...line,
+      product: {
+        ...line.product,
+        imageUrl: "",
+      },
+    };
+  });
+}
+
+export function hydrateOrdersWithMenuImages(
+  orders: CompletedOrder[],
+  menuItems: MenuItem[]
+): CompletedOrder[] {
+  if (!Array.isArray(orders) || orders.length === 0) return orders;
+  const imgMap = new Map(menuItems.map((m) => [m.id, m.imageUrl]));
+  return orders.map((ord) => ({
+    ...ord,
+    items: Array.isArray(ord.items)
+      ? ord.items.map((line) => {
+          if (!line?.product || line.product.imageUrl) return line;
+          const restored = imgMap.get(line.product.id);
+          return restored
+            ? { ...line, product: { ...line.product, imageUrl: restored } }
+            : line;
+        })
+      : [],
+  }));
+}
 
 const BARCODE_PREFIX = "__BARCODE__:";
 
@@ -179,6 +247,59 @@ function pickTrackedOrder(
   };
 }
 
+async function restoreLocalSeedToNeon(localDb: ServerPosDatabase): Promise<void> {
+  if (localDb.menuItems.length === 0 && localDb.recentOrders.length === 0) {
+    return;
+  }
+  for (const item of localDb.menuItems) {
+    const encodedOptions = encodeServingOptionsWithBarcode(
+      item.servingOptions,
+      item.barcode
+    );
+    await prisma.posMenuItem.upsert({
+      where: { id: item.id },
+      update: {},
+      create: {
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        group: item.group,
+        costPrice: item.costPrice ?? 0,
+        price: item.price,
+        discountPercent: item.discountPercent ?? null,
+        discountedPrice: item.discountedPrice ?? null,
+        stock: item.stock,
+        soldCount: item.soldCount,
+        featured: Boolean(item.featured),
+        description: item.description,
+        servingOptions: encodedOptions,
+        imageUrl: item.imageUrl,
+      },
+    });
+  }
+  for (const ord of localDb.recentOrders) {
+    const cleanItems = stripOrderItemImages(ord.items);
+    await prisma.posOrder.upsert({
+      where: { id: ord.id },
+      update: {},
+      create: {
+        id: ord.id,
+        orderNumber: ord.orderNumber,
+        customerName: ord.customerName,
+        status: ord.status || "Preparing",
+        items: JSON.parse(JSON.stringify(cleanItems)),
+        itemCount: ord.itemCount,
+        subtotal: ord.subtotal,
+        discountTotal: ord.discountTotal,
+        taxTotal: ord.taxTotal,
+        totalAmount: ord.totalAmount,
+        paymentMethod: ord.paymentMethod,
+        createdAtText: ord.createdAt,
+      },
+    });
+  }
+}
+
 export async function readNeonDbOrFallback(
   options?: ReadDbOptions
 ): Promise<PaginatedPosDatabase> {
@@ -187,6 +308,28 @@ export async function readNeonDbOrFallback(
   const fetchAll = Boolean(options?.allOrders);
   const menuOnly = Boolean(options?.menuOnly);
   const trackedId = options?.trackedOrderId?.trim();
+
+  if (isNeonInBackoff()) {
+    return readLocalFallbackDb(options);
+  }
+
+  const now = Date.now();
+  const cachedMem = globalForDb.posMemoryDb;
+  const isCacheFresh = Boolean(
+    cachedMem && now < (globalForDb.neonCacheExpiresAt || 0)
+  );
+  if (cachedMem && isCacheFresh) {
+    if (menuOnly) {
+      return buildLocalFallbackResponse(cachedMem, options);
+    }
+    const canServeOrdersFromCache =
+      Boolean(globalForDb.ordersLoadedFromNeon) &&
+      (Boolean(globalForDb.allOrdersLoaded) ||
+        (!fetchAll && skip + limit <= cachedMem.recentOrders.length));
+    if (canServeOrdersFromCache) {
+      return buildLocalFallbackResponse(cachedMem, options);
+    }
+  }
 
   try {
     if (menuOnly) {
@@ -202,8 +345,27 @@ export async function readNeonDbOrFallback(
           : Promise.resolve(null),
       ]);
 
+      let mappedMenu = menuRows.map(mapDbRowToMenuItem);
+      if (mappedMenu.length === 0) {
+        const localSeed = readLocalFallbackDb({ allOrders: true });
+        if (localSeed.menuItems.length > 0) {
+          await restoreLocalSeedToNeon(localSeed);
+          mappedMenu = localSeed.menuItems;
+        }
+      }
+
+      const existingOrders =
+        globalForDb.posMemoryDb?.recentOrders ??
+        readLocalFallbackDb({ allOrders: true }).recentOrders;
+      globalForDb.posMemoryDb = {
+        menuItems: mappedMenu,
+        recentOrders: existingOrders,
+        updatedAt: Date.now(),
+      };
+      globalForDb.neonCacheExpiresAt = Date.now() + NEON_CACHE_TTL_MS;
+
       return {
-        menuItems: menuRows.map(mapDbRowToMenuItem),
+        menuItems: mappedMenu,
         recentOrders: [],
         totalOrdersCount: 0,
         trackedOrder: trackedRow
@@ -233,8 +395,24 @@ export async function readNeonDbOrFallback(
       prisma.posOrder.count(),
     ]);
 
-    const mappedOrders = orderRows.map(mapDbRowToOrder);
+    let mappedOrders = orderRows.map(mapDbRowToOrder);
     let mappedMenu = menuRows.map(mapDbRowToMenuItem);
+
+    // Auto-restore jika database Neon kosong tetapi file lokal memiliki data
+    if (mappedMenu.length === 0) {
+      const localSeed = readLocalFallbackDb({ allOrders: true });
+      if (localSeed.menuItems.length > 0) {
+        await restoreLocalSeedToNeon(localSeed);
+        mappedMenu = localSeed.menuItems;
+        if (mappedOrders.length === 0 && localSeed.recentOrders.length > 0) {
+          mappedOrders = fetchAll
+            ? localSeed.recentOrders
+            : localSeed.recentOrders.slice(skip, skip + limit);
+        }
+      }
+    }
+
+    mappedOrders = hydrateOrdersWithMenuImages(mappedOrders, mappedMenu);
 
     // Sinkronkan soldCount produk berdasarkan transaksi aktif (agar transaksi yang sudah dihapus tidak ikut terhitung)
     if (fetchAll || (skip === 0 && orderRows.length >= totalOrdersCount)) {
@@ -275,19 +453,34 @@ export async function readNeonDbOrFallback(
       }
     }
 
+    const effectiveTotal = Math.max(totalOrdersCount, mappedOrders.length);
     const result: PaginatedPosDatabase = {
       menuItems: mappedMenu,
       recentOrders: mappedOrders,
-      totalOrdersCount,
+      totalOrdersCount: effectiveTotal,
       updatedAt: Date.now(),
     };
 
-    // Simpan cadangan lokal hanya jika data transaksi lengkap (agar file cadangan tidak terpotong)
+    globalForDb.ordersLoadedFromNeon = true;
+    globalForDb.posTotalOrdersCount = effectiveTotal;
+    globalForDb.neonCacheExpiresAt = Date.now() + NEON_CACHE_TTL_MS;
+
+    // Simpan cadangan lokal & RAM cache lengkap bila halaman awal sudah mencakup semua atau fetchAll
     if (fetchAll || (skip === 0 && orderRows.length >= totalOrdersCount)) {
+      globalForDb.allOrdersLoaded = true;
       writeLocalFallbackDb(result);
+    } else if (skip === 0) {
+      globalForDb.allOrdersLoaded = false;
+      globalForDb.posMemoryDb = {
+        menuItems: mappedMenu,
+        recentOrders: mappedOrders,
+        updatedAt: result.updatedAt,
+      };
     }
+
     return result;
-  } catch {
+  } catch (err) {
+    markNeonQuotaOrError(err);
     return readLocalFallbackDb(options);
   }
 }
@@ -315,13 +508,16 @@ function buildLocalFallbackResponse(
     };
   }
 
-  const total = source.recentOrders.length;
+  const total = Math.max(
+    source.recentOrders.length,
+    globalForDb.posTotalOrdersCount || 0
+  );
   const slice = fetchAll
     ? source.recentOrders
     : source.recentOrders.slice(skip, skip + limit);
   return {
     menuItems: source.menuItems,
-    recentOrders: slice,
+    recentOrders: hydrateOrdersWithMenuImages(slice, source.menuItems),
     totalOrdersCount: total,
     trackedOrder,
     updatedAt: source.updatedAt || Date.now(),
@@ -331,6 +527,11 @@ function buildLocalFallbackResponse(
 export function readLocalFallbackDb(
   options?: ReadDbOptions
 ): PaginatedPosDatabase {
+  // Baca dari RAM cache terlebih dahulu (<1 ms) agar tidak mem-parsing file JSON berulang kali
+  if (globalForDb.posMemoryDb) {
+    return buildLocalFallbackResponse(globalForDb.posMemoryDb, options);
+  }
+
   try {
     if (fs.existsSync(DB_FILE_PATH)) {
       const raw = fs.readFileSync(DB_FILE_PATH, "utf-8");
@@ -348,10 +549,6 @@ export function readLocalFallbackDb(
     // Fallback to memory or initial data
   }
 
-  if (globalForDb.posMemoryDb) {
-    return buildLocalFallbackResponse(globalForDb.posMemoryDb, options);
-  }
-
   const initialDb: ServerPosDatabase = {
     menuItems: [],
     recentOrders: [],
@@ -364,6 +561,40 @@ export function readLocalFallbackDb(
     totalOrdersCount: 0,
     trackedOrder: null,
   };
+}
+
+export function applyLocalDbMutation(
+  updater: (db: ServerPosDatabase) => {
+    menuItems?: MenuItem[];
+    recentOrders?: CompletedOrder[];
+  }
+): PaginatedPosDatabase {
+  if (!globalForDb.posMemoryDb) {
+    readLocalFallbackDb({ allOrders: true });
+  }
+  const current: ServerPosDatabase = globalForDb.posMemoryDb || {
+    menuItems: [],
+    recentOrders: [],
+    updatedAt: Date.now(),
+  };
+  const patch = updater(current);
+  const nextOrders = patch.recentOrders ?? current.recentOrders;
+  const saved = writeLocalFallbackDb({
+    menuItems: patch.menuItems ?? current.menuItems,
+    recentOrders: nextOrders,
+    updatedAt: Date.now(),
+  });
+  globalForDb.posTotalOrdersCount = Math.max(
+    globalForDb.posTotalOrdersCount || 0,
+    nextOrders.length
+  );
+  if (patch.recentOrders) {
+    globalForDb.posTotalOrdersCount = nextOrders.length;
+  }
+  if (globalForDb.neonCacheExpiresAt) {
+    globalForDb.neonCacheExpiresAt = Date.now() + NEON_CACHE_TTL_MS;
+  }
+  return buildLocalFallbackResponse(saved, { ordersLimit: 50, ordersSkip: 0 });
 }
 
 export function writeLocalFallbackDb(data: ServerPosDatabase): ServerPosDatabase {
