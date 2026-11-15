@@ -89,12 +89,14 @@ function formatTime(d: Date | null, fallback: string) {
 }
 
 const STATUS_LABEL: Record<OrderStatusType, string> = {
-  Preparing: "Pending",
+  Pending: "Menunggu ACC",
+  Preparing: "Diproses",
   Ready: "Siap Diambil",
   Completed: "Selesai",
 };
 
 const STATUS_STYLE: Record<OrderStatusType, string> = {
+  Pending: "bg-rose-50 text-rose-600 border-rose-200",
   Preparing: "bg-amber-50 text-amber-600 border-amber-200",
   Ready: "bg-blue-50 text-[#2563EB] border-blue-200",
   Completed: "bg-emerald-50 text-emerald-600 border-emerald-200",
@@ -517,14 +519,17 @@ export function TransactionHistory({
   );
 
   // -------------------------------------------------------------------------
-  // Statistik per metode pembayaran (tidak terpengaruh filter metode)
+  // Statistik per metode pembayaran (hanya transaksi yang sudah di-ACC Admin)
   // -------------------------------------------------------------------------
   const methodStats = useMemo(() => {
     const methods: CompletedOrder["paymentMethod"][] = ["Cash", "QRIS", "Debit"];
-    const grandTotal = baseFilteredOrders.reduce((s, o) => s + o.totalAmount, 0);
+    const confirmedBase = baseFilteredOrders.filter(
+      (o) => o.status !== "Pending"
+    );
+    const grandTotal = confirmedBase.reduce((s, o) => s + o.totalAmount, 0);
 
     // 7 hari terakhir, berakhir di transaksi terbaru (atau hari ini)
-    const latest = baseFilteredOrders
+    const latest = confirmedBase
       .map((o) => getOrderDate(o))
       .find((d): d is Date => Boolean(d));
     const end = startOfDay(latest ?? new Date());
@@ -534,7 +539,7 @@ export function TransactionHistory({
     }
 
     return methods.map((m) => {
-      const list = baseFilteredOrders.filter((o) => o.paymentMethod === m);
+      const list = confirmedBase.filter((o) => o.paymentMethod === m);
       const amount = list.reduce((s, o) => s + o.totalAmount, 0);
       const series = dayKeys.map((key) =>
         list.reduce((s, o) => {
@@ -556,7 +561,7 @@ export function TransactionHistory({
   }, [baseFilteredOrders]);
 
   // -------------------------------------------------------------------------
-  // Ringkasan (KPI)
+  // Ringkasan (KPI) — kecualikan pesanan Pending (belum di-ACC)
   // -------------------------------------------------------------------------
   const summary = useMemo(() => {
     let omzet = 0;
@@ -564,6 +569,7 @@ export function TransactionHistory({
     let modal = 0;
     let penjualanBersih = 0; // tanpa pajak
     let completed = 0;
+    let confirmedCount = 0;
     const byMethod: Record<CompletedOrder["paymentMethod"], number> = {
       Cash: 0,
       QRIS: 0,
@@ -571,6 +577,8 @@ export function TransactionHistory({
     };
 
     filteredOrders.forEach((o) => {
+      if (o.status === "Pending") return;
+      confirmedCount += 1;
       omzet += o.totalAmount;
       pcs += o.itemCount;
       byMethod[o.paymentMethod] =
@@ -588,8 +596,8 @@ export function TransactionHistory({
       modal,
       laba: penjualanBersih - modal,
       completed,
-      count: filteredOrders.length,
-      avg: filteredOrders.length ? Math.round(omzet / filteredOrders.length) : 0,
+      count: confirmedCount,
+      avg: confirmedCount ? Math.round(omzet / confirmedCount) : 0,
       byMethod,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -609,7 +617,9 @@ export function TransactionHistory({
       }
       const g = groups[index.get(key)!];
       g.orders.push(o);
-      g.total += o.totalAmount;
+      if (o.status !== "Pending") {
+        g.total += o.totalAmount;
+      }
     });
     return groups;
   }, [filteredOrders]);
@@ -624,7 +634,7 @@ export function TransactionHistory({
     safeHistoryPage * historyPageSize
   );
 
-  // Rekap per produk
+  // Rekap per produk (hanya transaksi yang sudah di-ACC)
   const productRecap = useMemo(() => {
     const map = new Map<
       string,
@@ -640,6 +650,7 @@ export function TransactionHistory({
       }
     >();
     filteredOrders.forEach((o) => {
+      if (o.status === "Pending") return;
       o.items.forEach((line) => {
         const key = line.product.id;
         const prev = map.get(key) ?? {
@@ -1064,7 +1075,8 @@ export function TransactionHistory({
               className="rounded-xl bg-[#F8FAFC] border border-slate-200/80 px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#2563EB] cursor-pointer"
             >
               <option value="ALL">Semua Status</option>
-              <option value="Preparing">Pending</option>
+              <option value="Pending">Menunggu ACC</option>
+              <option value="Preparing">Diproses</option>
               <option value="Ready">Siap Diambil</option>
               <option value="Completed">Selesai</option>
             </select>

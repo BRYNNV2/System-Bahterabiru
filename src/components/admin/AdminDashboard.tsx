@@ -34,6 +34,8 @@ import {
   VolumeX,
   ScanLine,
   Store,
+  AlertTriangle,
+  Check,
 } from "lucide-react";
 import { AdminLoginView } from "@/components/admin/AdminLoginView";
 import { AdminPinModal } from "@/components/admin/AdminPinModal";
@@ -357,8 +359,11 @@ export function AdminDashboard() {
     if (incomingNewOrders.length > 0) {
       incomingNewOrders.forEach((o) => knownOrderIdsRef.current!.add(o.id));
       const newest = incomingNewOrders[0];
+      const isNeedAcc = newest.status === "Pending";
       showToast(
-        `🔔 Pesanan Baru ${newest.orderNumber} dari ${newest.customerName} (${formatRupiah(newest.totalAmount)})`
+        isNeedAcc
+          ? `🔔 Pesanan Baru ${newest.orderNumber} (${newest.customerName}) - PERLU ACC KASIR (${formatRupiah(newest.totalAmount)})`
+          : `🔔 Pesanan Baru ${newest.orderNumber} dari ${newest.customerName} (${formatRupiah(newest.totalAmount)})`
       );
       if (isSoundEnabled) {
         playNewOrderChime();
@@ -493,7 +498,7 @@ export function AdminDashboard() {
       credentials: "same-origin",
       body: JSON.stringify({
         action: "CREATE_ORDER",
-        payload: { order: newOrder },
+        payload: { order: newOrder, source: "admin-cashier" },
       }),
     }).catch(() => {});
 
@@ -503,6 +508,11 @@ export function AdminDashboard() {
   };
 
   const handleProtectedDeleteOrder = (order: CompletedOrder) => {
+    if (order.status === "Pending") {
+      deleteOrder(order.id);
+      showToast(`Pesanan ${order.orderNumber} ditolak & dihapus.`);
+      return;
+    }
     requirePin(`menghapus transaksi ${order.orderNumber}`, () => {
       deleteOrder(order.id);
       showToast(`Transaksi ${order.orderNumber} telah dihapus.`);
@@ -757,12 +767,19 @@ export function AdminDashboard() {
   }
 
   // ============================================================================
-  // 2. DATA & ANALYTICS CALCULATIONS (Dihitung dari Transaksi Aktif / Tidak Dihapus)
+  // 2. DATA & ANALYTICS CALCULATIONS (Hanya Hitung Transaksi yang Sudah Di-ACC Admin)
   // ============================================================================
-  const totalSoldUnits = recentOrders.reduce((s, o) => s + o.itemCount, 0);
-  const liveOrdersRevenue = recentOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const confirmedOrders = recentOrders.filter((o) => o.status !== "Pending");
+  const pendingApprovalOrders = recentOrders.filter(
+    (o) => o.status === "Pending"
+  );
+  const totalSoldUnits = confirmedOrders.reduce((s, o) => s + o.itemCount, 0);
+  const liveOrdersRevenue = confirmedOrders.reduce(
+    (s, o) => s + o.totalAmount,
+    0
+  );
   const costLookupMap = new Map(menuItems.map((m) => [m.id, m.costPrice || 0]));
-  const totalProductCostOfGoodsSold = recentOrders.reduce(
+  const totalProductCostOfGoodsSold = confirmedOrders.reduce(
     (sum, ord) =>
       sum +
       ord.items.reduce((lineSum, line) => {
@@ -1584,8 +1601,16 @@ export function AdminDashboard() {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
-                                      <span className="px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200/80 text-slate-600 text-[10px] font-semibold">
-                                        {st === "Completed"
+                                      <span
+                                        className={`px-2 py-0.5 rounded-full border text-[10px] font-semibold ${
+                                          st === "Pending"
+                                            ? "bg-rose-50 border-rose-200 text-rose-700"
+                                            : "bg-slate-100 border-slate-200/80 text-slate-600"
+                                        }`}
+                                      >
+                                        {st === "Pending"
+                                          ? "Menunggu ACC"
+                                          : st === "Completed"
                                           ? "Selesai"
                                           : st === "Ready"
                                           ? "Siap Diambil"
@@ -1633,44 +1658,99 @@ export function AdminDashboard() {
                                 {/* Tombol Aksi Cepat di dalam Notifikasi */}
                                 {st !== "Completed" && (
                                   <div className="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100">
-                                    {st === "Preparing" && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          updateOrderStatus(ord.id, "Ready");
-                                          if (isUnread) {
-                                            setReadNotifIds((prev) => [
-                                              ...prev,
-                                              notifKey,
-                                            ]);
-                                          }
-                                          showToast(
-                                            `Pesanan ${ord.orderNumber} ditandai Siap Diambil!`
-                                          );
-                                        }}
-                                        className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-[10.5px] font-semibold transition cursor-pointer"
-                                      >
-                                        Tandai Siap Diambil
-                                      </button>
+                                    {st === "Pending" ? (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            updateOrderStatus(ord.id, "Preparing");
+                                            if (isUnread) {
+                                              setReadNotifIds((prev) => [
+                                                ...prev,
+                                                notifKey,
+                                              ]);
+                                            }
+                                            showToast(
+                                              `Pembayaran ${ord.orderNumber} di-ACC! Stok dipotong & saldo masuk.`
+                                            );
+                                          }}
+                                          className="flex-1 py-1.5 px-2 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white text-[10.5px] font-bold transition cursor-pointer"
+                                        >
+                                          ✓ ACC &amp; Proses
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            updateOrderStatus(ord.id, "Completed");
+                                            if (isUnread) {
+                                              setReadNotifIds((prev) => [
+                                                ...prev,
+                                                notifKey,
+                                              ]);
+                                            }
+                                            showToast(
+                                              `Pembayaran ${ord.orderNumber} di-ACC & Selesai! Stok dipotong & saldo masuk.`
+                                            );
+                                          }}
+                                          className="flex-1 py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[10.5px] font-bold transition cursor-pointer"
+                                        >
+                                          ✓ ACC &amp; Selesai
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            deleteOrder(ord.id);
+                                            showToast(
+                                              `Pesanan ${ord.orderNumber} ditolak & dihapus.`
+                                            );
+                                          }}
+                                          className="py-1.5 px-2.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10.5px] font-bold transition cursor-pointer"
+                                        >
+                                          ✕ Tolak
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        {st === "Preparing" && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              updateOrderStatus(ord.id, "Ready");
+                                              if (isUnread) {
+                                                setReadNotifIds((prev) => [
+                                                  ...prev,
+                                                  notifKey,
+                                                ]);
+                                              }
+                                              showToast(
+                                                `Pesanan ${ord.orderNumber} ditandai Siap Diambil!`
+                                              );
+                                            }}
+                                            className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200/80 text-slate-700 text-[10.5px] font-semibold transition cursor-pointer"
+                                          >
+                                            Tandai Siap Diambil
+                                          </button>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            updateOrderStatus(ord.id, "Completed");
+                                            if (isUnread) {
+                                              setReadNotifIds((prev) => [
+                                                ...prev,
+                                                notifKey,
+                                              ]);
+                                            }
+                                            showToast(
+                                              `Pesanan ${ord.orderNumber} Selesai!`
+                                            );
+                                          }}
+                                          className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[10.5px] font-semibold transition cursor-pointer"
+                                        >
+                                          Selesaikan Pesanan
+                                        </button>
+                                      </>
                                     )}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        updateOrderStatus(ord.id, "Completed");
-                                        if (isUnread) {
-                                          setReadNotifIds((prev) => [
-                                            ...prev,
-                                            notifKey,
-                                          ]);
-                                        }
-                                        showToast(
-                                          `Pesanan ${ord.orderNumber} Selesai!`
-                                        );
-                                      }}
-                                      className="flex-1 py-1.5 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-[10.5px] font-semibold transition cursor-pointer"
-                                    >
-                                      Selesaikan Pesanan
-                                    </button>
                                   </div>
                                 )}
                               </div>
@@ -2059,7 +2139,10 @@ export function AdminDashboard() {
                         {formatRupiah(totalIncome)}
                       </span>
                       <span className="inline-block mt-2 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold">
-                        {recentOrders.length} Transaksi Masuk
+                        {confirmedOrders.length} Transaksi Di-ACC
+                        {pendingApprovalOrders.length > 0
+                          ? ` • ${pendingApprovalOrders.length} Menunggu ACC`
+                          : ""}
                       </span>
                     </div>
                   </div>
@@ -2368,6 +2451,7 @@ export function AdminDashboard() {
                         onClick={() => {
                           const cycle: ("ALL" | OrderStatusType)[] = [
                             "ALL",
+                            "Pending",
                             "Preparing",
                             "Ready",
                             "Completed",
@@ -2382,7 +2466,16 @@ export function AdminDashboard() {
                         className="px-3 py-1.5 rounded-lg border border-slate-200/80 text-[11px] font-semibold text-slate-700 hover:border-[#2563EB] hover:text-[#2563EB] transition cursor-pointer"
                       >
                         Status:{" "}
-                        {txStatusFilter === "ALL" ? "Semua" : txStatusFilter} ▾
+                        {txStatusFilter === "ALL"
+                          ? "Semua"
+                          : txStatusFilter === "Pending"
+                          ? "Menunggu ACC"
+                          : txStatusFilter === "Preparing"
+                          ? "Diproses"
+                          : txStatusFilter === "Ready"
+                          ? "Siap Diambil"
+                          : "Selesai"}{" "}
+                        ▾
                       </button>
                       <button
                         type="button"
@@ -2394,6 +2487,26 @@ export function AdminDashboard() {
                       </button>
                     </div>
                   </div>
+
+                  {pendingApprovalOrders.length > 0 && (
+                    <div
+                      onClick={() => setTxStatusFilter("Pending")}
+                      className="mb-3.5 p-3 rounded-xl bg-amber-50 border border-amber-200/80 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-900 cursor-pointer hover:bg-amber-100/70 transition"
+                    >
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                        <span>
+                          Ada{" "}
+                          <strong>{pendingApprovalOrders.length} pesanan</strong>{" "}
+                          menunggu ACC pembayaran tunai (stok &amp; saldo belum
+                          berubah sebelum di-ACC).
+                        </span>
+                      </div>
+                      <span className="text-[11px] font-extrabold text-amber-800 underline">
+                        Filter Menunggu ACC →
+                      </span>
+                    </div>
+                  )}
 
                   <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full min-w-[520px] text-left border-collapse">
@@ -2473,32 +2586,73 @@ export function AdminDashboard() {
                                 className="py-3 px-3 text-right"
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <button
-                                  type="button"
-                                  disabled={isCompletedLocked}
-                                  title={
-                                    isCompletedLocked
-                                      ? "Pesanan sudah selesai dan terkunci"
-                                      : "Klik untuk mengubah status pesanan"
-                                  }
-                                  onClick={() => {
-                                    if (isCompletedLocked) return;
-                                    updateOrderStatus(ord.id, nextStatus);
-                                    showToast(
-                                      `Status ${ord.orderNumber} -> ${nextStatus}`
-                                    );
-                                  }}
-                                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${isCompletedLocked
-                                      ? "bg-emerald-50 text-emerald-600 cursor-default"
-                                      : currentStatus === "Ready"
+                                {currentStatus === "Pending" ? (
+                                  <div className="inline-flex items-center justify-end gap-1.5 flex-wrap">
+                                    <span className="px-2 py-1 rounded-md bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
+                                      Pending
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        updateOrderStatus(ord.id, "Completed");
+                                        showToast(
+                                          `Pembayaran ${ord.orderNumber} di-ACC! Stok dipotong & saldo masuk.`
+                                        );
+                                      }}
+                                      className="px-2.5 py-1 rounded-md bg-[#2563EB] hover:bg-blue-700 text-white text-[10px] font-bold transition cursor-pointer"
+                                      title="ACC Pembayaran Tunai (Potong Stok & Tambah Saldo)"
+                                    >
+                                      ✓ ACC Bayar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        deleteOrder(ord.id);
+                                        showToast(
+                                          `Pesanan ${ord.orderNumber} ditolak & dihapus.`
+                                        );
+                                      }}
+                                      className="px-2 py-1 rounded-md bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-bold transition cursor-pointer"
+                                      title="Tolak & Hapus Pesanan Iseng"
+                                    >
+                                      ✕ Tolak
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    disabled={isCompletedLocked}
+                                    title={
+                                      isCompletedLocked
+                                        ? "Pesanan sudah selesai dan terkunci"
+                                        : "Klik untuk mengubah status pesanan"
+                                    }
+                                    onClick={() => {
+                                      if (isCompletedLocked) return;
+                                      updateOrderStatus(ord.id, nextStatus);
+                                      showToast(
+                                        `Status ${ord.orderNumber} -> ${
+                                          nextStatus === "Completed"
+                                            ? "Selesai"
+                                            : nextStatus
+                                        }`
+                                      );
+                                    }}
+                                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition ${
+                                      isCompletedLocked
+                                        ? "bg-emerald-50 text-emerald-600 cursor-default"
+                                        : currentStatus === "Ready"
                                         ? "bg-blue-50 text-[#2563EB] cursor-pointer hover:scale-105"
                                         : "bg-amber-50 text-amber-600 cursor-pointer hover:scale-105"
                                     }`}
-                                >
-                                  {isCompletedLocked
-                                    ? "✓ Selesai"
-                                    : currentStatus}
-                                </button>
+                                  >
+                                    {isCompletedLocked
+                                      ? "✓ Selesai"
+                                      : currentStatus === "Preparing"
+                                      ? "Diproses"
+                                      : currentStatus}
+                                  </button>
+                                )}
                               </td>
                             </tr>
                           );
@@ -3612,11 +3766,18 @@ export function AdminDashboard() {
               <div className="bg-white rounded-2xl p-5 border border-slate-200/80 flex items-center justify-between">
                 <div>
                   <span className="block text-xs font-medium text-slate-400 mb-1">
-                    Total Transaksi
+                    Total Transaksi Di-ACC
                   </span>
-                  <span className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
-                    {recentOrders.length}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl sm:text-2xl font-extrabold text-slate-900 tabular-nums tracking-tight">
+                      {confirmedOrders.length}
+                    </span>
+                    {pendingApprovalOrders.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-bold">
+                        +{pendingApprovalOrders.length} Menunggu ACC
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="w-11 h-11 rounded-xl bg-[#F8FAFC] border border-slate-200/80 text-slate-600 flex items-center justify-center shrink-0">
                   <Receipt className="w-5 h-5" />
@@ -3693,12 +3854,36 @@ export function AdminDashboard() {
                     className="rounded-xl bg-[#F8FAFC] border border-slate-200/80 px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:bg-white focus:border-[#2563EB] cursor-pointer"
                   >
                     <option value="ALL">Semua Status</option>
-                    <option value="Preparing">Pending (Preparing)</option>
-                    <option value="Ready">Siap (Ready)</option>
+                    <option value="Pending">Menunggu ACC</option>
+                    <option value="Preparing">Diproses (Sudah ACC)</option>
+                    <option value="Ready">Siap Diambil (Ready)</option>
                     <option value="Completed">Selesai (Completed)</option>
                   </select>
                 </div>
               </div>
+
+              {pendingApprovalOrders.length > 0 && (
+                <div
+                  onClick={() => setTxStatusFilter("Pending")}
+                  className="mx-4 sm:mx-5 mt-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex flex-wrap items-center justify-between gap-2 text-xs text-amber-900 cursor-pointer hover:bg-amber-100/70 transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      Ada{" "}
+                      <strong>
+                        {pendingApprovalOrders.length} pesanan pembeli
+                      </strong>{" "}
+                      yang menunggu ACC pembayaran kasir. Stok barang &amp;
+                      saldo kasir belum berubah sampai Anda klik{" "}
+                      <strong>ACC Bayar</strong>.
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-extrabold text-amber-800 underline">
+                    Tampilkan Menunggu ACC →
+                  </span>
+                </div>
+              )}
 
               {/* Responsive Data Table */}
               <div className="overflow-x-auto custom-scrollbar">
@@ -3773,18 +3958,24 @@ export function AdminDashboard() {
                           currentStatus === "Completed";
                         const statusConfig = isCompletedLocked
                           ? {
-                            label: "Selesai",
-                            bg: "bg-emerald-50 text-emerald-600 border-emerald-200 cursor-default",
-                            dot: "bg-emerald-500",
-                          }
+                              label: "Selesai",
+                              bg: "bg-emerald-50 text-emerald-600 border-emerald-200 cursor-default",
+                              dot: "bg-emerald-500",
+                            }
                           : currentStatus === "Ready"
-                            ? {
+                          ? {
                               label: "Siap Diambil",
                               bg: "bg-blue-50 text-[#2563EB] border-blue-200 hover:bg-blue-100 cursor-pointer",
                               dot: "bg-[#2563EB]",
                             }
-                            : {
-                              label: "Pending",
+                          : currentStatus === "Pending"
+                          ? {
+                              label: "Menunggu ACC",
+                              bg: "bg-rose-50 text-rose-600 border-rose-200",
+                              dot: "bg-rose-500",
+                            }
+                          : {
+                              label: "Diproses",
                               bg: "bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100 cursor-pointer",
                               dot: "bg-amber-500",
                             };
@@ -3840,38 +4031,76 @@ export function AdminDashboard() {
                               {order.createdAt}
                             </td>
 
-                            {/* 6. Status Pill (Locked once Completed) */}
+                            {/* 6. Status Pill / ACC Pembayaran (Locked once Completed) */}
                             <td
                               className="py-3.5 px-4"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isCompletedLocked) return;
-                                updateOrderStatus(order.id, nextStatus);
-                                showToast(
-                                  `Status ${order.orderNumber} diubah ke ${nextStatus === "Completed"
-                                    ? "Selesai"
-                                    : nextStatus
-                                  }`
-                                );
-                              }}
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <span
-                                title={
-                                  isCompletedLocked
-                                    ? "Pesanan sudah selesai dan tidak dapat diubah lagi"
-                                    : "Klik badge untuk mengubah status pesanan"
-                                }
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold transition ${statusConfig.bg}`}
-                              >
-                                {isCompletedLocked ? (
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                ) : (
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`}
-                                  />
-                                )}
-                                {statusConfig.label}
-                              </span>
+                              {currentStatus === "Pending" ? (
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10.5px] font-bold">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                    Pending
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateOrderStatus(order.id, "Completed");
+                                      showToast(
+                                        `Pembayaran ${order.orderNumber} di-ACC! Stok dipotong & saldo masuk.`
+                                      );
+                                    }}
+                                    title="ACC Pembayaran Tunai (Potong Stok & Tambah Saldo)"
+                                    className="px-2.5 py-1 rounded-full bg-[#2563EB] hover:bg-blue-700 text-white text-[11px] font-bold transition cursor-pointer shadow-2xs"
+                                  >
+                                    ✓ ACC Bayar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      deleteOrder(order.id);
+                                      showToast(
+                                        `Pesanan ${order.orderNumber} ditolak & dihapus.`
+                                      );
+                                    }}
+                                    title="Tolak Pesanan Iseng / Spam"
+                                    className="px-2.5 py-1 rounded-full bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-bold transition cursor-pointer"
+                                  >
+                                    ✕ Tolak
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={isCompletedLocked}
+                                  onClick={() => {
+                                    if (isCompletedLocked) return;
+                                    updateOrderStatus(order.id, nextStatus);
+                                    showToast(
+                                      `Status ${order.orderNumber} diubah ke ${
+                                        nextStatus === "Completed"
+                                          ? "Selesai"
+                                          : nextStatus
+                                      }`
+                                    );
+                                  }}
+                                  title={
+                                    isCompletedLocked
+                                      ? "Pesanan sudah selesai dan tidak dapat diubah lagi"
+                                      : "Klik badge untuk mengubah status pesanan"
+                                  }
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-bold transition ${statusConfig.bg}`}
+                                >
+                                  {isCompletedLocked ? (
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  ) : (
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full ${statusConfig.dot}`}
+                                    />
+                                  )}
+                                  {statusConfig.label}
+                                </button>
+                              )}
                             </td>
 
                             {/* 7. Aksi (Detail Struk & Hapus) */}
@@ -4710,11 +4939,75 @@ export function AdminDashboard() {
 
             <div className="space-y-2">
               <span className="block text-[10px] font-bold text-slate-400 uppercase">
-                Status Pesanan
+                {(selectedOrderDetail.status || "Preparing") === "Pending"
+                  ? "Konfirmasi / ACC Pembayaran Kasir"
+                  : "Status Pesanan"}
               </span>
-              <div className="grid grid-cols-3 gap-2">
-                {(["Preparing", "Ready", "Completed"] as OrderStatusType[]).map(
-                  (st) => {
+              {(selectedOrderDetail.status || "Preparing") === "Pending" ? (
+                <div className="space-y-2.5">
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200/80 flex items-start gap-2 text-[11px] text-amber-900">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p>
+                      Pesanan ini <strong>Belum Di-ACC</strong>. Stok barang
+                      belum dipotong &amp; saldo belum masuk ke kasir. Pastikan
+                      pembeli sudah menyerahkan uang tunai sebelum klik ACC.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateOrderStatus(selectedOrderDetail.id, "Preparing");
+                        setSelectedOrderDetail({
+                          ...selectedOrderDetail,
+                          status: "Preparing",
+                        });
+                        showToast(
+                          `Pembayaran ${selectedOrderDetail.orderNumber} di-ACC! Stok dipotong & saldo masuk.`
+                        );
+                      }}
+                      className="py-2.5 px-3 rounded-xl bg-[#2563EB] hover:bg-blue-700 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>ACC &amp; Proses</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateOrderStatus(selectedOrderDetail.id, "Completed");
+                        setSelectedOrderDetail({
+                          ...selectedOrderDetail,
+                          status: "Completed",
+                        });
+                        showToast(
+                          `Pembayaran ${selectedOrderDetail.orderNumber} di-ACC & Langsung Selesai!`
+                        );
+                      }}
+                      className="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>ACC &amp; Selesai</span>
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const ordNum = selectedOrderDetail.orderNumber;
+                      deleteOrder(selectedOrderDetail.id);
+                      setSelectedOrderDetail(null);
+                      showToast(`Pesanan ${ordNum} ditolak & dihapus.`);
+                    }}
+                    className="w-full py-2.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Tolak Pesanan Iseng</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {(
+                    ["Preparing", "Ready", "Completed"] as OrderStatusType[]
+                  ).map((st) => {
                     const currentSt =
                       selectedOrderDetail.status || "Preparing";
                     const active = currentSt === st;
@@ -4733,25 +5026,35 @@ export function AdminDashboard() {
                             status: st,
                           });
                           showToast(
-                            `Status ${selectedOrderDetail.orderNumber} -> ${st === "Completed" ? "Selesai" : st
+                            `Status ${selectedOrderDetail.orderNumber} -> ${
+                              st === "Completed"
+                                ? "Selesai"
+                                : st === "Preparing"
+                                ? "Diproses"
+                                : "Siap Diambil"
                             }`
                           );
                         }}
-                        className={`py-2 rounded-xl text-xs font-bold transition ${active
+                        className={`py-2 rounded-xl text-xs font-bold transition ${
+                          active
                             ? st === "Completed"
                               ? "bg-emerald-600 text-white cursor-default"
                               : "bg-[#2563EB] text-white cursor-pointer"
                             : isLocked
-                              ? "bg-slate-100 text-slate-300 cursor-not-allowed"
-                              : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100 cursor-pointer"
-                          }`}
+                            ? "bg-slate-100 text-slate-300 cursor-not-allowed"
+                            : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-100 cursor-pointer"
+                        }`}
                       >
-                        {st === "Completed" ? "Selesai" : st}
+                        {st === "Completed"
+                          ? "Selesai"
+                          : st === "Preparing"
+                          ? "Diproses"
+                          : "Siap Diambil"}
                       </button>
                     );
-                  }
-                )}
-              </div>
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -13,7 +13,7 @@ export interface CartItem {
   quantity: number;
 }
 
-export type OrderStatusType = "Preparing" | "Ready" | "Completed";
+export type OrderStatusType = "Pending" | "Preparing" | "Ready" | "Completed";
 export type PaymentMethod = "Cash" | "Debit" | "QRIS";
 
 export interface CompletedOrder {
@@ -110,8 +110,9 @@ interface PosState {
   updateMenuItem: (id: string, updates: Partial<MenuItem>) => void;
   deleteMenuItem: (id: string) => void;
 
-  // Admin Orders Management
+  // Admin Orders Management & Buyer Pending Cancel
   updateOrderStatus: (orderId: string, status: OrderStatusType) => void;
+  cancelPendingOrder: (orderId: string) => void;
   deleteOrder: (orderId: string) => void;
 
   // Multi-Device Backend Sync
@@ -405,27 +406,71 @@ export const usePosStore = create<PosState>()(
 
       updateOrderStatus: (orderId, status) => {
         const currentOrder = get().recentOrders.find((o) => o.id === orderId);
-        if (currentOrder?.status === "Completed") return;
-        set((state) => ({
-          recentOrders: state.recentOrders.map((o) =>
-            o.id === orderId && o.status !== "Completed"
-              ? { ...o, status, updatedAtIso: new Date().toISOString() }
-              : o
-          ),
-        }));
+        if (
+          !currentOrder ||
+          currentOrder.status === "Completed" ||
+          status === "Pending"
+        ) {
+          return;
+        }
+        const isApprovingPending = currentOrder.status === "Pending";
+
+        set((state) => {
+          const updatedMenu = isApprovingPending
+            ? state.menuItems.map((item) => {
+                const line = currentOrder.items.find(
+                  (i) => i.product.id === item.id
+                );
+                if (!line) return item;
+                return {
+                  ...item,
+                  stock: Math.max(0, item.stock - line.quantity),
+                  soldCount: item.soldCount + line.quantity,
+                };
+              })
+            : state.menuItems;
+
+          return {
+            menuItems: updatedMenu,
+            recentOrders: state.recentOrders.map((o) =>
+              o.id === orderId && o.status !== "Completed"
+                ? { ...o, status, updatedAtIso: new Date().toISOString() }
+                : o
+            ),
+          };
+        });
         void sendSyncMutation("UPDATE_ORDER_STATUS", { orderId, status });
+      },
+
+      cancelPendingOrder: (orderId) => {
+        const current = get().lastBuyerOrder;
+        if (current && current.id === orderId && current.status !== "Pending") {
+          return;
+        }
+        set((state) => ({
+          recentOrders: state.recentOrders.filter(
+            (o) => !(o.id === orderId && o.status === "Pending")
+          ),
+          lastBuyerOrder:
+            state.lastBuyerOrder?.id === orderId ? null : state.lastBuyerOrder,
+        }));
+        void sendSyncMutation("CANCEL_PENDING_ORDER", { orderId });
       },
 
       deleteOrder: (orderId) => {
         set((state) => {
           const targetOrder = state.recentOrders.find((o) => o.id === orderId);
+          const wasApproved = Boolean(
+            targetOrder && targetOrder.status !== "Pending"
+          );
           const remainingOrders = state.recentOrders.filter(
             (o) => o.id !== orderId
           );
 
-          // Hitung ulang soldCount dari sisa transaksi aktif & kembalikan stok pesanan yang dibatalkan/dihapus
+          // Hitung ulang soldCount dari transaksi yang sudah di-ACC & kembalikan stok jika pesanan sebelumnya sudah di-ACC
           const actualSoldMap = new Map<string, number>();
           for (const ord of remainingOrders) {
+            if (ord.status === "Pending") continue;
             for (const line of ord.items) {
               const pid = line?.product?.id;
               if (pid) {
@@ -438,9 +483,9 @@ export const usePosStore = create<PosState>()(
           }
 
           const updatedMenu = state.menuItems.map((item) => {
-            const cancelledLine = targetOrder?.items.find(
-              (i) => i.product.id === item.id
-            );
+            const cancelledLine = wasApproved
+              ? targetOrder?.items.find((i) => i.product.id === item.id)
+              : undefined;
             const restoredStock = cancelledLine
               ? item.stock + cancelledLine.quantity
               : item.stock;
@@ -454,6 +499,8 @@ export const usePosStore = create<PosState>()(
           return {
             menuItems: updatedMenu,
             recentOrders: remainingOrders,
+            lastBuyerOrder:
+              state.lastBuyerOrder?.id === orderId ? null : state.lastBuyerOrder,
           };
         });
         void sendSyncMutation("DELETE_ORDER", { orderId });
@@ -522,6 +569,13 @@ export const usePosStore = create<PosState>()(
                     ...updatedBuyerOrder,
                     status: latestStatus,
                   };
+                } else if (
+                  "trackedOrder" in data &&
+                  data.trackedOrder === null &&
+                  !fromRecent &&
+                  updatedBuyerOrder.status === "Pending"
+                ) {
+                  updatedBuyerOrder = null;
                 }
               }
               return {
@@ -548,7 +602,11 @@ export const usePosStore = create<PosState>()(
           recentOrders,
           customerName,
           selectedTable,
+          lastBuyerOrder,
         } = get();
+        if (lastBuyerOrder?.status === "Pending") {
+          return lastBuyerOrder;
+        }
         if (cart.length === 0) return null;
 
         let subtotal = 0;
@@ -592,7 +650,7 @@ export const usePosStore = create<PosState>()(
           id: `ord-${Date.now()}`,
           orderNumber: `#F${Math.floor(1000 + Math.random() * 9000)}`,
           customerName: formattedCustomer,
-          status: "Preparing",
+          status: "Pending",
           items: detailedItems,
           itemCount,
           subtotal: netSubtotal,
@@ -607,18 +665,8 @@ export const usePosStore = create<PosState>()(
           createdAtIso: new Date().toISOString(),
         };
 
-        const updatedMenu = menuItems.map((item) => {
-          const inCart = cart.find((c) => c.productId === item.id);
-          if (!inCart) return item;
-          return {
-            ...item,
-            stock: Math.max(0, item.stock - inCart.quantity),
-            soldCount: item.soldCount + inCart.quantity,
-          };
-        });
-
+        // Stok dan soldCount TIDAK langsung diubah sebelum pembayaran cash di-ACC oleh Admin
         set({
-          menuItems: updatedMenu,
           cart: [],
           customerName: "",
           orderNote: "",

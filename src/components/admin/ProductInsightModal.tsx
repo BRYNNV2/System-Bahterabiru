@@ -59,6 +59,7 @@ export function ProductInsightModal({
     const oneDayMs = 24 * 60 * 60 * 1000;
 
     const filteredOrders = recentOrders.filter((ord) => {
+      if (ord.status === "Pending") return false;
       if (period === "all") return true;
       if (ord.createdAtIso) {
         const ts = new Date(ord.createdAtIso).getTime();

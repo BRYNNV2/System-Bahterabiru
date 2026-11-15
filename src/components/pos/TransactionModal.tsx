@@ -11,6 +11,8 @@ import {
   BellRing,
   CheckCircle2,
   Receipt,
+  AlertCircle,
+  Ban,
 } from "lucide-react";
 import {
   usePosStore,
@@ -37,6 +39,7 @@ export function TransactionModal({
     orderMode,
     orderNote,
     completeCheckout,
+    cancelPendingOrder,
     paymentMethod,
     setPaymentMethod,
     lastBuyerOrder,
@@ -48,7 +51,9 @@ export function TransactionModal({
 
   if (!isOpen) return null;
 
-  // Gunakan status terbaru dari lastBuyerOrder yang disinkronkan real-time setiap 3 detik
+  const hasPendingBuyerOrder = lastBuyerOrder?.status === "Pending";
+
+  // Gunakan status terbaru dari lastBuyerOrder yang disinkronkan real-time
   const activeReceiptOrder =
     viewReceiptOnly && lastBuyerOrder
       ? lastBuyerOrder
@@ -56,6 +61,8 @@ export function TransactionModal({
       ? lastBuyerOrder && lastBuyerOrder.id === completedOrder.id
         ? lastBuyerOrder
         : completedOrder
+      : hasPendingBuyerOrder
+      ? lastBuyerOrder
       : null;
 
   const populatedCart = cart
@@ -89,33 +96,15 @@ export function TransactionModal({
     const order = completeCheckout();
     if (order) {
       setCompletedOrder(order);
-      try {
-        await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orderNumber: order.orderNumber,
-            customerName: order.customerName,
-            items: order.items.map((i) => ({
-              productId: i.product.id,
-              productName: i.product.name,
-              quantity: i.quantity,
-              originalPrice: i.product.price,
-              unitPrice: i.unitPrice,
-              lineTotal: i.lineTotal,
-            })),
-            subtotal: order.subtotal,
-            discountTotal: order.discountTotal,
-            taxTotal: order.taxTotal,
-            totalAmount: order.totalAmount,
-            paymentMethod: order.paymentMethod,
-          }),
-        });
-      } catch {
-        // Fallback to local store
-      }
     }
     setIsProcessing(false);
+  };
+
+  const handleCancelPending = () => {
+    if (!activeReceiptOrder || activeReceiptOrder.status !== "Pending") return;
+    cancelPendingOrder(activeReceiptOrder.id);
+    setCompletedOrder(null);
+    onClose();
   };
 
   const handleCloseAll = () => {
@@ -138,9 +127,14 @@ export function TransactionModal({
     desc: string;
   }[] = [
     {
+      id: "Pending",
+      label: "Menunggu ACC",
+      desc: "Tunjukkan struk & bayar tunai di kasir agar pesanan di-ACC Admin",
+    },
+    {
       id: "Preparing",
       label: "Diproses",
-      desc: "Pesanan diterima & sedang disiapkan",
+      desc: "Pembayaran di-ACC & pesanan sedang disiapkan",
     },
     {
       id: "Ready",
@@ -155,7 +149,13 @@ export function TransactionModal({
   ];
 
   const currentStepIndex =
-    currentStatus === "Completed" ? 2 : currentStatus === "Ready" ? 1 : 0;
+    currentStatus === "Completed"
+      ? 3
+      : currentStatus === "Ready"
+      ? 2
+      : currentStatus === "Preparing"
+      ? 1
+      : 0;
 
   return (
     <div
@@ -288,7 +288,17 @@ export function TransactionModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mt-5">
+            <div className="mt-3.5 p-3 rounded-2xl bg-amber-50 border border-amber-200/80 flex items-start gap-2.5 text-[11px] text-amber-900 leading-relaxed">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p>
+                Pesanan dikirim ke kasir dengan status{" "}
+                <strong>Menunggu ACC Kasir</strong>. Stok barang &amp; pembayaran
+                baru tercatat setelah Anda membayar tunai dan dikonfirmasi oleh
+                Admin Kasir.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-4">
               <button
                 type="button"
                 onClick={handleCloseAll}
@@ -302,7 +312,7 @@ export function TransactionModal({
                 disabled={isProcessing}
                 className="py-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition shadow-md cursor-pointer disabled:opacity-50 active:scale-95"
               >
-                {isProcessing ? "Memproses..." : "Selesaikan Bayar"}
+                {isProcessing ? "Mengirim..." : "Pesan & Bayar di Kasir"}
               </button>
             </div>
           </div>
@@ -326,15 +336,41 @@ export function TransactionModal({
               </button>
             </div>
 
+            {hasPendingBuyerOrder && !completedOrder && !viewReceiptOnly && (
+              <div className="mb-3 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  Anda masih memiliki pesanan aktif yang{" "}
+                  <strong>menunggu ACC kasir</strong>. Selesaikan pembayaran di
+                  kasir atau batalkan pesanan ini terlebih dahulu untuk membuat
+                  pesanan baru.
+                </span>
+              </div>
+            )}
+
             {/* Banner Instruksi Tunjukkan ke Kasir */}
-            <div className="rounded-2xl bg-zinc-900 text-white p-4 text-center relative overflow-hidden">
-              <span className="block text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                Tunjukkan Layar Ini ke Penjaga Kasir
+            <div
+              className={`rounded-2xl text-white p-4 text-center relative overflow-hidden ${
+                currentStatus === "Pending" ? "bg-amber-600" : "bg-zinc-900"
+              }`}
+            >
+              <span
+                className={`block text-[10px] font-bold uppercase tracking-widest ${
+                  currentStatus === "Pending" ? "text-amber-100" : "text-zinc-400"
+                }`}
+              >
+                {currentStatus === "Pending"
+                  ? "Tunjukkan Layar Ini & Bayar Tunai di Kasir untuk ACC"
+                  : "Tunjukkan Layar Ini ke Penjaga Kasir"}
               </span>
               <div className="text-2xl sm:text-3xl font-black tracking-tight mt-0.5 tabular-nums">
                 {activeReceiptOrder.orderNumber}
               </div>
-              <p className="text-xs text-zinc-300 font-semibold mt-0.5">
+              <p
+                className={`text-xs font-semibold mt-0.5 ${
+                  currentStatus === "Pending" ? "text-amber-50" : "text-zinc-300"
+                }`}
+              >
                 Atas Nama:{" "}
                 <strong className="text-white">
                   {activeReceiptOrder.customerName}
@@ -342,7 +378,7 @@ export function TransactionModal({
               </p>
             </div>
 
-            {/* Live Order Status Tracker (Auto-Update tiap 3 detik) */}
+            {/* Live Order Status Tracker (Auto-Update) */}
             <div className="mt-3.5 p-3.5 rounded-2xl border border-zinc-200/80 bg-white">
               <div className="flex items-center justify-between mb-2.5">
                 <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-zinc-500">
@@ -354,28 +390,34 @@ export function TransactionModal({
                       ? "bg-emerald-50 text-emerald-600 border border-emerald-200"
                       : currentStatus === "Ready"
                       ? "bg-blue-50 text-blue-600 border border-blue-200 animate-pulse"
-                      : "bg-amber-50 text-amber-600 border border-amber-200"
+                      : currentStatus === "Preparing"
+                      ? "bg-amber-50 text-amber-600 border border-amber-200"
+                      : "bg-rose-50 text-rose-600 border border-rose-200 animate-pulse"
                   }`}
                 >
                   {currentStatus === "Completed" ? (
                     <CheckCircle2 className="w-3 h-3" />
                   ) : currentStatus === "Ready" ? (
                     <BellRing className="w-3 h-3" />
-                  ) : (
+                  ) : currentStatus === "Preparing" ? (
                     <Clock className="w-3 h-3" />
+                  ) : (
+                    <AlertCircle className="w-3 h-3" />
                   )}
                   <span>
                     {currentStatus === "Completed"
                       ? "Selesai"
                       : currentStatus === "Ready"
                       ? "Siap Diambil!"
-                      : "Sedang Diproses"}
+                      : currentStatus === "Preparing"
+                      ? "Sedang Diproses"
+                      : "Menunggu ACC Kasir"}
                   </span>
                 </span>
               </div>
 
-              {/* 3-Step Progress Bar */}
-              <div className="grid grid-cols-3 gap-2">
+              {/* 4-Step Progress Bar */}
+              <div className="grid grid-cols-4 gap-1.5">
                 {statusSteps.map((step, idx) => {
                   const isDone = idx <= currentStepIndex;
                   const isCurrent = idx === currentStepIndex;
@@ -388,12 +430,14 @@ export function TransactionModal({
                               ? "bg-emerald-500"
                               : currentStatus === "Ready"
                               ? "bg-blue-600"
-                              : "bg-amber-500"
+                              : currentStatus === "Preparing"
+                              ? "bg-amber-500"
+                              : "bg-rose-500"
                             : "bg-zinc-100"
                         }`}
                       />
                       <span
-                        className={`text-[10.5px] font-extrabold ${
+                        className={`text-[9.5px] sm:text-[10px] font-extrabold leading-tight ${
                           isCurrent
                             ? "text-zinc-900"
                             : isDone
@@ -451,33 +495,54 @@ export function TransactionModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-zinc-200 text-zinc-800 text-xs font-bold hover:bg-zinc-50 transition cursor-pointer active:scale-95"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Cetak Struk</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCloseAll}
-                className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition shadow-md cursor-pointer active:scale-95"
-              >
-                {viewReceiptOnly ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Tutup Struk</span>
-                  </>
-                ) : (
-                  <>
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Pesanan Baru</span>
-                  </>
-                )}
-              </button>
-            </div>
+            {currentStatus === "Pending" ? (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={handleCancelPending}
+                  className="flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-bold transition cursor-pointer active:scale-95"
+                >
+                  <Ban className="w-4 h-4" />
+                  <span>Batalkan Pesanan</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseAll}
+                  className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition shadow-md cursor-pointer active:scale-95"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Tutup</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex items-center justify-center gap-1.5 py-3 rounded-2xl border border-zinc-200 text-zinc-800 text-xs font-bold hover:bg-zinc-50 transition cursor-pointer active:scale-95"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Cetak Struk</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseAll}
+                  className="flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-bold transition shadow-md cursor-pointer active:scale-95"
+                >
+                  {viewReceiptOnly ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Tutup Struk</span>
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Pesanan Baru</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

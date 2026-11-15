@@ -172,6 +172,8 @@ export default function PosTerminalPage() {
                     ? "bg-blue-600 text-white border-blue-600 shadow-sm animate-pulse"
                     : lastBuyerOrder.status === "Completed"
                     ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    : lastBuyerOrder.status === "Pending"
+                    ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 animate-pulse"
                     : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
                 }`}
                 title="Lihat Struk Digital & Status Pesanan Anda"
@@ -184,6 +186,8 @@ export default function PosTerminalPage() {
                       ? "bg-white text-blue-700"
                       : lastBuyerOrder.status === "Completed"
                       ? "bg-emerald-600 text-white"
+                      : lastBuyerOrder.status === "Pending"
+                      ? "bg-rose-600 text-white"
                       : "bg-amber-500 text-white"
                   }`}
                 >
@@ -191,6 +195,8 @@ export default function PosTerminalPage() {
                     ? "Siap Diambil!"
                     : lastBuyerOrder.status === "Completed"
                     ? "Selesai"
+                    : lastBuyerOrder.status === "Pending"
+                    ? "Menunggu ACC Kasir"
                     : "Diproses"}
                 </span>
               </button>

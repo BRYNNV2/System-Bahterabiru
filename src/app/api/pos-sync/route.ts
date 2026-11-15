@@ -126,44 +126,96 @@ export async function POST(req: NextRequest) {
 
     switch (action) {
       case "CREATE_ORDER": {
-        const order = payload.order as CompletedOrder;
-        if (!order) break;
+        const rawOrder = payload?.order as CompletedOrder | undefined;
+        if (!rawOrder) break;
 
-        const cleanItems = stripOrderItemImages(order.items);
-        const cleanOrder: CompletedOrder = { ...order, items: cleanItems };
+        const isAdmin = isAdminRequest(req);
+        const isDirectAdminCashier =
+          isAdmin && payload?.source === "admin-cashier";
+        const cleanItems = stripOrderItemImages(rawOrder.items);
+        const cleanOrder: CompletedOrder = {
+          ...rawOrder,
+          items: cleanItems,
+          // Hanya kasir langsung dari Admin yang boleh bypass Pending; pesanan halaman pembeli WAJIB Pending
+          status: isDirectAdminCashier
+            ? rawOrder.status || "Completed"
+            : "Pending",
+          createdAtIso: rawOrder.createdAtIso || new Date().toISOString(),
+        };
+
+        let isDuplicate = false;
 
         applyLocalDbMutation((db) => {
-          const updatedMenu = db.menuItems.map((item) => {
-            const line = cleanOrder.items.find((i) => i.product.id === item.id);
-            if (!line) return item;
-            return {
-              ...item,
-              stock: Math.max(0, item.stock - line.quantity),
-              soldCount: item.soldCount + line.quantity,
-            };
+          const nowMs = Date.now();
+          const alreadyExists = db.recentOrders.some((o) => {
+            if (o.id === cleanOrder.id) return true;
+            if (
+              !isDirectAdminCashier &&
+              o.status === "Pending" &&
+              o.customerName === cleanOrder.customerName &&
+              o.totalAmount === cleanOrder.totalAmount
+            ) {
+              const ordMs = o.createdAtIso
+                ? new Date(o.createdAtIso).getTime()
+                : Number(/^ord-(\d{12,})/.exec(o.id)?.[1] || 0);
+              if (!Number.isNaN(ordMs) && nowMs - ordMs < 3000) {
+                return true;
+              }
+            }
+            return false;
           });
-          const exists = db.recentOrders.some((o) => o.id === cleanOrder.id);
-          const updatedOrders = exists
-            ? db.recentOrders
-            : [cleanOrder, ...db.recentOrders];
-          return { menuItems: updatedMenu, recentOrders: updatedOrders };
+
+          if (alreadyExists) {
+            isDuplicate = true;
+            return { recentOrders: db.recentOrders };
+          }
+
+          // Hanya kurangi stok & tambah soldCount jika transaksi langsung dibuat Kasir Admin (bukan Pending pembeli)
+          const shouldDeductNow =
+            isDirectAdminCashier && cleanOrder.status !== "Pending";
+          const updatedMenu = shouldDeductNow
+            ? db.menuItems.map((item) => {
+                const line = cleanOrder.items.find(
+                  (i) => i.product.id === item.id
+                );
+                if (!line) return item;
+                return {
+                  ...item,
+                  stock: Math.max(0, item.stock - line.quantity),
+                  soldCount: item.soldCount + line.quantity,
+                };
+              })
+            : db.menuItems;
+
+          let nextOrders = [cleanOrder, ...db.recentOrders];
+
+          // Batasi antrean Pending maksimal 30 pesanan aktif agar tahan spam
+          let pendingSeen = 0;
+          nextOrders = nextOrders.filter((ord) => {
+            if (ord.status !== "Pending") return true;
+            pendingSeen += 1;
+            return pendingSeen <= 30;
+          });
+
+          return { menuItems: updatedMenu, recentOrders: nextOrders };
         });
 
-        if (!isNeonInBackoff()) {
+        if (!isDuplicate && !isNeonInBackoff()) {
           try {
-            // Deduct stock and increment soldCount in Neon Postgres
-            for (const line of cleanOrder.items) {
-              const existing = await prisma.posMenuItem.findUnique({
-                where: { id: line.product.id },
-              });
-              if (existing) {
-                await prisma.posMenuItem.update({
+            if (isDirectAdminCashier && cleanOrder.status !== "Pending") {
+              for (const line of cleanOrder.items) {
+                const existing = await prisma.posMenuItem.findUnique({
                   where: { id: line.product.id },
-                  data: {
-                    stock: Math.max(0, existing.stock - line.quantity),
-                    soldCount: existing.soldCount + line.quantity,
-                  },
                 });
+                if (existing) {
+                  await prisma.posMenuItem.update({
+                    where: { id: line.product.id },
+                    data: {
+                      stock: Math.max(0, existing.stock - line.quantity),
+                      soldCount: existing.soldCount + line.quantity,
+                    },
+                  });
+                }
               }
             }
 
@@ -174,7 +226,7 @@ export async function POST(req: NextRequest) {
                 id: cleanOrder.id,
                 orderNumber: cleanOrder.orderNumber,
                 customerName: cleanOrder.customerName,
-                status: cleanOrder.status || "Preparing",
+                status: cleanOrder.status || "Pending",
                 items: JSON.parse(JSON.stringify(cleanItems)),
                 itemCount: cleanOrder.itemCount,
                 subtotal: cleanOrder.subtotal,
@@ -191,7 +243,70 @@ export async function POST(req: NextRequest) {
         }
 
         // Jangan kirim balik data seluruh transaksi ke pembeli
-        return NextResponse.json({ success: true, orderId: cleanOrder.id });
+        return NextResponse.json({
+          success: true,
+          orderId: cleanOrder.id,
+          duplicate: isDuplicate,
+        });
+      }
+
+      case "CANCEL_PENDING_ORDER": {
+        const { orderId } = (payload || {}) as { orderId?: string };
+        if (!orderId) {
+          return NextResponse.json(
+            { success: false, error: "orderId diperlukan" },
+            { status: 400 }
+          );
+        }
+
+        let alreadyProcessed = false;
+        let foundInLocal = false;
+
+        applyLocalDbMutation((db) => {
+          const target = db.recentOrders.find((o) => o.id === orderId);
+          if (target) {
+            foundInLocal = true;
+            if (target.status !== "Pending") {
+              alreadyProcessed = true;
+              return { recentOrders: db.recentOrders };
+            }
+          }
+          return {
+            recentOrders: db.recentOrders.filter((o) => o.id !== orderId),
+          };
+        });
+
+        if (alreadyProcessed) {
+          return NextResponse.json(
+            { success: false, error: "Pesanan sudah diproses kasir" },
+            { status: 400 }
+          );
+        }
+
+        if (!isNeonInBackoff()) {
+          try {
+            if (!foundInLocal) {
+              const existing = await prisma.posOrder.findUnique({
+                where: { id: orderId },
+                select: { status: true },
+              });
+              if (existing && existing.status !== "Pending") {
+                return NextResponse.json(
+                  { success: false, error: "Pesanan sudah diproses kasir" },
+                  { status: 400 }
+                );
+              }
+            }
+
+            await prisma.posOrder.deleteMany({
+              where: { id: orderId, status: "Pending" },
+            });
+          } catch (err) {
+            markNeonQuotaOrError(err);
+          }
+        }
+
+        return NextResponse.json({ success: true });
       }
 
       case "UPDATE_STOCK": {
@@ -372,20 +487,107 @@ export async function POST(req: NextRequest) {
           orderId: string;
           status: OrderStatusType;
         };
-        const saved = applyLocalDbMutation((db) => ({
-          recentOrders: db.recentOrders.map((ord) =>
-            ord.id === orderId && ord.status !== "Completed"
-              ? { ...ord, status }
-              : ord
-          ),
-        }));
+        if (status === "Pending") {
+          return NextResponse.json(
+            { success: false, error: "Status tujuan tidak valid" },
+            { status: 400 }
+          );
+        }
+
+        let approvedItems: CompletedOrder["items"] = [];
+        let foundInLocal = false;
+
+        let saved = applyLocalDbMutation((db) => {
+          const targetOrder = db.recentOrders.find((ord) => ord.id === orderId);
+          foundInLocal = Boolean(targetOrder);
+          const isApprovingPending = Boolean(
+            targetOrder && targetOrder.status === "Pending"
+          );
+
+          if (isApprovingPending && targetOrder) {
+            approvedItems = targetOrder.items;
+          }
+
+          const updatedMenu = isApprovingPending
+            ? db.menuItems.map((item) => {
+                const line = approvedItems.find(
+                  (i) => i.product.id === item.id
+                );
+                if (!line) return item;
+                return {
+                  ...item,
+                  stock: Math.max(0, item.stock - line.quantity),
+                  soldCount: item.soldCount + line.quantity,
+                };
+              })
+            : db.menuItems;
+
+          return {
+            menuItems: updatedMenu,
+            recentOrders: db.recentOrders.map((ord) =>
+              ord.id === orderId && ord.status !== "Completed"
+                ? { ...ord, status }
+                : ord
+            ),
+          };
+        });
 
         if (!isNeonInBackoff()) {
           try {
-            await prisma.posOrder.updateMany({
-              where: { id: orderId, status: { not: "Completed" } },
+            // Transisi atomik Pending -> Aktif di database agar pemotongan stok hanya terjadi 1 kali
+            const pendingTransition = await prisma.posOrder.updateMany({
+              where: { id: orderId, status: "Pending" },
               data: { status },
             });
+
+            if (pendingTransition.count > 0) {
+              if (!foundInLocal) {
+                const existingOrder = await prisma.posOrder.findUnique({
+                  where: { id: orderId },
+                });
+                if (existingOrder && Array.isArray(existingOrder.items)) {
+                  approvedItems =
+                    existingOrder.items as unknown as CompletedOrder["items"];
+                  saved = applyLocalDbMutation((db) => ({
+                    menuItems: db.menuItems.map((item) => {
+                      const line = approvedItems.find(
+                        (i) => i.product.id === item.id
+                      );
+                      if (!line) return item;
+                      return {
+                        ...item,
+                        stock: Math.max(0, item.stock - line.quantity),
+                        soldCount: item.soldCount + line.quantity,
+                      };
+                    }),
+                  }));
+                }
+              }
+
+              for (const line of approvedItems) {
+                const pid = line?.product?.id;
+                const qty = Number(line?.quantity) || 0;
+                if (pid && qty > 0) {
+                  const menuRow = await prisma.posMenuItem.findUnique({
+                    where: { id: pid },
+                  });
+                  if (menuRow) {
+                    await prisma.posMenuItem.update({
+                      where: { id: pid },
+                      data: {
+                        stock: Math.max(0, menuRow.stock - qty),
+                        soldCount: menuRow.soldCount + qty,
+                      },
+                    });
+                  }
+                }
+              }
+            } else {
+              await prisma.posOrder.updateMany({
+                where: { id: orderId, status: { not: "Completed" } },
+                data: { status },
+              });
+            }
           } catch (err) {
             markNeonQuotaOrError(err);
           }
@@ -396,22 +598,29 @@ export async function POST(req: NextRequest) {
       case "DELETE_ORDER": {
         const { orderId } = payload as { orderId: string };
         let deletedLines: CompletedOrder["items"] = [];
+        let foundInLocal = false;
+
         const saved = applyLocalDbMutation((db) => {
           const targetOrder = db.recentOrders.find((ord) => ord.id === orderId);
-          deletedLines = targetOrder?.items ?? [];
-          const updatedMenu = targetOrder
-            ? db.menuItems.map((item) => {
-                const line = targetOrder.items.find(
-                  (i) => i.product.id === item.id
-                );
-                if (!line) return item;
-                return {
-                  ...item,
-                  stock: item.stock + line.quantity,
-                  soldCount: Math.max(0, item.soldCount - line.quantity),
-                };
-              })
-            : db.menuItems;
+          foundInLocal = Boolean(targetOrder);
+          const wasApproved = Boolean(
+            targetOrder && targetOrder.status !== "Pending"
+          );
+          deletedLines = wasApproved && targetOrder ? targetOrder.items : [];
+          const updatedMenu =
+            wasApproved && targetOrder
+              ? db.menuItems.map((item) => {
+                  const line = targetOrder.items.find(
+                    (i) => i.product.id === item.id
+                  );
+                  if (!line) return item;
+                  return {
+                    ...item,
+                    stock: item.stock + line.quantity,
+                    soldCount: Math.max(0, item.soldCount - line.quantity),
+                  };
+                })
+              : db.menuItems;
           return {
             menuItems: updatedMenu,
             recentOrders: db.recentOrders.filter((ord) => ord.id !== orderId),
@@ -420,11 +629,15 @@ export async function POST(req: NextRequest) {
 
         if (!isNeonInBackoff()) {
           try {
-            if (deletedLines.length === 0) {
+            if (!foundInLocal) {
               const existingOrder = await prisma.posOrder.findUnique({
                 where: { id: orderId },
               });
-              if (existingOrder && Array.isArray(existingOrder.items)) {
+              if (
+                existingOrder &&
+                existingOrder.status !== "Pending" &&
+                Array.isArray(existingOrder.items)
+              ) {
                 deletedLines =
                   existingOrder.items as unknown as CompletedOrder["items"];
               }
@@ -449,7 +662,7 @@ export async function POST(req: NextRequest) {
               }
             }
 
-            await prisma.posOrder.delete({
+            await prisma.posOrder.deleteMany({
               where: { id: orderId },
             });
           } catch (err) {
