@@ -197,22 +197,22 @@ export function TransactionModal({
               </label>
               <div className="grid grid-cols-3 gap-2">
                 {paymentOptions.map((opt) => {
-                  const isDebitOngoing = opt === "Debit";
+                  const isComingSoon = opt === "Debit" || opt === "QRIS";
                   return (
                     <button
                       type="button"
                       key={opt}
-                      disabled={isDebitOngoing}
+                      disabled={isComingSoon}
                       onClick={() => {
-                        if (!isDebitOngoing) setPaymentMethod(opt);
+                        if (!isComingSoon) setPaymentMethod(opt);
                       }}
                       title={
-                        isDebitOngoing
-                          ? "Pembayaran Debit sedang dalam pengembangan (On Going)"
+                        isComingSoon
+                          ? `Pembayaran ${opt} sedang dalam pengembangan (Soon)`
                           : `Pilih pembayaran ${opt}`
                       }
                       className={`relative py-2 px-2 rounded-xl text-xs font-bold border transition ${
-                        isDebitOngoing
+                        isComingSoon
                           ? "bg-zinc-100/80 border-zinc-200/70 text-zinc-400 cursor-not-allowed"
                           : paymentMethod === opt
                           ? "bg-zinc-900 border-zinc-900 text-white cursor-pointer"
@@ -220,9 +220,9 @@ export function TransactionModal({
                       }`}
                     >
                       <span>{opt}</span>
-                      {isDebitOngoing && (
+                      {isComingSoon && (
                         <span className="block text-[8.5px] font-extrabold uppercase tracking-wider text-amber-600 leading-none mt-0.5">
-                          On Going
+                          Soon
                         </span>
                       )}
                     </button>

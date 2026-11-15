@@ -1107,20 +1107,38 @@ export function BarcodeScannerModal({
                       Metode Pembayaran
                     </label>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {(["Cash", "QRIS"] as PaymentMethod[]).map((m) => (
-                        <button
-                          type="button"
-                          key={m}
-                          onClick={() => setKasirPaymentMethod(m)}
-                          className={`py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer ${
-                            kasirPaymentMethod === m
-                              ? "bg-zinc-900 border-zinc-900 text-white"
-                              : "bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100"
-                          }`}
-                        >
-                          {m}
-                        </button>
-                      ))}
+                      {(["Cash", "QRIS"] as PaymentMethod[]).map((m) => {
+                        const isComingSoon = m === "QRIS";
+                        return (
+                          <button
+                            type="button"
+                            key={m}
+                            disabled={isComingSoon}
+                            onClick={() => {
+                              if (!isComingSoon) setKasirPaymentMethod(m);
+                            }}
+                            title={
+                              isComingSoon
+                                ? "Pembayaran QRIS sedang dalam pengembangan (Soon)"
+                                : `Pilih pembayaran ${m}`
+                            }
+                            className={`py-1.5 px-2 rounded-xl text-xs font-bold border transition flex items-center justify-center gap-1 ${
+                              isComingSoon
+                                ? "bg-zinc-100 border-zinc-200/70 text-zinc-400 cursor-not-allowed"
+                                : kasirPaymentMethod === m
+                                ? "bg-zinc-900 border-zinc-900 text-white cursor-pointer"
+                                : "bg-zinc-50 border-zinc-200 text-zinc-600 hover:bg-zinc-100 cursor-pointer"
+                            }`}
+                          >
+                            <span>{m}</span>
+                            {isComingSoon && (
+                              <span className="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded bg-amber-100 text-amber-700 leading-tight">
+                                Soon
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

@@ -676,15 +676,15 @@ export function ManualCashierModal({
                       </button>
                       <button
                         type="button"
-                        onClick={() => setPaymentMethod("QRIS")}
-                        className={`py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          paymentMethod === "QRIS"
-                            ? "bg-[#2563EB] border-[#2563EB] text-white"
-                            : "bg-[#F8FAFC] border-slate-200 text-slate-600 hover:bg-slate-100"
-                        }`}
+                        disabled
+                        title="Pembayaran QRIS sedang dalam pengembangan (Soon)"
+                        className="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold border flex items-center justify-center gap-1.5 transition bg-slate-100 border-slate-200/70 text-slate-400 cursor-not-allowed"
                       >
                         <QrCode className="w-4 h-4" />
                         <span>QRIS</span>
+                        <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 leading-none">
+                          Soon
+                        </span>
                       </button>
                     </div>
                   </div>

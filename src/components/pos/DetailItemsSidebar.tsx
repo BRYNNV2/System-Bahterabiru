@@ -281,23 +281,23 @@ export function DetailItemsSidebar({
         {/* Compact Payment Method Selector */}
         <div className="grid grid-cols-3 gap-1.5">
           {(["Cash", "QRIS", "Debit"] as const).map((method) => {
-            const isDebitOngoing = method === "Debit";
-            const isSelected = paymentMethod === method && !isDebitOngoing;
+            const isComingSoon = method === "Debit" || method === "QRIS";
+            const isSelected = paymentMethod === method && !isComingSoon;
             return (
               <button
                 type="button"
                 key={method}
-                disabled={isDebitOngoing}
+                disabled={isComingSoon}
                 onClick={() => {
-                  if (!isDebitOngoing) setPaymentMethod(method);
+                  if (!isComingSoon) setPaymentMethod(method);
                 }}
                 title={
-                  isDebitOngoing
-                    ? "Pembayaran Debit sedang dalam pengembangan (On Going)"
+                  isComingSoon
+                    ? `Pembayaran ${method} sedang dalam pengembangan (Soon)`
                     : `Pilih pembayaran ${method}`
                 }
                 className={`py-1.5 rounded-full text-[11px] transition flex items-center justify-center gap-1 ${
-                  isDebitOngoing
+                  isComingSoon
                     ? "bg-zinc-100 border border-zinc-200/60 text-zinc-400 cursor-not-allowed"
                     : isSelected
                     ? "bg-zinc-900 border border-zinc-900 text-white font-bold cursor-pointer"
@@ -305,7 +305,7 @@ export function DetailItemsSidebar({
                 }`}
               >
                 <span>{method}</span>
-                {isDebitOngoing && (
+                {isComingSoon && (
                   <span className="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded bg-amber-100 text-amber-700 leading-tight">
                     Soon
                   </span>
