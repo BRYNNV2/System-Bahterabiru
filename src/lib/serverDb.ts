@@ -3,6 +3,19 @@ import path from "path";
 import { prisma } from "@/lib/prisma";
 import { MenuItem } from "@/data/initialMenu";
 import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
+import {
+  stripOrderItemImages,
+  stripOrdersImages,
+  hydrateOrdersWithMenuImages,
+  computeMenuImagesHash,
+} from "@/lib/syncHash";
+
+export {
+  stripOrderItemImages,
+  stripOrdersImages,
+  hydrateOrdersWithMenuImages,
+  computeMenuImagesHash,
+};
 
 export interface ServerPosDatabase {
   menuItems: MenuItem[];
@@ -57,44 +70,6 @@ export function markNeonQuotaOrError(err?: unknown): void {
     return;
   }
   globalForDb.neonBackoffUntil = Date.now() + NEON_BACKOFF_MS;
-}
-
-export function stripOrderItemImages(
-  items: CompletedOrder["items"]
-): CompletedOrder["items"] {
-  if (!Array.isArray(items)) return [];
-  return items.map((line) => {
-    if (!line?.product) return line;
-    const url = line.product.imageUrl || "";
-    if (!url.startsWith("data:")) return line;
-    return {
-      ...line,
-      product: {
-        ...line.product,
-        imageUrl: "",
-      },
-    };
-  });
-}
-
-export function hydrateOrdersWithMenuImages(
-  orders: CompletedOrder[],
-  menuItems: MenuItem[]
-): CompletedOrder[] {
-  if (!Array.isArray(orders) || orders.length === 0) return orders;
-  const imgMap = new Map(menuItems.map((m) => [m.id, m.imageUrl]));
-  return orders.map((ord) => ({
-    ...ord,
-    items: Array.isArray(ord.items)
-      ? ord.items.map((line) => {
-          if (!line?.product || line.product.imageUrl) return line;
-          const restored = imgMap.get(line.product.id);
-          return restored
-            ? { ...line, product: { ...line.product, imageUrl: restored } }
-            : line;
-        })
-      : [],
-  }));
 }
 
 const BARCODE_PREFIX = "__BARCODE__:";
@@ -195,7 +170,9 @@ function mapDbRowToOrder(row: {
     orderNumber: row.orderNumber,
     customerName: row.customerName,
     status: (row.status as OrderStatusType) || "Preparing",
-    items: Array.isArray(row.items) ? (row.items as CompletedOrder["items"]) : [],
+    items: stripOrderItemImages(
+      Array.isArray(row.items) ? (row.items as CompletedOrder["items"]) : []
+    ),
     itemCount: row.itemCount,
     subtotal: row.subtotal,
     discountTotal: row.discountTotal,
@@ -207,22 +184,6 @@ function mapDbRowToOrder(row: {
     ...(row.createdAt ? { createdAtIso: row.createdAt.toISOString() } : {}),
     ...(row.updatedAt ? { updatedAtIso: row.updatedAt.toISOString() } : {}),
   };
-}
-
-export function computeMenuImagesHash(items: MenuItem[]): string {
-  let hash = 2166136261;
-  const feed = (str: string) => {
-    for (let i = 0; i < str.length; i += 1) {
-      hash ^= str.charCodeAt(i);
-      hash = Math.imul(hash, 16777619);
-    }
-  };
-  feed(`${items.length}|`);
-  for (const item of items) {
-    const url = item.imageUrl || "";
-    feed(`${item.id}:${url.length}:${url.slice(0, 16)}:${url.slice(-16)}|`);
-  }
-  return (hash >>> 0).toString(36);
 }
 
 export interface ReadDbOptions {
@@ -463,7 +424,7 @@ export async function readNeonDbOrFallback(
       }
     }
 
-    mappedOrders = hydrateOrdersWithMenuImages(mappedOrders, mappedMenu);
+    mappedOrders = stripOrdersImages(mappedOrders);
 
     // Sinkronkan soldCount produk berdasarkan transaksi aktif yang sudah di-ACC (abaikan Pending & transaksi dihapus)
     if (fetchAll || (skip === 0 && orderRows.length >= totalOrdersCount)) {
@@ -569,7 +530,7 @@ function buildLocalFallbackResponse(
     : source.recentOrders.slice(skip, skip + limit);
   return {
     menuItems: source.menuItems,
-    recentOrders: hydrateOrdersWithMenuImages(slice, source.menuItems),
+    recentOrders: stripOrdersImages(slice),
     totalOrdersCount: total,
     trackedOrder,
     updatedAt: source.updatedAt || Date.now(),

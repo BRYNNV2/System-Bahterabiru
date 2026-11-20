@@ -7,6 +7,11 @@ import {
   SidebarGroupType,
   getEffectivePrice,
 } from "@/data/initialMenu";
+import {
+  stripOrderItemImages,
+  hydrateOrdersWithMenuImages,
+  computeMenuImagesHash,
+} from "@/lib/syncHash";
 
 export interface CartItem {
   productId: string;
@@ -125,6 +130,7 @@ interface PosState {
 let pendingMutations = 0;
 let mutationEpoch = 0;
 let lastSyncedImagesHash = "";
+let lastSyncedStateHash = "";
 
 function mergeMenuItemsPreservingImages(
   incoming: MenuItem[],
@@ -151,6 +157,7 @@ async function sendSyncMutation(
 ) {
   pendingMutations += 1;
   mutationEpoch += 1;
+  lastSyncedStateHash = "";
   if (action === "ADD_MENU" || action === "UPDATE_MENU" || action === "DELETE_MENU") {
     lastSyncedImagesHash = "";
   }
@@ -249,6 +256,7 @@ export const usePosStore = create<PosState>()(
             error?: string;
           };
           if (res.ok && data.success) {
+            lastSyncedStateHash = "";
             set({ isAdminAuthenticated: true });
             void get().syncFromServer();
             return { ok: true };
@@ -261,6 +269,7 @@ export const usePosStore = create<PosState>()(
       },
 
       logoutAdmin: async () => {
+        lastSyncedStateHash = "";
         set({ isAdminAuthenticated: false, recentOrders: [] });
         try {
           await fetch("/api/admin-auth", {
@@ -515,11 +524,17 @@ export const usePosStore = create<PosState>()(
           const hasFullImagesInMemory =
             currentState.menuItems.length > 0 &&
             currentState.menuItems.every((m) => Boolean(m.imageUrl));
+          const effectiveImgHash = hasFullImagesInMemory
+            ? lastSyncedImagesHash || computeMenuImagesHash(currentState.menuItems)
+            : "";
 
           const params = new URLSearchParams();
           if (trackedId) params.set("orderId", trackedId);
-          if (hasFullImagesInMemory && lastSyncedImagesHash) {
-            params.set("imgHash", lastSyncedImagesHash);
+          if (effectiveImgHash) {
+            params.set("imgHash", effectiveImgHash);
+          }
+          if (hasFullImagesInMemory && lastSyncedStateHash) {
+            params.set("stateHash", lastSyncedStateHash);
           }
           const qs = params.toString();
           const url = qs ? `/api/pos-sync?${qs}` : "/api/pos-sync";
@@ -534,6 +549,17 @@ export const usePosStore = create<PosState>()(
           }
           const data = await res.json();
           if (pendingMutations > 0 || mutationEpoch !== epochAtStart) return;
+
+          if (data && data.unchanged === true) {
+            if (typeof data.stateHash === "string") {
+              lastSyncedStateHash = data.stateHash;
+            }
+            if (typeof data.imagesHash === "string") {
+              lastSyncedImagesHash = data.imagesHash;
+            }
+            return;
+          }
+
           if (
             data &&
             Array.isArray(data.menuItems) &&
@@ -542,6 +568,9 @@ export const usePosStore = create<PosState>()(
             const imagesOmitted = Boolean(data.imagesOmitted);
             if (typeof data.imagesHash === "string") {
               lastSyncedImagesHash = data.imagesHash;
+            }
+            if (typeof data.stateHash === "string") {
+              lastSyncedStateHash = data.stateHash;
             }
 
             let mergedMenuSnapshot: MenuItem[] = [];
@@ -552,6 +581,10 @@ export const usePosStore = create<PosState>()(
                 imagesOmitted
               );
               mergedMenuSnapshot = mergedMenu;
+              const hydratedOrders = hydrateOrdersWithMenuImages(
+                data.recentOrders as CompletedOrder[],
+                mergedMenu
+              );
 
               let updatedBuyerOrder = state.lastBuyerOrder;
               if (updatedBuyerOrder) {
@@ -559,7 +592,7 @@ export const usePosStore = create<PosState>()(
                   | { id: string; status: OrderStatusType }
                   | null
                   | undefined;
-                const fromRecent = (data.recentOrders as CompletedOrder[]).find(
+                const fromRecent = hydratedOrders.find(
                   (o) => o.id === updatedBuyerOrder?.id
                 );
                 const latestStatus =
@@ -580,13 +613,14 @@ export const usePosStore = create<PosState>()(
               }
               return {
                 menuItems: mergedMenu,
-                recentOrders: data.recentOrders,
+                recentOrders: hydratedOrders,
                 lastBuyerOrder: updatedBuyerOrder,
               };
             });
 
             if (imagesOmitted && mergedMenuSnapshot.some((m) => !m.imageUrl)) {
               lastSyncedImagesHash = "";
+              lastSyncedStateHash = "";
             }
           }
         } catch {
@@ -674,7 +708,12 @@ export const usePosStore = create<PosState>()(
           lastBuyerOrder: newOrder,
         });
 
-        void sendSyncMutation("CREATE_ORDER", { order: newOrder });
+        void sendSyncMutation("CREATE_ORDER", {
+          order: {
+            ...newOrder,
+            items: stripOrderItemImages(newOrder.items),
+          },
+        });
 
         return newOrder;
       },

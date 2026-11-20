@@ -9,6 +9,7 @@ import {
   applyLocalDbMutation,
   stripOrderItemImages,
 } from "@/lib/serverDb";
+import { computePosStateHash } from "@/lib/syncHash";
 import { MenuItem } from "@/data/initialMenu";
 import { CompletedOrder, OrderStatusType } from "@/store/usePosStore";
 import { isAdminRequest } from "@/lib/adminAuth";
@@ -48,6 +49,7 @@ export async function GET(req: NextRequest) {
   const isAdmin = isAdminRequest(req);
   const { searchParams } = new URL(req.url);
   const reqImgHash = searchParams.get("imgHash")?.trim() || "";
+  const reqStateHash = searchParams.get("stateHash")?.trim() || "";
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
   const limit = Math.min(
     100,
@@ -66,6 +68,26 @@ export async function GET(req: NextRequest) {
       publicMenu,
       reqImgHash
     );
+    const trackedOrder = db.trackedOrder ?? null;
+    const stateHash = computePosStateHash({
+      isAdmin: false,
+      menuItems: publicMenu,
+      imagesHash,
+      trackedOrder,
+    });
+
+    if (reqStateHash && reqStateHash === stateHash) {
+      return NextResponse.json(
+        {
+          success: true,
+          unchanged: true,
+          stateHash,
+          imagesHash,
+          updatedAt: db.updatedAt,
+        },
+        { headers: { "Cache-Control": "no-store" } }
+      );
+    }
 
     return NextResponse.json(
       {
@@ -73,8 +95,9 @@ export async function GET(req: NextRequest) {
         menuItems,
         imagesHash,
         imagesOmitted,
+        stateHash,
         recentOrders: [],
-        trackedOrder: db.trackedOrder ?? null,
+        trackedOrder,
         totalOrdersCount: 0,
         currentPage: 1,
         pageSize: limit,
@@ -94,6 +117,26 @@ export async function GET(req: NextRequest) {
     db.menuItems,
     reqImgHash
   );
+  const stateHash = computePosStateHash({
+    isAdmin: true,
+    menuItems: db.menuItems,
+    imagesHash,
+    recentOrders: db.recentOrders,
+    totalOrdersCount: db.totalOrdersCount,
+  });
+
+  if (reqStateHash && reqStateHash === stateHash) {
+    return NextResponse.json(
+      {
+        success: true,
+        unchanged: true,
+        stateHash,
+        imagesHash,
+        updatedAt: db.updatedAt,
+      },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
   return NextResponse.json(
     {
@@ -101,6 +144,7 @@ export async function GET(req: NextRequest) {
       menuItems,
       imagesHash,
       imagesOmitted,
+      stateHash,
       recentOrders: db.recentOrders,
       totalOrdersCount: db.totalOrdersCount,
       currentPage: page,
@@ -331,7 +375,7 @@ export async function POST(req: NextRequest) {
             markNeonQuotaOrError(err);
           }
         }
-        return NextResponse.json({ success: true, ...saved });
+        return NextResponse.json({ success: true, updatedAt: saved.updatedAt });
       }
 
       case "ADD_MENU": {
@@ -388,7 +432,7 @@ export async function POST(req: NextRequest) {
             markNeonQuotaOrError(err);
           }
         }
-        return NextResponse.json({ success: true, ...saved });
+        return NextResponse.json({ success: true, updatedAt: saved.updatedAt });
       }
 
       case "UPDATE_MENU": {
@@ -461,7 +505,7 @@ export async function POST(req: NextRequest) {
             markNeonQuotaOrError(err);
           }
         }
-        return NextResponse.json({ success: true, ...saved });
+        return NextResponse.json({ success: true, updatedAt: saved.updatedAt });
       }
 
       case "DELETE_MENU": {
@@ -479,7 +523,7 @@ export async function POST(req: NextRequest) {
             markNeonQuotaOrError(err);
           }
         }
-        return NextResponse.json({ success: true, ...saved });
+        return NextResponse.json({ success: true, updatedAt: saved.updatedAt });
       }
 
       case "UPDATE_ORDER_STATUS": {
@@ -592,7 +636,7 @@ export async function POST(req: NextRequest) {
             markNeonQuotaOrError(err);
           }
         }
-        return NextResponse.json({ success: true, ...saved });
+        return NextResponse.json({ success: true, updatedAt: saved.updatedAt });
       }
 
       case "DELETE_ORDER": {
@@ -669,22 +713,17 @@ export async function POST(req: NextRequest) {
             markNeonQuotaOrError(err);
           }
         }
-        return NextResponse.json({ success: true, ...saved });
+        return NextResponse.json({ success: true, updatedAt: saved.updatedAt });
       }
 
       default:
         break;
     }
 
-    const currentDb = await readNeonDbOrFallback();
-    if (!isAdminRequest(req)) {
-      return NextResponse.json({
-        success: true,
-        menuItems: toPublicMenu(currentDb.menuItems),
-        recentOrders: [],
-      });
-    }
-    return NextResponse.json({ success: true, ...currentDb });
+    return NextResponse.json(
+      { success: false, error: "Invalid action or payload" },
+      { status: 400 }
+    );
   } catch {
     return NextResponse.json(
       {

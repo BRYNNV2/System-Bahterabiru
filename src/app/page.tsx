@@ -79,7 +79,7 @@ export default function PosTerminalPage() {
       void syncFromServer();
     };
 
-    const pollIntervalMs = hasActiveBuyerOrder ? 3500 : 5000;
+    const pollIntervalMs = hasActiveBuyerOrder ? 6000 : 20000;
     const interval = setInterval(syncIfVisible, pollIntervalMs);
 
     window.addEventListener("focus", syncIfVisible);

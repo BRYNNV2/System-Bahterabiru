@@ -59,6 +59,7 @@ import {
   getEffectivePrice,
   MenuItem,
 } from "@/data/initialMenu";
+import { stripOrderItemImages } from "@/lib/syncHash";
 
 type AdminPageTab =
   | "dashboard"
@@ -127,20 +128,27 @@ export function AdminDashboard() {
 
   useEffect(() => {
     if (!isAdminAuthenticated) return;
-    void syncFromServer();
 
-    const interval = setInterval(() => {
-      void syncFromServer();
-    }, 3000);
-
-    const handleFocus = () => {
+    const syncIfVisible = () => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "hidden"
+      ) {
+        return;
+      }
       void syncFromServer();
     };
-    window.addEventListener("focus", handleFocus);
+
+    syncIfVisible();
+    const interval = setInterval(syncIfVisible, 12000);
+
+    window.addEventListener("focus", syncIfVisible);
+    document.addEventListener("visibilitychange", syncIfVisible);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("focus", syncIfVisible);
+      document.removeEventListener("visibilitychange", syncIfVisible);
     };
   }, [syncFromServer, isAdminAuthenticated]);
 
@@ -498,7 +506,13 @@ export function AdminDashboard() {
       credentials: "same-origin",
       body: JSON.stringify({
         action: "CREATE_ORDER",
-        payload: { order: newOrder, source: "admin-cashier" },
+        payload: {
+          order: {
+            ...newOrder,
+            items: stripOrderItemImages(newOrder.items),
+          },
+          source: "admin-cashier",
+        },
       }),
     }).catch(() => {});
 
@@ -4901,11 +4915,17 @@ export function AdminDashboard() {
                   className="flex items-center justify-between p-2.5 rounded-xl bg-[#F8FAFC] text-xs"
                 >
                   <div className="flex items-center gap-2.5">
-                    <img
-                      src={line.product.imageUrl}
-                      alt={line.product.name}
-                      className="w-9 h-9 rounded-lg object-cover"
-                    />
+                    {line.product.imageUrl ? (
+                      <img
+                        src={line.product.imageUrl}
+                        alt={line.product.name}
+                        className="w-9 h-9 rounded-lg object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-9 h-9 rounded-lg bg-slate-200/70 text-slate-400 flex items-center justify-center shrink-0">
+                        <Receipt className="w-4 h-4" />
+                      </div>
+                    )}
                     <div>
                       <p className="font-bold text-slate-900">
                         {line.product.name}
